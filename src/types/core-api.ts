@@ -86,6 +86,43 @@ export interface CoreAdminWebhookBody {
   data?: Record<string, unknown>;
 }
 
+/** Order lifecycle events from Core (ADMIN_WEBHOOK_URL + Pusher admin-dashboard). */
+
+/** order.created — after Core creates transaction and enqueues poll job. */
+export interface OrderCreatedPayload {
+  transactionId: string;
+  action: string;
+  type: string;
+  status: string;
+  fromIdentifier?: string;
+  toIdentifier?: string;
+  f_amount: number;
+  t_amount: number;
+  f_price: number;
+  t_price: number;
+  f_token: string;
+  t_token: string;
+  feeAmount?: number;
+  feePercent?: number;
+  totalCost?: number;
+  profit?: number;
+}
+
+/** order.completed — poll worker on COMPLETED. */
+export interface OrderCompletedPayload extends OrderCreatedPayload {
+  totalReceived?: number;
+}
+
+/** order.failed — poll worker on FAILED. */
+export interface OrderFailedPayload {
+  transactionId: string;
+  status: string;
+  type: string;
+  f_token: string;
+  t_token: string;
+  error?: string;
+}
+
 /** Admin webhook success: 202 Accepted. */
 export interface CoreAdminWebhookSuccess {
   success: true;

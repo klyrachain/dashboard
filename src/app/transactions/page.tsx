@@ -1,4 +1,5 @@
 import { TransactionsDataTable } from "@/components/transactions/transactions-data-table";
+import { TransactionsChartClient } from "@/components/transactions/transactions-chart-client";
 import { getTransactions } from "@/lib/data-transactions";
 
 export default async function TransactionsPage() {
@@ -13,6 +14,7 @@ export default async function TransactionsPage() {
           View and manage all crypto payment transactions.
         </p>
       </div>
+      <TransactionsChartClient transactions={transactions} />
       <div className="font-tertiary text-table tabular-nums">
         <TransactionsDataTable initialData={transactions} />
       </div>

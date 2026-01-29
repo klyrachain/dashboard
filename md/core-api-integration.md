@@ -158,9 +158,41 @@ Sends a payload to the admin dashboard: if `ADMIN_WEBHOOK_URL` is set, Core POST
 
 **Pusher:** Subscribing to channel `admin-dashboard` and event `admin-event` yields payloads `{ event, data, timestamp }`.
 
+### 5.1 Admin webhook — order lifecycle (live tracking)
+
+After creating a transaction and enqueueing a poll job, Core calls `sendAdminWebhook` with:
+
+| Event | When | Data (typical) |
+|-------|------|----------------|
+| `order.created` | After POST /webhook/order + enqueue | transactionId, action, type, status, fromIdentifier, toIdentifier, f_amount, t_amount, f_price, t_price, f_token, t_token, feeAmount, feePercent, totalCost, profit (from mock fee service) |
+| `order.completed` | Poll worker on COMPLETED | Same fee/price/profit data as order.created |
+| `order.failed` | Poll worker on FAILED | transactionId, status, type, f_token, t_token, error |
+
+The dashboard (ADMIN_WEBHOOK_URL + Pusher `admin-dashboard`) receives all order lifecycle events for live tracking.
+
 ---
 
-## 6. Realtime (Pusher)
+## 6. Quote API (dashboard)
+
+**GET /api/quote** — Prefetch quote for backend before creating a transaction. Backend can call this to show the user cost and fee.
+
+| Query param | Required | Description |
+|-------------|----------|-------------|
+| action | Yes | `buy` \| `sell` \| `request` \| `claim` |
+| f_amount | Yes | From-amount (number) |
+| t_amount | Yes | To-amount (number) |
+| f_price | Yes | From-price / rate (number) |
+| t_price | Yes | To-price (number) |
+| f_token | No | From-asset symbol (default USD) |
+| t_token | No | To-asset symbol (default TOKEN) |
+
+**Response:** `200` → `{ success: true, data: { feeAmount, feePercent, totalCost, totalReceived, rate, grossValue, profit } }`
+
+Mock fee logic: Buy/Sell 1% on f_amount; Request/Claim 0.5% on f_amount. Replace with real fee provider later.
+
+---
+
+## 7. Realtime (Pusher)
 
 When a transaction's status changes (e.g. to `COMPLETED` or `FAILED`), Core emits Pusher events. Frontend can subscribe to receive live updates.
 
@@ -186,7 +218,7 @@ When a transaction's status changes (e.g. to `COMPLETED` or `FAILED`), Core emit
 
 ---
 
-## 7. Frontend integration checklist
+## 8. Frontend integration checklist
 
 - [ ] Backend calls Core `POST /webhook/order` with the payload above; frontend does not call this URL directly from the browser (expose via your own API).
 - [ ] Frontend uses Backend API to "create order" or "initiate buy/sell/request/claim"; Backend returns the transaction `id` and optionally `status: "PENDING"`.
@@ -197,7 +229,7 @@ When a transaction's status changes (e.g. to `COMPLETED` or `FAILED`), Core emit
 
 ---
 
-## 8. Prompt for AI / developers
+## 9. Prompt for AI / developers
 
 Use the following when asking an AI or a developer to implement frontend integration with Core:
 
@@ -230,10 +262,11 @@ We have a backend service called **Core** that handles order/transaction process
 
 ---
 
-## 9. Changelog
+## 10. Changelog
 
 | Date | Change |
 |------|--------|
+| (update) | Admin webhook order lifecycle (order.created, order.completed, order.failed); GET /api/quote for prefetch fee/quote; mock fee service (src/lib/fee.service.ts). |
 | (update) | Added fetch API (users, transactions, requests, claims, wallets, inventory, cache/balances, queue/poll) and POST /webhook/admin for admin dashboard; dashboard receiver at POST /api/webhooks/admin. |
 | (initial) | Document created: health, ready, POST /webhook/order, enums, Pusher channels and event, integration checklist, and prompt. |
 
