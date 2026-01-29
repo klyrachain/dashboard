@@ -1,4 +1,4 @@
-import { UsersList } from "@/components/users/users-list";
+import { UsersPageClient } from "@/app/users/users-page-client";
 import { getUsers } from "@/lib/data-users";
 
 export default async function UsersPage() {
@@ -8,10 +8,10 @@ export default async function UsersPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
         <p className="text-muted-foreground">
-          Search and view users with their transaction history.
+          Search and view users with their transaction history. Export, analyze, and customize columns.
         </p>
       </div>
-      <UsersList initialUsers={users} />
+      <UsersPageClient initialUsers={users} />
     </div>
   );
 }

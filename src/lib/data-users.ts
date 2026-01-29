@@ -8,15 +8,18 @@ export type UserRow = {
   createdAt: Date;
 };
 
+/** Single transaction as returned with a user (list/detail). */
+export type UserTransactionRow = {
+  id: string;
+  type: string;
+  status: string;
+  fromAmount: string;
+  toAmount: string;
+  createdAt: Date;
+};
+
 export type UserWithTransactions = UserRow & {
-  transactions: Array<{
-    id: string;
-    type: string;
-    status: string;
-    fromAmount: string;
-    toAmount: string;
-    createdAt: Date;
-  }>;
+  transactions: UserTransactionRow[];
 };
 
 /** Normalize Core API user item to UserWithTransactions. */
@@ -29,7 +32,7 @@ function coreUserToRow(item: unknown): UserWithTransactions | null {
   const address = o.address != null ? String(o.address) : null;
   const createdAt = o.createdAt instanceof Date ? o.createdAt : new Date(String(o.createdAt ?? ""));
   const rawTx = Array.isArray(o.transactions) ? o.transactions : [];
-  const transactions = rawTx
+  const transactions: UserTransactionRow[] = rawTx
     .map((t: unknown) => {
       if (!t || typeof t !== "object") return null;
       const tx = t as Record<string, unknown>;
@@ -42,7 +45,7 @@ function coreUserToRow(item: unknown): UserWithTransactions | null {
         createdAt: tx.createdAt instanceof Date ? tx.createdAt : new Date(String(tx.createdAt ?? "")),
       };
     })
-    .filter(Boolean) as UserWithTransactions["transactions"];
+    .filter((r): r is UserTransactionRow => r !== null);
   return { id, email, address, createdAt, transactions };
 }
 
