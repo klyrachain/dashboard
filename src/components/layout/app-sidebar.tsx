@@ -54,7 +54,7 @@ const connectNav = [
 const developersNav = [
   { href: "/settings", label: "API Keys", icon: Key },
   { href: "/settings", label: "Webhooks", icon: Webhook },
-  { href: "/transactions", label: "Logs", icon: ScrollText },
+  { href: "/logs", label: "Logs", icon: ScrollText },
 ];
 
 function NavGroup({

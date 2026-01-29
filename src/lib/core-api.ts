@@ -206,6 +206,27 @@ export async function getCoreQueuePoll(params?: { limit?: number }) {
   return fetchCoreGet<unknown>("api/queue/poll", { limit: params?.limit });
 }
 
+/**
+ * GET /api/logs — request logs from Core (monitoring & filtering).
+ * Query: method, path (substring), since (ISO), page, limit (default 50, max 100).
+ */
+export async function getCoreLogs(params?: {
+  method?: string;
+  path?: string;
+  since?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const limit = params?.limit != null ? Math.min(100, Math.max(1, params.limit)) : 50;
+  return fetchCoreGet<unknown[]>("api/logs", {
+    method: params?.method,
+    path: params?.path,
+    since: params?.since,
+    page: params?.page,
+    limit,
+  });
+}
+
 // ——— Webhooks (POST) ———
 
 /**

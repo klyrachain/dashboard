@@ -12,7 +12,7 @@
   /* Text size categories: change these to resize by category app-wide. */
   --text-size-display: 1.875rem; /* hero / page titles */
   --text-size-heading: 1.5rem; /* section headings */
-  --text-size-body: 0.2rem; /* default body */
+  --text-size-body: 1rem; /* default body */
   --text-size-caption: 0.875rem; /* meta, labels, secondary */
   --text-size-table: 0.8125rem; /* dense data, tables */
 
