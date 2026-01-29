@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getCoreUsers } from "@/lib/core-api";
 
 export type UserRow = {
   id: string;
@@ -18,33 +19,45 @@ export type UserWithTransactions = UserRow & {
   }>;
 };
 
-const MOCK_USERS: UserWithTransactions[] = [
-  {
-    id: "user-1",
-    email: "alice@example.com",
-    address: "0x1234…abcd",
-    createdAt: new Date(),
-    transactions: [
-      {
-        id: "tx-1",
-        type: "BUY",
-        status: "COMPLETED",
-        fromAmount: "100",
-        toAmount: "0.04",
-        createdAt: new Date(),
-      },
-    ],
-  },
-  {
-    id: "user-2",
-    email: "bob@example.com",
-    address: "0x5678…ef01",
-    createdAt: new Date(Date.now() - 86400000),
-    transactions: [],
-  },
-];
+/** Normalize Core API user item to UserWithTransactions. */
+function coreUserToRow(item: unknown): UserWithTransactions | null {
+  if (!item || typeof item !== "object") return null;
+  const o = item as Record<string, unknown>;
+  const id = typeof o.id === "string" ? o.id : "";
+  if (!id) return null;
+  const email = o.email != null ? String(o.email) : null;
+  const address = o.address != null ? String(o.address) : null;
+  const createdAt = o.createdAt instanceof Date ? o.createdAt : new Date(String(o.createdAt ?? ""));
+  const rawTx = Array.isArray(o.transactions) ? o.transactions : [];
+  const transactions = rawTx
+    .map((t: unknown) => {
+      if (!t || typeof t !== "object") return null;
+      const tx = t as Record<string, unknown>;
+      return {
+        id: String(tx.id ?? ""),
+        type: String(tx.type ?? ""),
+        status: String(tx.status ?? ""),
+        fromAmount: String(tx.fromAmount ?? tx.f_amount ?? ""),
+        toAmount: String(tx.toAmount ?? tx.t_amount ?? ""),
+        createdAt: tx.createdAt instanceof Date ? tx.createdAt : new Date(String(tx.createdAt ?? "")),
+      };
+    })
+    .filter(Boolean) as UserWithTransactions["transactions"];
+  return { id, email, address, createdAt, transactions };
+}
 
 export async function getUsers(): Promise<UserWithTransactions[]> {
+  try {
+    const result = await getCoreUsers({ limit: 100 });
+    if (result.ok && result.data.success && Array.isArray(result.data.data)) {
+      const rows = result.data.data
+        .map(coreUserToRow)
+        .filter((r): r is UserWithTransactions => r !== null);
+      if (rows.length > 0) return rows;
+    }
+  } catch {
+    // fall through to Prisma
+  }
   try {
     const rows = await prisma.user.findMany({
       orderBy: { createdAt: "desc" },
@@ -69,6 +82,6 @@ export async function getUsers(): Promise<UserWithTransactions[]> {
     });
     return rows as UserWithTransactions[];
   } catch {
-    return MOCK_USERS;
+    return [];
   }
 }

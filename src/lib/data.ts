@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { TransactionStatus } from "@/types/enums";
+import { getCoreTransactions } from "@/lib/core-api";
 
 export type RecentTransaction = {
   id: string;
@@ -10,36 +10,41 @@ export type RecentTransaction = {
   createdAt: Date;
 };
 
-const MOCK_RECENT: RecentTransaction[] = [
-  {
-    id: "tx-1",
-    type: "BUY",
-    status: TransactionStatus.COMPLETED,
-    fromAmount: "100",
-    toAmount: "0.04",
-    createdAt: new Date(),
-  },
-  {
-    id: "tx-2",
-    type: "SELL",
-    status: TransactionStatus.PENDING,
-    fromAmount: "0.02",
-    toAmount: "500",
-    createdAt: new Date(Date.now() - 3600000),
-  },
-  {
-    id: "tx-3",
-    type: "CLAIM",
-    status: TransactionStatus.FAILED,
-    fromAmount: "0",
-    toAmount: "50",
-    createdAt: new Date(Date.now() - 7200000),
-  },
-];
+/** Normalize Core API transaction to RecentTransaction (webhook-sourced data). */
+function coreItemToRecent(item: unknown): RecentTransaction | null {
+  if (!item || typeof item !== "object") return null;
+  const o = item as Record<string, unknown>;
+  const id = typeof o.id === "string" ? o.id : "";
+  if (!id) return null;
+  const createdAt = o.createdAt instanceof Date ? o.createdAt : new Date(String(o.createdAt ?? ""));
+  return {
+    id,
+    type: String(o.type ?? ""),
+    status: String(o.status ?? ""),
+    fromAmount: String(o.fromAmount ?? o.f_amount ?? ""),
+    toAmount: String(o.toAmount ?? o.t_amount ?? ""),
+    createdAt,
+  };
+}
 
+/**
+ * Recent activity from Core (webhook-fetched data). Mandatory: uses Core API first.
+ */
 export async function getRecentTransactions(
   limit: number
 ): Promise<RecentTransaction[]> {
+  try {
+    const result = await getCoreTransactions({ limit, page: 1 });
+    if (result.ok && result.data.success && Array.isArray(result.data.data)) {
+      const rows = result.data.data
+        .map(coreItemToRecent)
+        .filter((r): r is RecentTransaction => r !== null)
+        .slice(0, limit);
+      if (rows.length > 0) return rows;
+    }
+  } catch {
+    // fall through to Prisma
+  }
   try {
     const rows = await prisma.transaction.findMany({
       take: limit,
@@ -55,6 +60,6 @@ export async function getRecentTransactions(
     });
     return rows;
   } catch {
-    return MOCK_RECENT.slice(0, limit);
+    return [];
   }
 }

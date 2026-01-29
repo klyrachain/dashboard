@@ -126,6 +126,25 @@ function RetryButton({ transactionId }: { transactionId: string }) {
   );
 }
 
+function EmptyTransactionsState() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-dashed border-slate-200 bg-slate-50/50 py-16 text-center">
+      <div className="flex size-12 items-center justify-center rounded-full bg-slate-100">
+        <span className="text-2xl text-slate-400" aria-hidden>
+          —
+        </span>
+      </div>
+      <div>
+        <p className="text-sm font-medium text-slate-600">No transactions yet</p>
+        <p className="text-xs text-slate-500">
+          Transactions will appear here when orders are created or synced from
+          Core.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function TransactionsDataTable({
   initialData,
 }: {
@@ -172,6 +191,14 @@ export function TransactionsDataTable({
       columnVisibility,
     },
   });
+
+  if (initialData.length === 0) {
+    return (
+      <div className="space-y-4">
+        <EmptyTransactionsState />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -228,7 +255,7 @@ export function TransactionsDataTable({
         </DropdownMenu>
       </div>
 
-      <div className="rounded-md border border-border">
+      <div className="rounded-md bg-white">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

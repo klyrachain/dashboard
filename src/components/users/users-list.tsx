@@ -7,6 +7,27 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { UserWithTransactions } from "@/lib/data-users";
 
+function EmptyUsersState() {
+  return (
+    <Card className="bg-white">
+      <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+        <div className="flex size-12 items-center justify-center rounded-full bg-slate-100">
+          <span className="text-2xl text-slate-400" aria-hidden>
+            —
+          </span>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-slate-600">No users yet</p>
+          <p className="text-xs text-slate-500">
+            Users will appear here when they sign up or when data is synced from
+            Core.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function UsersList({
   initialUsers,
 }: {
@@ -25,6 +46,26 @@ export function UsersList({
         u.id.toLowerCase().includes(q)
     );
   }, [initialUsers, search]);
+
+  if (initialUsers.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by email, address, or ID…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+              disabled
+            />
+          </div>
+        </div>
+        <EmptyUsersState />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -72,7 +113,7 @@ export function UsersList({
                     </span>
                   </button>
                   {isExpanded && (
-                    <div className="border-t border-border px-4 py-3">
+                    <div className="bg-slate-50/80 px-4 py-3">
                       <p className="mb-2 text-sm font-medium text-muted-foreground">
                         Transaction History
                       </p>
@@ -85,7 +126,7 @@ export function UsersList({
                           {user.transactions.map((tx) => (
                             <li
                               key={tx.id}
-                              className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm"
+                              className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2 text-sm"
                             >
                               <span className="font-mono text-muted-foreground">
                                 {tx.id.slice(0, 8)}…
@@ -118,7 +159,7 @@ export function UsersList({
         })}
       </ul>
 
-      {filtered.length === 0 && (
+      {filtered.length === 0 && initialUsers.length > 0 && (
         <p className="text-center text-sm text-muted-foreground">
           No users match your search.
         </p>

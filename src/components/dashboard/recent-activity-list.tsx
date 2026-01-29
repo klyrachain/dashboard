@@ -15,13 +15,18 @@ function getStatusVariant(
   }
 }
 
+/**
+ * Recent activity — mandatory webhook-fetched data from Core (GET /api/transactions).
+ * Updates when Core receives new orders/transactions.
+ */
 export async function RecentActivityList() {
   const transactions = await getRecentTransactions(5);
 
   if (transactions.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No recent transactions. Activity will appear here.
+        No recent transactions from Core. Activity will appear here when
+        webhooks deliver new orders.
       </p>
     );
   }
@@ -31,7 +36,7 @@ export async function RecentActivityList() {
       {transactions.map((tx) => (
         <li
           key={tx.id}
-          className="flex items-center justify-between rounded-md border border-border px-4 py-3 text-sm"
+          className="flex items-center justify-between rounded-md bg-slate-50 px-4 py-3 text-sm"
         >
           <div className="flex items-center gap-4">
             <span className="font-mono text-muted-foreground">

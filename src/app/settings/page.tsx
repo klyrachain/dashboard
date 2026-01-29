@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CoreStatusCard } from "@/components/settings/core-status-card";
 
 export default function SettingsPage() {
   return (
@@ -9,6 +10,8 @@ export default function SettingsPage() {
           Configure backoffice and system preferences.
         </p>
       </div>
+
+      <CoreStatusCard />
 
       <Card>
         <CardHeader>

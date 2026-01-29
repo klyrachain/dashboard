@@ -36,4 +36,13 @@ export enum SupportedChain {
   ETHEREUM = "ETHEREUM",
   BNB = "BNB",
   BASE = "BASE",
+  SOLANA = "SOLANA",
+}
+
+/** Used for claim flows; aligns with Core API. */
+export enum ClaimStatus {
+  ACTIVE = "ACTIVE",
+  CLAIMED = "CLAIMED",
+  CANCELLED = "CANCELLED",
+  FAIL = "FAIL",
 }

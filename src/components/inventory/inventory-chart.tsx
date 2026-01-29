@@ -12,28 +12,41 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { InventoryHistoryPoint } from "@/lib/data-inventory";
 
+function EmptyHistoryState() {
+  return (
+    <Card className="bg-white">
+      <CardHeader>
+        <CardTitle>Inventory History</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-slate-100">
+            <span className="text-2xl text-slate-400" aria-hidden>
+              —
+            </span>
+          </div>
+          <p className="text-sm font-medium text-slate-600">No data</p>
+          <p className="text-xs text-slate-500">
+            No history data. Chart will appear when data is available from
+            Core.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function InventoryChart({ data }: { data: InventoryHistoryPoint[] }) {
   if (data.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Inventory History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No history data. Chart will appear when data is available.
-          </p>
-        </CardContent>
-      </Card>
-    );
+    return <EmptyHistoryState />;
   }
 
   return (
-    <Card>
+    <Card className="bg-white">
       <CardHeader>
         <CardTitle>Inventory History</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Balance over time (mock data shape for InventoryHistory).
+          Balance over time (from inventory history).
         </p>
       </CardHeader>
       <CardContent>
@@ -53,8 +66,7 @@ export function InventoryChart({ data }: { data: InventoryHistoryPoint[] }) {
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "var(--popover)",
-                  border: "1px solid var(--border)",
+                  backgroundColor: "var(--background)",
                   borderRadius: "var(--radius)",
                 }}
                 formatter={(value: number) => [value.toLocaleString(), "Balance"]}

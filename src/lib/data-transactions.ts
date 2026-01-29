@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getCoreTransactions } from "@/lib/core-api";
 
 export type TransactionRow = {
   id: string;
@@ -10,55 +11,33 @@ export type TransactionRow = {
   createdAt: Date;
 };
 
-const MOCK_TRANSACTIONS: TransactionRow[] = [
-  {
-    id: "tx-001",
-    type: "BUY",
-    status: "COMPLETED",
-    fromAmount: "100",
-    toAmount: "0.04",
-    provider: "SQUID",
-    createdAt: new Date(),
-  },
-  {
-    id: "tx-002",
-    type: "SELL",
-    status: "FAILED",
-    fromAmount: "0.02",
-    toAmount: "500",
-    provider: "LIFI",
-    createdAt: new Date(Date.now() - 86400000),
-  },
-  {
-    id: "tx-003",
-    type: "CLAIM",
-    status: "PENDING",
-    fromAmount: "0",
-    toAmount: "50",
-    provider: "PAYSTACK",
-    createdAt: new Date(Date.now() - 172800000),
-  },
-  {
-    id: "tx-004",
-    type: "BUY",
-    status: "COMPLETED",
-    fromAmount: "250",
-    toAmount: "0.09",
-    provider: "SQUID",
-    createdAt: new Date(Date.now() - 259200000),
-  },
-  {
-    id: "tx-005",
-    type: "TRANSFER",
-    status: "CANCELLED",
-    fromAmount: "10",
-    toAmount: "10",
-    provider: "NONE",
-    createdAt: new Date(Date.now() - 345600000),
-  },
-];
+/** Normalize Core API transaction item to TransactionRow (supports camelCase or snake_case). */
+function coreItemToRow(item: unknown): TransactionRow | null {
+  if (!item || typeof item !== "object") return null;
+  const o = item as Record<string, unknown>;
+  const id = typeof o.id === "string" ? o.id : "";
+  const type = typeof o.type === "string" ? o.type : "";
+  const status = typeof o.status === "string" ? o.status : "";
+  const fromAmount = String(o.fromAmount ?? o.f_amount ?? "");
+  const toAmount = String(o.toAmount ?? o.t_amount ?? "");
+  const provider = String(o.provider ?? o.f_provider ?? o.t_provider ?? "NONE");
+  const createdAt = o.createdAt instanceof Date ? o.createdAt : new Date(String(o.createdAt ?? ""));
+  if (!id) return null;
+  return { id, type, status, fromAmount, toAmount, provider, createdAt };
+}
 
 export async function getTransactions(): Promise<TransactionRow[]> {
+  try {
+    const result = await getCoreTransactions({ limit: 100 });
+    if (result.ok && result.data.success && Array.isArray(result.data.data)) {
+      const rows = result.data.data
+        .map(coreItemToRow)
+        .filter((r): r is TransactionRow => r !== null);
+      if (rows.length > 0) return rows;
+    }
+  } catch {
+    // fall through to Prisma
+  }
   try {
     const rows = await prisma.transaction.findMany({
       orderBy: { createdAt: "desc" },
@@ -74,6 +53,6 @@ export async function getTransactions(): Promise<TransactionRow[]> {
     });
     return rows;
   } catch {
-    return MOCK_TRANSACTIONS;
+    return [];
   }
 }
