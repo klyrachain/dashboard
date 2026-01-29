@@ -4,6 +4,7 @@ import "./globals.css";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { ReduxProvider } from "@/components/providers/redux-provider";
 
+/** Primary: headings and main UI (Alpino). */
 const alpino = localFont({
   src: [
     {
@@ -14,6 +15,19 @@ const alpino = localFont({
   variable: "--font-alpino",
   display: "swap",
   weight: "100 900",
+});
+
+/** Secondary: body and reading (Ranade). */
+const ranade = localFont({
+  src: [
+    {
+      path: "../../public/font/Ranade_Complete/Fonts/WEB/fonts/Ranade-Variable.woff2",
+      style: "normal",
+    },
+  ],
+  variable: "--font-ranade",
+  display: "swap",
+  weight: "100 700",
 });
 
 export const metadata: Metadata = {
@@ -28,7 +42,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${alpino.variable} font-sans antialiased`}>
+      <body
+        className={`${alpino.variable} ${ranade.variable} font-primary antialiased`}
+      >
         <ReduxProvider>
           <DashboardShell>{children}</DashboardShell>
         </ReduxProvider>

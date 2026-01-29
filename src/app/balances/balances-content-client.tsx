@@ -199,11 +199,11 @@ export function BalancesContentClient({
           <Card className="bg-white">
             <CardHeader className="pb-2">
               <p className="text-sm font-medium text-slate-500">
-                Claimable Revenue
+                Claimable by user
               </p>
               {hasClaimable && (
                 <p className="font-mono text-2xl font-semibold text-slate-900">
-                  Unclaimed Fees: {formatCurrency(claimable.totalUsd)}
+                  {formatCurrency(claimable.totalUsd)}
                 </p>
               )}
             </CardHeader>

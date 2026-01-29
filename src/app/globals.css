@@ -1,6 +1,21 @@
 @import "tailwindcss";
 
 :root {
+  /* Font roles: change these to swap fonts app-wide (e.g. set --font-primary-stack to --font-ranade for Ranade everywhere). */
+  --font-primary-stack:
+    var(--font-alpino), ui-sans-serif, system-ui, sans-serif;
+  --font-secondary-stack:
+    var(--font-ranade), ui-sans-serif, system-ui, sans-serif;
+  --font-tertiary-stack:
+    var(--font-ranade), ui-sans-serif, system-ui, sans-serif; /* tables & data */
+
+  /* Text size categories: change these to resize by category app-wide. */
+  --text-size-display: 1.875rem; /* hero / page titles */
+  --text-size-heading: 1.5rem; /* section headings */
+  --text-size-body: 0.2rem; /* default body */
+  --text-size-caption: 0.875rem; /* meta, labels, secondary */
+  --text-size-table: 0.8125rem; /* dense data, tables */
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -81,8 +96,16 @@
   --color-chart-5: var(--chart-5);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
-  --font-sans: var(--font-alpino), ui-sans-serif, system-ui, sans-serif;
+  --font-primary: var(--font-primary-stack);
+  --font-secondary: var(--font-secondary-stack);
+  --font-tertiary: var(--font-tertiary-stack);
+  --font-sans: var(--font-primary-stack);
   --font-mono: ui-monospace, monospace;
+  --text-display: var(--text-size-display);
+  --text-heading: var(--text-size-heading);
+  --text-body: var(--text-size-body);
+  --text-caption: var(--text-size-caption);
+  --text-table: var(--text-size-table);
   --radius-sm: calc(var(--radius) - 0.25rem);
   --radius-md: calc(var(--radius) - 0.125rem);
   --radius-lg: var(--radius);
@@ -92,7 +115,8 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-primary-stack), system-ui, sans-serif;
+  font-size: var(--text-size-body);
 }
 
 /* Stripe-style: refined density; main bg applied in dashboard-shell */

@@ -38,7 +38,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { TransactionStatus } from "@/types/enums";
+import { TransactionStatus, TransactionType } from "@/types/enums";
 import { retryTransaction } from "@/app/transactions/actions";
 import type { TransactionRow } from "@/lib/data-transactions";
 
@@ -58,10 +58,25 @@ function getStatusVariant(
   }
 }
 
+/** Default visible columns: ID, Type, Status, amounts/tokens, providers, Created, Actions. */
+const defaultColumnVisibility: VisibilityState = {
+  fromPrice: false,
+  toPrice: false,
+  fromIdentifier: false,
+  toIdentifier: false,
+  fromType: false,
+  toType: false,
+  fromUserId: false,
+  toUserId: false,
+  requestId: false,
+  updatedAt: false,
+};
+
 const columns: ColumnDef<TransactionRow>[] = [
   {
     accessorKey: "id",
     header: "ID",
+    meta: { headerLabel: "ID" },
     cell: ({ row }) => (
       <span className="font-mono text-muted-foreground">
         {row.getValue("id")?.toString().slice(0, 8)}…
@@ -71,31 +86,146 @@ const columns: ColumnDef<TransactionRow>[] = [
   {
     accessorKey: "type",
     header: "Type",
+    meta: { headerLabel: "Type" },
   },
   {
     accessorKey: "status",
     header: "Status",
+    meta: { headerLabel: "Status" },
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
       return <Badge variant={getStatusVariant(status)}>{status}</Badge>;
     },
   },
   {
-    id: "amounts",
-    header: "Amounts",
+    accessorKey: "fromAmount",
+    header: "From amount",
+    meta: { headerLabel: "From amount" },
+  },
+  {
+    accessorKey: "toAmount",
+    header: "To amount",
+    meta: { headerLabel: "To amount" },
+  },
+  {
+    accessorKey: "fromToken",
+    header: "From token",
+    meta: { headerLabel: "From token" },
+  },
+  {
+    accessorKey: "toToken",
+    header: "To token",
+    meta: { headerLabel: "To token" },
+  },
+  {
+    accessorKey: "fromPrice",
+    header: "From price",
+    meta: { headerLabel: "From price" },
+  },
+  {
+    accessorKey: "toPrice",
+    header: "To price",
+    meta: { headerLabel: "To price" },
+  },
+  {
+    accessorKey: "fromIdentifier",
+    header: "From identifier",
+    meta: { headerLabel: "From identifier" },
     cell: ({ row }) => (
-      <span className="text-muted-foreground">
-        {row.original.fromAmount} → {row.original.toAmount}
+      <span className="max-w-[120px] truncate font-mono text-xs text-muted-foreground" title={row.original.fromIdentifier}>
+        {row.original.fromIdentifier || "—"}
       </span>
     ),
   },
   {
-    accessorKey: "provider",
-    header: "Provider",
+    accessorKey: "toIdentifier",
+    header: "To identifier",
+    meta: { headerLabel: "To identifier" },
+    cell: ({ row }) => (
+      <span className="max-w-[120px] truncate font-mono text-xs text-muted-foreground" title={row.original.toIdentifier}>
+        {row.original.toIdentifier || "—"}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "fromType",
+    header: "From type",
+    meta: { headerLabel: "From type" },
+  },
+  {
+    accessorKey: "toType",
+    header: "To type",
+    meta: { headerLabel: "To type" },
+  },
+  {
+    accessorKey: "fromUserId",
+    header: "From user ID",
+    meta: { headerLabel: "From user ID" },
+    cell: ({ row }) => (
+      <span className="font-mono text-xs text-muted-foreground">
+        {row.original.fromUserId ? `${row.original.fromUserId.slice(0, 8)}…` : "—"}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "toUserId",
+    header: "To user ID",
+    meta: { headerLabel: "To user ID" },
+    cell: ({ row }) => (
+      <span className="font-mono text-xs text-muted-foreground">
+        {row.original.toUserId ? `${row.original.toUserId.slice(0, 8)}…` : "—"}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "fromProvider",
+    header: "From provider",
+    meta: { headerLabel: "From provider" },
+  },
+  {
+    accessorKey: "toProvider",
+    header: "To provider",
+    meta: { headerLabel: "To provider" },
+  },
+  {
+    accessorKey: "requestId",
+    header: "Request ID",
+    meta: { headerLabel: "Request ID" },
+    cell: ({ row }) => (
+      <span className="font-mono text-xs text-muted-foreground">
+        {row.original.requestId ? `${row.original.requestId.slice(0, 8)}…` : "—"}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "createdAt",
+    header: "Created",
+    meta: { headerLabel: "Created" },
+    cell: ({ row }) => (
+      <span className="text-muted-foreground">
+        {row.original.createdAt instanceof Date
+          ? row.original.createdAt.toLocaleString()
+          : String(row.original.createdAt)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "updatedAt",
+    header: "Updated",
+    meta: { headerLabel: "Updated" },
+    cell: ({ row }) => (
+      <span className="text-muted-foreground text-xs">
+        {row.original.updatedAt instanceof Date
+          ? row.original.updatedAt.toLocaleString()
+          : String(row.original.updatedAt)}
+      </span>
+    ),
   },
   {
     id: "actions",
     header: "",
+    meta: { headerLabel: "Actions" },
+    enableHiding: false,
     cell: ({ row }) => {
       const status = row.original.status;
       if (status !== TransactionStatus.FAILED) return null;
@@ -145,6 +275,10 @@ function EmptyTransactionsState() {
   );
 }
 
+function getColumnLabel(col: { id: string; columnDef: { meta?: { headerLabel?: string } } }): string {
+  return col.columnDef.meta?.headerLabel ?? col.id;
+}
+
 export function TransactionsDataTable({
   initialData,
 }: {
@@ -153,8 +287,9 @@ export function TransactionsDataTable({
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+    React.useState<VisibilityState>(defaultColumnVisibility);
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
+  const [typeFilter, setTypeFilter] = React.useState<string>("all");
   const [dateFrom, setDateFrom] = React.useState<string>("");
   const [dateTo, setDateTo] = React.useState<string>("");
 
@@ -162,6 +297,9 @@ export function TransactionsDataTable({
     let data = initialData;
     if (statusFilter !== "all") {
       data = data.filter((r) => r.status === statusFilter);
+    }
+    if (typeFilter !== "all") {
+      data = data.filter((r) => r.type === typeFilter);
     }
     if (dateFrom) {
       const from = new Date(dateFrom).getTime();
@@ -172,7 +310,7 @@ export function TransactionsDataTable({
       data = data.filter((r) => r.createdAt.getTime() <= to);
     }
     return data;
-  }, [initialData, statusFilter, dateFrom, dateTo]);
+  }, [initialData, statusFilter, typeFilter, dateFrom, dateTo]);
 
   const table = useReactTable({
     data: filteredData,
@@ -216,6 +354,19 @@ export function TransactionsDataTable({
             <SelectItem value={TransactionStatus.CANCELLED}>Cancelled</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            <SelectItem value={TransactionType.BUY}>Buy</SelectItem>
+            <SelectItem value={TransactionType.SELL}>Sell</SelectItem>
+            <SelectItem value={TransactionType.TRANSFER}>Transfer</SelectItem>
+            <SelectItem value={TransactionType.REQUEST}>Request</SelectItem>
+            <SelectItem value={TransactionType.CLAIM}>Claim</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="flex items-center gap-2">
           <Input
             type="date"
@@ -238,7 +389,7 @@ export function TransactionsDataTable({
               Columns <ChevronDown className="size-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
             {table
               .getAllColumns()
               .filter((col) => col.getCanHide())
@@ -248,7 +399,7 @@ export function TransactionsDataTable({
                   checked={col.getIsVisible()}
                   onCheckedChange={(v) => col.toggleVisibility(!!v)}
                 >
-                  {col.id}
+                  {getColumnLabel(col)}
                 </DropdownMenuCheckboxItem>
               ))}
           </DropdownMenuContent>
