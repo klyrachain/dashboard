@@ -1,10 +1,12 @@
 /**
  * Dashboard KPIs and activity — real data from Core API only.
  * Volume, active orders, low liquidity, and inventory chart data.
+ * Gross/net volume are aggregated in USD via token rates.
  */
 
 import { getCoreTransactions } from "@/lib/core-api";
 import { getInventoryAssets } from "@/lib/data-inventory";
+import { getTokenUsdRate } from "@/lib/token-rates";
 import { TransactionStatus } from "@/types/enums";
 
 const MS_24H = 24 * 60 * 60 * 1000;
@@ -50,10 +52,14 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
           ? o.createdAt.getTime()
           : new Date(String(o.createdAt ?? 0)).getTime();
         const amount = parseAmount(o.fromAmount ?? o.f_amount ?? 0);
+        const symbol = String(
+          o.fromToken ?? o.f_token ?? o.toToken ?? o.t_token ?? "USDC"
+        ).trim();
+        const amountUsd = amount * getTokenUsdRate(symbol);
 
         if (status === TransactionStatus.COMPLETED) {
-          if (createdAt >= since24h) volumeDay += amount;
-          if (createdAt >= since7d) volumeWeek += amount;
+          if (createdAt >= since24h) volumeDay += amountUsd;
+          if (createdAt >= since7d) volumeWeek += amountUsd;
         }
         if (
           status === TransactionStatus.PENDING ||

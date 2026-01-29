@@ -4,6 +4,7 @@ import { useGetInventoryQuery } from "@/store/inventory-api";
 import { AtAGlanceCards } from "@/components/dashboard/at-a-glance-cards";
 import { DashboardInventoryCharts } from "@/components/dashboard/dashboard-inventory-charts";
 import type { AtAGlanceCard } from "@/lib/data-stripe-dashboard";
+import { getTokenUsdRate } from "@/lib/token-rates";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function atAGlanceFromAssets(
@@ -11,9 +12,10 @@ function atAGlanceFromAssets(
 ): AtAGlanceCard[] {
   if (assets.length === 0) return [];
 
-  const total = assets.reduce((sum, a) => {
+  const totalUsd = assets.reduce((sum, a) => {
     const n = Number.parseFloat(a.balance.replace(/,/g, ""));
-    return sum + (Number.isNaN(n) ? 0 : n);
+    const amount = Number.isNaN(n) ? 0 : n;
+    return sum + amount * getTokenUsdRate(a.token);
   }, 0);
 
   const chains = new Set(assets.map((a) => a.chain.toUpperCase())).size;
@@ -26,9 +28,11 @@ function atAGlanceFromAssets(
   }
 
   const totalFormatted = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(total);
+  }).format(totalUsd);
 
   const cards: AtAGlanceCard[] = [
     {

@@ -10,6 +10,7 @@ import {
   getCoreClaims,
 } from "@/lib/core-api";
 import { prisma } from "@/lib/prisma";
+import { getTokenUsdRate } from "@/lib/token-rates";
 import { TransactionStatus } from "@prisma/client";
 
 export type ChainId = "ethereum" | "base" | "arbitrum" | "bnb";
@@ -134,7 +135,7 @@ export function buildBalancesFromInventory(
     } else {
       chainData.tokens.push({ symbol: r.token, amount: r.balance });
     }
-    chainData.totalUsd += r.balance; // placeholder: no USD conversion
+    chainData.totalUsd += r.balance * getTokenUsdRate(r.token);
 
     if (!byToken.has(r.token)) {
       byToken.set(r.token, { total: 0, byChain: new Map() });
@@ -354,7 +355,10 @@ export async function getClaimableState(): Promise<ClaimableState> {
     const byCurrency = Array.from(byCurrencyMap.entries()).map(
       ([symbol, amount]) => ({ symbol, amount })
     );
-    const totalUsd = byCurrency.reduce((sum, c) => sum + c.amount, 0);
+    const totalUsd = byCurrency.reduce(
+      (sum, c) => sum + c.amount * getTokenUsdRate(c.symbol),
+      0
+    );
 
     return { totalUsd, byCurrency };
   } catch {

@@ -10,6 +10,7 @@ export type InventoryApiResponse = {
 
 export const inventoryApi = createApi({
   reducerPath: "inventoryApi",
+  tagTypes: ["Inventory"],
   baseQuery: fetchBaseQuery({
     baseUrl: "",
     prepareHeaders: (headers) => {
@@ -26,6 +27,7 @@ export const inventoryApi = createApi({
       transformResponse: (raw: InventoryApiResponse): InventoryAssetRow[] => {
         return normalizeInventoryFromApi(raw);
       },
+      providesTags: ["Inventory"],
     }),
   }),
 });

@@ -1,6 +1,7 @@
 /**
  * Core API client — health, readiness, fetch API, and webhooks.
  * Base URL from NEXT_PUBLIC_CORE_URL (default dev: http://localhost:4000).
+ * Protected routes require x-api-key (CORE_API_KEY). Public: GET /health, GET /ready.
  * @see md/core-api-integration.md
  */
 
@@ -22,6 +23,29 @@ export function getCoreBaseUrl(): string {
   return process.env.NEXT_PUBLIC_CORE_URL ?? DEFAULT_CORE_URL;
 }
 
+/** API key for protected routes (server-only; do not use NEXT_PUBLIC_). */
+function getCoreApiKey(): string | undefined {
+  return process.env.CORE_API_KEY?.trim() || undefined;
+}
+
+/** Paths that skip auth (public). Everything else requires x-api-key. */
+function isPublicPath(path: string): boolean {
+  const pathname = path.replace(/\?.*$/, "").replace(/^\//, "").toLowerCase();
+  return pathname === "health" || pathname === "ready";
+}
+
+function coreHeaders(path: string, extra?: HeadersInit): HeadersInit {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(extra as Record<string, string>),
+  };
+  if (!isPublicPath(path)) {
+    const key = getCoreApiKey();
+    if (key) headers["x-api-key"] = key;
+  }
+  return headers;
+}
+
 async function fetchCore<T>(
   path: string,
   options?: RequestInit & { timeout?: number }
@@ -32,10 +56,7 @@ async function fetchCore<T>(
   const { timeout: _t, ...rest } = options ?? {};
   const res = await fetch(url, {
     ...rest,
-    headers: {
-      "Content-Type": "application/json",
-      ...rest?.headers,
-    },
+    headers: coreHeaders(path, rest?.headers),
     signal: AbortSignal.timeout(timeout),
   });
   const data = (await res.json().catch(() => ({}))) as T;
@@ -243,7 +264,7 @@ export async function createOrder(
     const base = getCoreBaseUrl().replace(/\/$/, "");
     const res = await fetch(`${base}/webhook/order`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: coreHeaders("/webhook/order"),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(10000),
     });
@@ -286,7 +307,7 @@ export async function sendAdminWebhook(
     const base = getCoreBaseUrl().replace(/\/$/, "");
     const res = await fetch(`${base}/webhook/admin`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: coreHeaders("/webhook/admin"),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(10000),
     });

@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { ReduxProvider } from "@/components/providers/redux-provider";
+import { WebhookRefreshProvider } from "@/components/providers/webhook-refresh-provider";
 
 /** Primary: headings and main UI (Alpino). */
 const alpino = localFont({
@@ -46,7 +47,9 @@ export default function RootLayout({
         className={`${alpino.variable} ${ranade.variable} font-primary antialiased`}
       >
         <ReduxProvider>
-          <DashboardShell>{children}</DashboardShell>
+          <WebhookRefreshProvider>
+            <DashboardShell>{children}</DashboardShell>
+          </WebhookRefreshProvider>
         </ReduxProvider>
       </body>
     </html>

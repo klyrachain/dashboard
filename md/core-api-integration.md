@@ -17,10 +17,19 @@
 | Env (example) | Description |
 |---------------|-------------|
 | `NEXT_PUBLIC_CORE_URL` or `VITE_CORE_URL` | Base URL of the Core service (e.g. `https://core.example.com` or `http://localhost:4000`) |
+| `CORE_API_KEY` (server-only) | API key for protected routes. Generate with `pnpm key:generate`; set in Core and dashboard `.env`. |
 
 - **Protocol:** HTTPS in production.
 - **Default port (dev):** `4000`.
 - **Content-Type:** `application/json` for request bodies.
+
+### 2.1 Authentication (Core global preHandler)
+
+- **Public (no auth):** `GET /health`, `GET /ready`.
+- **Protected:** All other paths (e.g. `POST /webhook/order`, `POST /webhook/admin`, all `GET /api/*`).
+- **Protected requests** must send a valid API key in the **`x-api-key`** header (e.g. the value of `CORE_API_KEY` from `.env`).
+- **Responses:** Missing or invalid key → **401 Unauthorized**. Wrong `Origin` when `Origin` is sent → **403 Forbidden**.
+- The dashboard sends `x-api-key` from `CORE_API_KEY` on all outbound requests to Core except `/health` and `/ready`.
 
 ---
 
