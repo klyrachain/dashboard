@@ -70,7 +70,7 @@ export function DashboardInventoryCharts({
       token: a.token,
       balance: a.balance,
     }));
-    return buildInventoryChartData(rows, view);
+    return buildInventoryChartData(rows, view, true);
   }, [initialAssets, view]);
 
   const lastUpdated = React.useMemo(() => {
@@ -238,7 +238,14 @@ export function DashboardInventoryCharts({
                       type="number"
                       className="text-xs"
                       tick={{ fill: "var(--muted-foreground)" }}
-                      tickFormatter={(v) => v.toLocaleString()}
+                      tickFormatter={(v) =>
+                        v.toLocaleString("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })
+                      }
                     />
                     <YAxis
                       type="category"
@@ -266,7 +273,14 @@ export function DashboardInventoryCharts({
                     <YAxis
                       className="text-xs"
                       tick={{ fill: "var(--muted-foreground)" }}
-                      tickFormatter={(v) => v.toLocaleString()}
+                      tickFormatter={(v) =>
+                        v.toLocaleString("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })
+                      }
                     />
                   </>
                 )}
@@ -277,9 +291,12 @@ export function DashboardInventoryCharts({
                   }}
                   formatter={(value: number) => [
                     value.toLocaleString("en-US", {
+                      style: "currency",
+                      currency: "USD",
                       minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
                     }),
-                    "Balance",
+                    "USD",
                   ]}
                   labelFormatter={(label) => ` ${label}`}
                 />

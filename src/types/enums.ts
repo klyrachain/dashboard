@@ -24,6 +24,7 @@ export enum PaymentProvider {
   SQUID = "SQUID",
   LIFI = "LIFI",
   PAYSTACK = "PAYSTACK",
+  KLYRA = "KLYRA", // same-chain on-chain sends where we have balance
 }
 
 export enum IdentityType {

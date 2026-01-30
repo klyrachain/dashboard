@@ -44,8 +44,25 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
 
   try {
     const result = await getCoreTransactions({ limit: 200, page: 1 });
-    if (result.ok && result.data.success && Array.isArray(result.data.data)) {
-      const items = result.data.data as Array<Record<string, unknown>>;
+    const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
+      ? (result.data as { data: unknown[] }).data
+      : [];
+    // #region agent log
+    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "data-dashboard.ts:getDashboardKpis",
+        message: "getDashboardKpis transactions",
+        data: { ok: result.ok, rawLength: raw.length },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        hypothesisId: ["B", "D"],
+      }),
+    }).catch(() => {});
+    // #endregion
+    if (raw.length > 0) {
+      const items = raw as Array<Record<string, unknown>>;
       for (const o of items) {
         const status = String(o.status ?? "");
         const createdAt = o.createdAt instanceof Date
@@ -113,20 +130,27 @@ export type InventoryChartSeries = {
  * - by-chain: aggregate balance by chain
  * - by-token-per-chain: each series = token on chain (e.g. "USDC on BASE")
  * - all-chains: one row per chain with total
+ * When useUsd is true, values are converted to USD via getTokenUsdRate(token).
  */
 export function buildInventoryChartData(
   assets: Array<{ chain: string; token: string; balance: string }>,
-  view: ChartFilterView
+  view: ChartFilterView,
+  useUsd = false
 ): InventoryChartSeries[] {
   const parse = (s: string) => {
     const n = Number.parseFloat(s.replace(/,/g, ""));
     return Number.isNaN(n) ? 0 : n;
   };
 
+  const toValue = (a: { chain: string; token: string; balance: string }) => {
+    const amount = parse(a.balance);
+    return useUsd ? amount * getTokenUsdRate(a.token) : amount;
+  };
+
   if (view === "all-tokens") {
     const byToken: Record<string, number> = {};
     for (const a of assets) {
-      byToken[a.token] = (byToken[a.token] ?? 0) + parse(a.balance);
+      byToken[a.token] = (byToken[a.token] ?? 0) + toValue(a);
     }
     return Object.entries(byToken).map(([name, value]) => ({ name, value }));
   }
@@ -134,7 +158,7 @@ export function buildInventoryChartData(
   if (view === "by-chain") {
     const byChain: Record<string, number> = {};
     for (const a of assets) {
-      byChain[a.chain] = (byChain[a.chain] ?? 0) + parse(a.balance);
+      byChain[a.chain] = (byChain[a.chain] ?? 0) + toValue(a);
     }
     return Object.entries(byChain).map(([name, value]) => ({ name, value }));
   }
@@ -142,7 +166,7 @@ export function buildInventoryChartData(
   if (view === "by-token-per-chain") {
     return assets.map((a) => ({
       name: `${a.token} on ${a.chain}`,
-      value: parse(a.balance),
+      value: toValue(a),
       chain: a.chain,
       token: a.token,
     }));
@@ -151,7 +175,7 @@ export function buildInventoryChartData(
   // all-chains: same as by-chain but explicit label
   const byChain: Record<string, number> = {};
   for (const a of assets) {
-    byChain[a.chain] = (byChain[a.chain] ?? 0) + parse(a.balance);
+    byChain[a.chain] = (byChain[a.chain] ?? 0) + toValue(a);
   }
   return Object.entries(byChain).map(([name, value]) => ({ name, value }));
 }

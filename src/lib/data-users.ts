@@ -1,4 +1,7 @@
-import { prisma } from "@/lib/prisma";
+/**
+ * Users data — Core API only (GET /api/users).
+ * No database fallback. Returns [] if Core is unavailable.
+ */
 import { getCoreUsers } from "@/lib/core-api";
 
 export type UserRow = {
@@ -49,42 +52,16 @@ function coreUserToRow(item: unknown): UserWithTransactions | null {
   return { id, email, address, createdAt, transactions };
 }
 
+/** Fetches users from Core API only. Returns [] if Core is unavailable or returns no data. */
 export async function getUsers(): Promise<UserWithTransactions[]> {
   try {
     const result = await getCoreUsers({ limit: 100 });
-    if (result.ok && result.data.success && Array.isArray(result.data.data)) {
-      const rows = result.data.data
-        .map(coreUserToRow)
-        .filter((r): r is UserWithTransactions => r !== null);
-      if (rows.length > 0) return rows;
-    }
+    const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
+      ? (result.data as { data: unknown[] }).data
+      : [];
+    return raw.map((item) => coreUserToRow(item)).filter((r): r is UserWithTransactions => r !== null);
   } catch {
-    // fall through to Prisma
+    // Core unavailable
   }
-  try {
-    const rows = await prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        email: true,
-        address: true,
-        createdAt: true,
-        transactions: {
-          select: {
-            id: true,
-            type: true,
-            status: true,
-            fromAmount: true,
-            toAmount: true,
-            createdAt: true,
-          },
-          orderBy: { createdAt: "desc" },
-          take: 20,
-        },
-      },
-    });
-    return rows as UserWithTransactions[];
-  } catch {
-    return [];
-  }
+  return [];
 }

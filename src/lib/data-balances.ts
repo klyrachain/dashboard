@@ -1,7 +1,7 @@
 /**
  * Balances page data — chain-specific liquidity and aggregated assets.
- * Uses Core GET /api/inventory, with Prisma inventory as fallback.
- * Pending state from Core transactions (PENDING/ACTIVE). Claimable from Core claims (ACTIVE).
+ * All data from Core API only (GET /api/inventory, GET /api/transactions, GET /api/claims).
+ * No database fallback.
  */
 
 import {
@@ -9,9 +9,7 @@ import {
   getCoreTransactions,
   getCoreClaims,
 } from "@/lib/core-api";
-import { prisma } from "@/lib/prisma";
 import { getTokenUsdRate } from "@/lib/token-rates";
-import { TransactionStatus } from "@prisma/client";
 
 export type ChainId = "ethereum" | "base" | "arbitrum" | "bnb";
 
@@ -188,36 +186,36 @@ export function buildBalancesFromAssets(
   return buildBalancesFromInventory(rows);
 }
 
+/** Fetches inventory rows from Core API only. Returns [] if Core is unavailable or returns no data. */
 async function getInventoryRows(): Promise<
   Array<{ chain: string; token: string; balance: number }>
 > {
   try {
     const result = await getCoreInventory({ limit: 100 });
-    if (result.ok && result.data) {
-      const envelope = result.data as { success?: boolean; data?: unknown[] };
-      if (envelope.success === true && Array.isArray(envelope.data)) {
-        const rows = envelope.data
-          .map(parseInventoryItem)
-          .filter((r): r is NonNullable<typeof r> => r !== null);
-        if (rows.length > 0) return rows;
-      }
-    }
+    const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
+      ? (result.data as { data: unknown[] }).data
+      : [];
+    // #region agent log
+    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "data-balances.ts:getInventoryRows",
+        message: "getInventoryRows result",
+        data: { ok: result.ok, rawLength: raw.length },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        hypothesisId: ["B", "D"],
+      }),
+    }).catch(() => {});
+    // #endregion
+    return raw
+      .map(parseInventoryItem)
+      .filter((r): r is NonNullable<ReturnType<typeof parseInventoryItem>> => r !== null);
   } catch {
-    // fall through to Prisma
+    // Core unavailable
   }
-  try {
-    const assets = await prisma.inventoryAsset.findMany({
-      orderBy: { updatedAt: "desc" },
-      select: { chain: true, token: true, balance: true },
-    });
-    return assets.map((a) => ({
-      chain: String(a.chain).toLowerCase(),
-      token: a.token,
-      balance: Number.parseFloat(a.balance) || 0,
-    }));
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 export async function getChainBalances(): Promise<ChainBalance[]> {
@@ -273,6 +271,7 @@ function parseClaimItem(
   return { symbol, amount };
 }
 
+/** Fetches pending/active state from Core API only. Returns EMPTY_PENDING if Core is unavailable. */
 export async function getPendingState(): Promise<PendingState> {
   try {
     const [pendingRes, activeRes] = await Promise.all([
@@ -291,7 +290,25 @@ export async function getPendingState(): Promise<PendingState> {
     const pendingRows = envelopeToRows(pendingRes);
     const activeRows = envelopeToRows(activeRes);
     const allRows = [...pendingRows, ...activeRows];
-
+    // #region agent log
+    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "data-balances.ts:getPendingState",
+        message: "getPendingState result",
+        data: {
+          pendingOk: pendingRes.ok,
+          activeOk: activeRes.ok,
+          pendingRowsLength: pendingRows.length,
+          activeRowsLength: activeRows.length,
+        },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        hypothesisId: ["B", "D"],
+      }),
+    }).catch(() => {});
+    // #endregion
     const activeOrdersCount = allRows.length;
     const floatingAmountUsd = allRows.reduce(
       (sum, item) => sum + parseTransactionAmount(item),
@@ -305,33 +322,8 @@ export async function getPendingState(): Promise<PendingState> {
       capacityUsedPercent,
     };
   } catch {
-    // fallback to Prisma for pending count/amount if Core fails
-    try {
-      const pending = await prisma.transaction.count({
-        where: { status: TransactionStatus.PENDING },
-      });
-      const active = await prisma.transaction.count({
-        where: { status: TransactionStatus.ACTIVE },
-      });
-      const txs = await prisma.transaction.findMany({
-        where: {
-          status: { in: [TransactionStatus.PENDING, TransactionStatus.ACTIVE] },
-        },
-        select: { fromAmount: true, toAmount: true },
-      });
-      const floatingAmountUsd = txs.reduce((sum, t) => {
-        const a =
-          Number.parseFloat(t.fromAmount) || Number.parseFloat(t.toAmount) || 0;
-        return sum + a;
-      }, 0);
-      return {
-        floatingAmountUsd,
-        activeOrdersCount: pending + active,
-        capacityUsedPercent: Math.min(100, (pending + active) * 5),
-      };
-    } catch {
-      return EMPTY_PENDING;
-    }
+    // Core unavailable
+    return EMPTY_PENDING;
   }
 }
 

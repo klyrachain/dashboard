@@ -50,14 +50,14 @@ All list endpoints support `?page=1&limit=20` (default limit 20, max 100). Respo
 |--------|------|-------------|
 | `GET` | `/api/users` | List users (paginated). |
 | `GET` | `/api/users/:id` | Get user by ID. |
-| `GET` | `/api/transactions` | List transactions (paginated). Query: `?status=&type=` optional. |
-| `GET` | `/api/transactions/:id` | Get transaction by ID (with fromUser, toUser, request). |
+| `GET` | `/api/transactions` | List transactions (paginated). Query: `?status=&type=&f_chain=&t_chain=` optional. |
+| `GET` | `/api/transactions/:id` | Get transaction by ID (with fromUser, toUser, request). Responses include `f_chain` and `t_chain`. |
 | `GET` | `/api/requests` | List requests (paginated). |
 | `GET` | `/api/requests/:id` | Get request by ID (with transaction, claim). |
 | `GET` | `/api/claims` | List claims (paginated). Query: `?status=` optional. |
 | `GET` | `/api/claims/:id` | Get claim by ID (with request, transaction). |
-| `GET` | `/api/wallets` | List wallets (paginated). `encryptedKey` is masked. |
-| `GET` | `/api/wallets/:id` | Get wallet by ID (`encryptedKey` masked). |
+| `GET` | `/api/wallets` | List wallets (paginated). `encryptedKey` masked. Responses include `supportedChains` (string[]) and `supportedTokens`. |
+| `GET` | `/api/wallets/:id` | Get wallet by ID (`encryptedKey` masked). Response includes `supportedChains` and `supportedTokens`. |
 | `GET` | `/api/inventory` | List inventory assets (paginated). Query: `?chain=` optional. |
 | `GET` | `/api/inventory/:id` | Get inventory asset by ID. |
 | `GET` | `/api/inventory/:id/history` | List inventory history for asset (paginated). |
@@ -88,6 +88,8 @@ All list endpoints support `?page=1&limit=20` (default limit 20, max 100). Respo
 | `t_price` | `number` (≥ 0) | Yes | To-price (rate). |
 | `f_token` | `string` (non-empty) | Yes | From-asset symbol (e.g. `USDC`, `GHS`). |
 | `t_token` | `string` (non-empty) | Yes | To-asset symbol (e.g. `ETH`). |
+| `f_chain` | `string` | No | Source chain for f_token (default `"ETHEREUM"`). Enables cross-chain (e.g. BASE → ETHEREUM). |
+| `t_chain` | `string` | No | Target chain for t_token (default `"ETHEREUM"`). |
 | `f_provider` | `PaymentProvider` | No | Default: `NONE`. See §4. |
 | `t_provider` | `PaymentProvider` | No | Default: `NONE`. See §4. |
 | `requestId` | `string` (UUID) \| `null` | No | Optional link to a request. |

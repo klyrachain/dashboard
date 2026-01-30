@@ -13,6 +13,10 @@ export interface FeeOrderInput {
   t_price: number;
   f_token: string;
   t_token: string;
+  /** Source chain (optional, default ETHEREUM). For cross-chain quotes. */
+  f_chain?: string;
+  /** Target chain (optional, default ETHEREUM). */
+  t_chain?: string;
 }
 
 export interface FeeQuoteResult {

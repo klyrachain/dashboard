@@ -11,6 +11,13 @@ import {
 } from "recharts";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { formatAmount, formatCurrency, type ChainBalance } from "@/lib/data-balances";
+import { getTokenUsdRate } from "@/lib/token-rates";
+
+type ChainChartPoint = {
+  symbol: string;
+  amount: number;
+  amountUsd: number;
+};
 
 function ChainIcon({ chainId }: { chainId: string }) {
   const labels: Record<string, string> = {
@@ -40,9 +47,10 @@ function EmptyChainState() {
 
 export function ChainCardWithChart({ chain }: { chain: ChainBalance }) {
   const hasData = chain.tokens.length > 0;
-  const chartData = chain.tokens.map((t) => ({
+  const chartData: ChainChartPoint[] = chain.tokens.map((t) => ({
     symbol: t.symbol,
     amount: t.amount,
+    amountUsd: t.amount * getTokenUsdRate(t.symbol),
   }));
 
   return (
@@ -78,7 +86,7 @@ export function ChainCardWithChart({ chain }: { chain: ChainBalance }) {
                 <XAxis
                   type="number"
                   tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                  tickFormatter={(v) => formatAmount(v)}
+                  tickFormatter={(v) => formatCurrency(v)}
                 />
                 <YAxis
                   type="category"
@@ -91,11 +99,24 @@ export function ChainCardWithChart({ chain }: { chain: ChainBalance }) {
                     backgroundColor: "var(--background)",
                     borderRadius: "var(--radius)",
                   }}
-                  formatter={(value: number) => [formatAmount(value), "Amount"]}
-                  labelFormatter={(label) => `${label}`}
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.[0]?.payload) return null;
+                    const p = payload[0].payload as ChainChartPoint;
+                    return (
+                      <div className="rounded-md border border-border bg-background px-3 py-2 text-xs shadow-sm">
+                        <p className="font-medium text-foreground">{p.symbol}</p>
+                        <p className="text-muted-foreground">
+                          Amount: {formatAmount(p.amount)} {p.symbol}
+                        </p>
+                        <p className="text-muted-foreground">
+                          USD: {formatCurrency(p.amountUsd)}
+                        </p>
+                      </div>
+                    );
+                  }}
                 />
                 <Bar
-                  dataKey="amount"
+                  dataKey="amountUsd"
                   fill="var(--chart-1)"
                   radius={[0, 4, 4, 0]}
                   maxBarSize={20}

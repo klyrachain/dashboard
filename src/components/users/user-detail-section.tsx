@@ -54,10 +54,12 @@ function TransactionRow({ tx }: { tx: UserTransactionRow }) {
 
 export type UserDetailSectionProps = {
   user: UserWithTransactions | null;
+  /** Transactions involving this user (fromIdentifier/toIdentifier matching user email or address). */
+  transactions: UserTransactionRow[];
   onAnalyze?: (user: UserWithTransactions) => void;
 };
 
-export function UserDetailSection({ user, onAnalyze }: UserDetailSectionProps) {
+export function UserDetailSection({ user, transactions: userTransactions, onAnalyze }: UserDetailSectionProps) {
   if (!user) {
     return (
       <Card className="border-dashed">
@@ -76,7 +78,7 @@ export function UserDetailSection({ user, onAnalyze }: UserDetailSectionProps) {
     );
   }
 
-  const txs = user.transactions;
+  const txs = userTransactions;
   const completed = txs.filter((t) => t.status === "COMPLETED").length;
   const failed = txs.filter((t) => t.status === "FAILED").length;
   const pending = txs.filter((t) => t.status === "PENDING" || t.status === "ACTIVE").length;

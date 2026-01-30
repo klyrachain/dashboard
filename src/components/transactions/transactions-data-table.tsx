@@ -58,8 +58,10 @@ function getStatusVariant(
   }
 }
 
-/** Default visible columns: ID, Type, Status, amounts/tokens, providers, Created, Actions. */
+/** Default visible columns: ID, Type, Status, amounts/tokens/chains, providers, Created, Actions. */
 const defaultColumnVisibility: VisibilityState = {
+  fromChain: true,
+  toChain: true,
   fromPrice: false,
   toPrice: false,
   fromIdentifier: false,
@@ -116,6 +118,26 @@ const columns: ColumnDef<TransactionRow>[] = [
     accessorKey: "toToken",
     header: "To token",
     meta: { headerLabel: "To token" },
+  },
+  {
+    accessorKey: "fromChain",
+    header: "From chain",
+    meta: { headerLabel: "From chain" },
+    cell: ({ row }) => (
+      <span className="text-muted-foreground text-sm">
+        {row.original.fromChain || "—"}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "toChain",
+    header: "To chain",
+    meta: { headerLabel: "To chain" },
+    cell: ({ row }) => (
+      <span className="text-muted-foreground text-sm">
+        {row.original.toChain || "—"}
+      </span>
+    ),
   },
   {
     accessorKey: "fromPrice",
@@ -290,8 +312,16 @@ export function TransactionsDataTable({
     React.useState<VisibilityState>(defaultColumnVisibility);
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [typeFilter, setTypeFilter] = React.useState<string>("all");
+  const [fromChainFilter, setFromChainFilter] = React.useState<string>("all");
+  const [toChainFilter, setToChainFilter] = React.useState<string>("all");
   const [dateFrom, setDateFrom] = React.useState<string>("");
   const [dateTo, setDateTo] = React.useState<string>("");
+
+  const chainOptions = React.useMemo(() => {
+    const from = new Set(initialData.map((r) => r.fromChain).filter(Boolean));
+    const to = new Set(initialData.map((r) => r.toChain).filter(Boolean));
+    return Array.from(new Set([...from, ...to])).sort();
+  }, [initialData]);
 
   const filteredData = React.useMemo(() => {
     let data = initialData;
@@ -300,6 +330,12 @@ export function TransactionsDataTable({
     }
     if (typeFilter !== "all") {
       data = data.filter((r) => r.type === typeFilter);
+    }
+    if (fromChainFilter !== "all") {
+      data = data.filter((r) => r.fromChain === fromChainFilter);
+    }
+    if (toChainFilter !== "all") {
+      data = data.filter((r) => r.toChain === toChainFilter);
     }
     if (dateFrom) {
       const from = new Date(dateFrom).getTime();
@@ -310,7 +346,7 @@ export function TransactionsDataTable({
       data = data.filter((r) => r.createdAt.getTime() <= to);
     }
     return data;
-  }, [initialData, statusFilter, typeFilter, dateFrom, dateTo]);
+  }, [initialData, statusFilter, typeFilter, fromChainFilter, toChainFilter, dateFrom, dateTo]);
 
   const table = useReactTable({
     data: filteredData,
@@ -367,6 +403,36 @@ export function TransactionsDataTable({
             <SelectItem value={TransactionType.CLAIM}>Claim</SelectItem>
           </SelectContent>
         </Select>
+        {chainOptions.length > 0 && (
+          <>
+            <Select value={fromChainFilter} onValueChange={setFromChainFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="From chain" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All from chains</SelectItem>
+                {chainOptions.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={toChainFilter} onValueChange={setToChainFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="To chain" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All to chains</SelectItem>
+                {chainOptions.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
+        )}
         <div className="flex items-center gap-2">
           <Input
             type="date"

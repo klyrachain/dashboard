@@ -1,4 +1,7 @@
-import { prisma } from "@/lib/prisma";
+/**
+ * Recent transactions — Core API only (GET /api/transactions).
+ * No database fallback. Returns [] if Core is unavailable.
+ */
 import { getCoreTransactions } from "@/lib/core-api";
 
 export type RecentTransaction = {
@@ -27,39 +30,35 @@ function coreItemToRecent(item: unknown): RecentTransaction | null {
   };
 }
 
-/**
- * Recent activity from Core (webhook-fetched data). Mandatory: uses Core API first.
- */
+/** Recent activity from Core API only. Returns [] if Core is unavailable or returns no data. */
 export async function getRecentTransactions(
   limit: number
 ): Promise<RecentTransaction[]> {
   try {
     const result = await getCoreTransactions({ limit, page: 1 });
-    if (result.ok && result.data.success && Array.isArray(result.data.data)) {
-      const rows = result.data.data
-        .map(coreItemToRecent)
-        .filter((r): r is RecentTransaction => r !== null)
-        .slice(0, limit);
-      if (rows.length > 0) return rows;
-    }
+    const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
+      ? (result.data as { data: unknown[] }).data
+      : [];
+    // #region agent log
+    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "data.ts:getRecentTransactions",
+        message: "getRecentTransactions result",
+        data: { ok: result.ok, rawLength: raw.length },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        hypothesisId: ["B", "D"],
+      }),
+    }).catch(() => {});
+    // #endregion
+    return raw
+      .map((item) => coreItemToRecent(item))
+      .filter((r): r is RecentTransaction => r !== null)
+      .slice(0, limit);
   } catch {
-    // fall through to Prisma
+    // Core unavailable
   }
-  try {
-    const rows = await prisma.transaction.findMany({
-      take: limit,
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        type: true,
-        status: true,
-        fromAmount: true,
-        toAmount: true,
-        createdAt: true,
-      },
-    });
-    return rows;
-  } catch {
-    return [];
-  }
+  return [];
 }

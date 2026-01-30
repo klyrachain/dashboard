@@ -1,4 +1,7 @@
-import { prisma } from "@/lib/prisma";
+/**
+ * Inventory data — Core API only (GET /api/inventory, GET /api/inventory/:id/history).
+ * No database fallback. Returns [] if Core is unavailable.
+ */
 import { getCoreInventory, getCoreInventoryHistory } from "@/lib/core-api";
 
 export type InventoryAssetRow = {
@@ -46,33 +49,18 @@ export type InventoryHistoryPoint = {
   label: string;
 };
 
+/** Fetches inventory assets from Core API only. Returns [] if Core is unavailable or returns no data. */
 export async function getInventoryAssets(): Promise<InventoryAssetRow[]> {
   try {
     const result = await getCoreInventory({ limit: 100 });
-    if (result.ok && result.data.success && Array.isArray(result.data.data)) {
-      const rows = result.data.data
-        .map(coreAssetToRow)
-        .filter((r): r is InventoryAssetRow => r !== null);
-      if (rows.length > 0) return rows;
-    }
+    const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
+      ? (result.data as { data: unknown[] }).data
+      : [];
+    return raw.map((item) => coreAssetToRow(item)).filter((r): r is InventoryAssetRow => r !== null);
   } catch {
-    // fall through to Prisma
+    // Core unavailable
   }
-  try {
-    const rows = await prisma.inventoryAsset.findMany({
-      orderBy: { updatedAt: "desc" },
-      select: {
-        id: true,
-        chain: true,
-        token: true,
-        balance: true,
-        updatedAt: true,
-      },
-    });
-    return rows;
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 /** Normalize Core inventory history item to InventoryHistoryPoint. */
@@ -93,45 +81,24 @@ function coreHistoryToPoint(
   return { date, balance, label };
 }
 
-/**
- * Fetch inventory history for a specific asset (Core API or Prisma).
- * Use this when you already have assets to avoid double-fetching.
- */
+/** Fetches inventory history for a specific asset from Core API only. Returns [] if Core is unavailable or returns no data. */
 export async function getInventoryHistoryForAsset(
   assetId: string,
   label: string
 ): Promise<InventoryHistoryPoint[]> {
   try {
     const result = await getCoreInventoryHistory(assetId, { limit: 30 });
-    if (
-      result.ok &&
-      result.data.success &&
-      Array.isArray(result.data.data)
-    ) {
-      const points = result.data.data
-        .map((item) => coreHistoryToPoint(item, label))
-        .filter((p): p is InventoryHistoryPoint => p !== null)
-        .sort((a, b) => a.date.localeCompare(b.date));
-      if (points.length > 0) return points;
-    }
+    const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
+      ? (result.data as { data: unknown[] }).data
+      : [];
+    return raw
+      .map((item) => coreHistoryToPoint(item, label))
+      .filter((p): p is InventoryHistoryPoint => p !== null)
+      .sort((a, b) => a.date.localeCompare(b.date));
   } catch {
-    // fall through
+    // Core unavailable
   }
-  try {
-    const rows = await prisma.inventoryHistory.findMany({
-      where: { assetId },
-      take: 30,
-      orderBy: { recordedAt: "asc" },
-      select: { balance: true, recordedAt: true },
-    });
-    return rows.map((r) => ({
-      date: r.recordedAt.toISOString().slice(0, 10),
-      balance: Number(r.balance),
-      label,
-    }));
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 export async function getInventoryHistory(): Promise<InventoryHistoryPoint[]> {

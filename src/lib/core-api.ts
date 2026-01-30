@@ -54,13 +54,55 @@ async function fetchCore<T>(
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
   const timeout = options?.timeout ?? HEALTH_TIMEOUT_MS;
   const { timeout: _t, ...rest } = options ?? {};
-  const res = await fetch(url, {
-    ...rest,
-    headers: coreHeaders(path, rest?.headers),
-    signal: AbortSignal.timeout(timeout),
-  });
-  const data = (await res.json().catch(() => ({}))) as T;
-  return { ok: res.ok, status: res.status, data };
+  // #region agent log
+  try {
+    const res = await fetch(url, {
+      ...rest,
+      headers: coreHeaders(path, rest?.headers),
+      signal: AbortSignal.timeout(timeout),
+    });
+    const data = (await res.json().catch(() => ({}))) as T;
+    const dataObj = data && typeof data === "object" ? (data as Record<string, unknown>) : null;
+    const dataArray = dataObj && "data" in dataObj ? dataObj.data : undefined;
+    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "core-api.ts:fetchCore",
+        message: "Core API response",
+        data: {
+          path: path.split("?")[0],
+          ok: res.ok,
+          status: res.status,
+          coreError: !res.ok && dataObj && "error" in dataObj ? String(dataObj.error) : undefined,
+          hasDataObject: !!dataObj,
+          dataKeys: dataObj ? Object.keys(dataObj).slice(0, 10) : [],
+          isDataArray: Array.isArray(dataArray),
+          dataLength: Array.isArray(dataArray) ? dataArray.length : 0,
+        },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        hypothesisId: ["A", "B", "D", "E"],
+      }),
+    }).catch(() => {});
+    return { ok: res.ok, status: res.status, data };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "core-api.ts:fetchCore",
+        message: "Core API request failed",
+        data: { path: path.split("?")[0], error: message },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        hypothesisId: "C",
+      }),
+    }).catch(() => {});
+    throw err;
+  }
+  // #endregion
 }
 
 /** GET request to Core fetch API; returns envelope { success, data, meta? }. */
@@ -134,12 +176,16 @@ export async function getCoreTransactions(params?: {
   limit?: number;
   status?: string;
   type?: string;
+  f_chain?: string;
+  t_chain?: string;
 }) {
   return fetchCoreGet<unknown[]>("api/transactions", {
     page: params?.page,
     limit: params?.limit,
     status: params?.status,
     type: params?.type,
+    f_chain: params?.f_chain,
+    t_chain: params?.t_chain,
   });
 }
 

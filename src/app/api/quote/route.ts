@@ -44,6 +44,8 @@ export async function GET(request: Request) {
     const t_price = parseNum(searchParams.get("t_price"));
     const f_token = searchParams.get("f_token")?.trim() ?? "";
     const t_token = searchParams.get("t_token")?.trim() ?? "";
+    const f_chain = searchParams.get("f_chain")?.trim() ?? "ETHEREUM";
+    const t_chain = searchParams.get("t_chain")?.trim() ?? "ETHEREUM";
 
     if (
       f_amount === null ||
@@ -75,6 +77,8 @@ export async function GET(request: Request) {
       t_price,
       f_token: f_token || "USD",
       t_token: t_token || "TOKEN",
+      f_chain,
+      t_chain,
     };
 
     const data = getFeeForOrder(input);

@@ -28,6 +28,10 @@ export interface CoreWebhookOrderBody {
   t_price: number;
   f_token: string;
   t_token: string;
+  /** Source chain for f_token (default "ETHEREUM"). */
+  f_chain?: string | null;
+  /** Target chain for t_token (default "ETHEREUM"). Enables cross-chain. */
+  t_chain?: string | null;
   f_provider?: PaymentProvider;
   t_provider?: PaymentProvider;
   requestId?: string | null;
@@ -51,6 +55,15 @@ export interface CoreApiError {
     fieldErrors?: Record<string, unknown>;
     formErrors?: unknown[];
   };
+}
+
+/** Wallet from GET /api/wallets (and GET /api/wallets/:id). */
+export interface CoreWalletResponse {
+  id: string;
+  supportedTokens: string[];
+  /** Chains the wallet supports (e.g. ["ETHEREUM", "BASE"]). */
+  supportedChains: string[];
+  [key: string]: unknown;
 }
 
 /** Pusher event payload for transaction-status. */
@@ -102,6 +115,10 @@ export interface OrderCreatedPayload {
   t_price: number;
   f_token: string;
   t_token: string;
+  /** Source chain (e.g. BASE). */
+  f_chain?: string;
+  /** Target chain (e.g. ETHEREUM). */
+  t_chain?: string;
   feeAmount?: number;
   feePercent?: number;
   totalCost?: number;
@@ -120,6 +137,8 @@ export interface OrderFailedPayload {
   type: string;
   f_token: string;
   t_token: string;
+  f_chain?: string;
+  t_chain?: string;
   error?: string;
 }
 

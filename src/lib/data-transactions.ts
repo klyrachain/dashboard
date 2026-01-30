@@ -1,4 +1,7 @@
-import { prisma } from "@/lib/prisma";
+/**
+ * Transactions data — Core API only (GET /api/transactions).
+ * No database fallback. Returns [] if Core is unavailable.
+ */
 import { getCoreTransactions } from "@/lib/core-api";
 
 /** Row shape for display; maps all fields returned by Core GET /api/transactions. */
@@ -10,6 +13,8 @@ export type TransactionRow = {
   toAmount: string;
   fromToken: string;
   toToken: string;
+  fromChain: string;
+  toChain: string;
   fromPrice: string;
   toPrice: string;
   fromIdentifier: string;
@@ -51,10 +56,12 @@ function coreItemToRow(item: unknown): TransactionRow | null {
     toAmount: str(o.toAmount ?? o.t_amount),
     fromToken: str(o.fromToken ?? o.f_token),
     toToken: str(o.toToken ?? o.t_token),
+    fromChain: str(o.fromChain ?? o.f_chain ?? "ETHEREUM"),
+    toChain: str(o.toChain ?? o.t_chain ?? "ETHEREUM"),
     fromPrice: str(o.fromPrice ?? o.f_price),
     toPrice: str(o.toPrice ?? o.t_price),
-    fromIdentifier: str(o.fromIdentifier),
-    toIdentifier: str(o.toIdentifier),
+    fromIdentifier: str(o.fromIdentifier ?? o.f_identifier),
+    toIdentifier: str(o.toIdentifier ?? o.t_identifier),
     fromType: str(o.fromType),
     toType: str(o.toType),
     fromUserId: str(o.fromUserId),
@@ -67,55 +74,50 @@ function coreItemToRow(item: unknown): TransactionRow | null {
   };
 }
 
+/**
+ * Filters transactions to those where the user is involved as sender or receiver.
+ * Matches by fromIdentifier or toIdentifier equal to user's email or address (case-insensitive for email).
+ */
+export function filterTransactionsForUser(
+  transactions: TransactionRow[],
+  user: { email: string | null; address: string | null }
+): TransactionRow[] {
+  const email = user.email?.trim().toLowerCase() ?? "";
+  const address = user.address?.trim() ?? "";
+  if (!email && !address) return [];
+  return transactions.filter((tx) => {
+    const f = (tx.fromIdentifier ?? "").trim();
+    const t = (tx.toIdentifier ?? "").trim();
+    const matchEmail = email && (f.toLowerCase() === email || t.toLowerCase() === email);
+    const matchAddress = address && (f === address || t === address);
+    return !!matchEmail || !!matchAddress;
+  });
+}
+
+/** Fetches transactions from Core API only. Returns [] if Core is unavailable or returns no data. */
 export async function getTransactions(): Promise<TransactionRow[]> {
   try {
     const result = await getCoreTransactions({ limit: 100 });
-    if (result.ok && result.data.success && Array.isArray(result.data.data)) {
-      const rows = result.data.data
-        .map(coreItemToRow)
-        .filter((r): r is TransactionRow => r !== null);
-      if (rows.length > 0) return rows;
-    }
+    const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
+      ? (result.data as { data: unknown[] }).data
+      : [];
+    // #region agent log
+    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "data-transactions.ts:getTransactions",
+        message: "getTransactions result",
+        data: { ok: result.ok, rawLength: raw.length },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        hypothesisId: ["B", "D"],
+      }),
+    }).catch(() => {});
+    // #endregion
+    return raw.map((item) => coreItemToRow(item)).filter((r): r is TransactionRow => r !== null);
   } catch {
-    // fall through to Prisma
+    // Core unavailable
   }
-  try {
-    const rows = await prisma.transaction.findMany({
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        type: true,
-        status: true,
-        fromAmount: true,
-        toAmount: true,
-        provider: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-    return rows.map((r) => ({
-      id: r.id,
-      type: r.type,
-      status: r.status,
-      fromAmount: r.fromAmount,
-      toAmount: r.toAmount,
-      fromToken: "",
-      toToken: "",
-      fromPrice: "",
-      toPrice: "",
-      fromIdentifier: "",
-      toIdentifier: "",
-      fromType: "",
-      toType: "",
-      fromUserId: "",
-      toUserId: "",
-      fromProvider: r.provider,
-      toProvider: r.provider,
-      requestId: "",
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
-    }));
-  } catch {
-    return [];
-  }
+  return [];
 }
