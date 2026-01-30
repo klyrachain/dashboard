@@ -6,13 +6,39 @@
 
 import { getCoreTransactions } from "@/lib/core-api";
 import { getInventoryAssets } from "@/lib/data-inventory";
+import { getFeeForOrder } from "@/lib/fee.service";
 import { getTokenUsdRate } from "@/lib/token-rates";
 import { TransactionStatus } from "@/types/enums";
+import type { OrderAction } from "@/lib/fee.service";
 
 const MS_24H = 24 * 60 * 60 * 1000;
 const MS_7D = 7 * MS_24H;
+const MS_30D = 30 * MS_24H;
 /** Balance below this is considered low liquidity (for alert count). */
 const LOW_LIQUIDITY_THRESHOLD = 1000;
+
+/** Chart point for gross/net volume area charts (date = axis, value = USD, label = tooltip). */
+export type VolumeChartPoint = {
+  date: string;
+  value: number;
+  label: string;
+};
+
+export type VolumeDateRange = "24h" | "7d" | "30d";
+export type VolumeGranularity = "hourly" | "daily";
+
+export type VolumeChartResult = {
+  grossSeries: VolumeChartPoint[];
+  netSeries: VolumeChartPoint[];
+  feeSeries: VolumeChartPoint[];
+  grossTotal: number;
+  netTotal: number;
+  feeTotal: number;
+  updatedAt: Date | null;
+  grossPrevious: { value: number; changePercent: number };
+  netPrevious: { value: number; changePercent: number };
+  feePrevious: { value: number; changePercent: number };
+};
 
 export type DashboardKpis = {
   volumeDay: string;
@@ -122,6 +148,202 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
     volumeUpdatedAt,
     activeOrders,
     lowLiquidityAlerts,
+  };
+}
+
+/**
+ * Volume chart data from Core transactions for a given range and granularity.
+ * Gross = fromAmount in USD; net = toAmount in USD (completed only).
+ * Previous period = same length immediately before current window (for % change).
+ */
+export async function getVolumeChartDataFromCore(
+  range: VolumeDateRange,
+  granularity: VolumeGranularity
+): Promise<VolumeChartResult> {
+  const now = Date.now();
+  const rangeMs =
+    range === "24h" ? MS_24H : range === "7d" ? MS_7D : MS_30D;
+  const since = now - rangeMs;
+
+  // 24h + daily = 1 bucket; use hourly for 24h when user picks daily for consistency with selector
+  const useHourly =
+    granularity === "hourly" || range === "24h";
+  const bucketMs = useHourly ? 60 * 60 * 1000 : MS_24H;
+  const bucketCount = useHourly
+    ? Math.round(rangeMs / bucketMs)
+    : Math.round(rangeMs / MS_24H);
+  const bucketKeys: number[] = [];
+  for (let i = 0; i < bucketCount; i++) {
+    bucketKeys.push(since + i * bucketMs);
+  }
+
+  const grossByBucket: Record<number, number> = {};
+  const netByBucket: Record<number, number> = {};
+  const feeByBucket: Record<number, number> = {};
+  bucketKeys.forEach((k) => {
+    grossByBucket[k] = 0;
+    netByBucket[k] = 0;
+    feeByBucket[k] = 0;
+  });
+
+  let grossTotal = 0;
+  let netTotal = 0;
+  let feeTotal = 0;
+  let volumeUpdatedAt: Date | null = null;
+
+  // Previous period (same length before current)
+  const previousSince = since - rangeMs;
+  let grossPreviousTotal = 0;
+  let netPreviousTotal = 0;
+  let feePreviousTotal = 0;
+
+  try {
+    const result = await getCoreTransactions({ limit: 1000, page: 1 });
+    const raw =
+      result.ok &&
+      result.data &&
+      typeof result.data === "object" &&
+      Array.isArray((result.data as { data?: unknown[] }).data)
+        ? (result.data as { data: unknown[] }).data
+        : [];
+
+    const items = raw as Array<Record<string, unknown>>;
+    for (const o of items) {
+      const status = String(o.status ?? "");
+      if (status !== TransactionStatus.COMPLETED) continue;
+
+      const createdAt =
+        o.createdAt instanceof Date
+          ? o.createdAt.getTime()
+          : new Date(String(o.createdAt ?? 0)).getTime();
+
+      const fromAmount = parseAmount(o.fromAmount ?? o.f_amount ?? 0);
+      const toAmount = parseAmount(o.toAmount ?? o.t_amount ?? 0);
+      const fromPrice = parseAmount(o.fromPrice ?? o.f_price ?? 0);
+      const toPrice = parseAmount(o.toPrice ?? o.t_price ?? 0);
+      const fromSymbol = String(
+        o.fromToken ?? o.f_token ?? o.toToken ?? o.t_token ?? "USDC"
+      ).trim();
+      const toSymbol = String(
+        o.toToken ?? o.t_token ?? o.fromToken ?? o.f_token ?? "USDC"
+      ).trim();
+      const grossUsd = fromAmount * getTokenUsdRate(fromSymbol);
+      const netUsd = toAmount * getTokenUsdRate(toSymbol);
+
+      const action = String(o.type ?? "buy").toLowerCase() as OrderAction;
+      const feeResult = getFeeForOrder({
+        action: action === "request" || action === "claim" || action === "buy" || action === "sell" ? action : "buy",
+        f_amount: fromAmount,
+        t_amount: toAmount,
+        f_price: fromPrice || getTokenUsdRate(fromSymbol),
+        t_price: toPrice || getTokenUsdRate(toSymbol),
+        f_token: fromSymbol,
+        t_token: toSymbol,
+      });
+      const feeUsd = feeResult.profit * getTokenUsdRate(fromSymbol);
+
+      if (createdAt >= since && createdAt <= now) {
+        const bucketKey = useHourly
+          ? Math.floor(createdAt / bucketMs) * bucketMs
+          : new Date(createdAt).setUTCHours(0, 0, 0, 0);
+        if (grossByBucket[bucketKey] !== undefined) {
+          grossByBucket[bucketKey] += grossUsd;
+          netByBucket[bucketKey] += netUsd;
+          feeByBucket[bucketKey] += feeUsd;
+        }
+        grossTotal += grossUsd;
+        netTotal += netUsd;
+        feeTotal += feeUsd;
+        if (
+          !volumeUpdatedAt ||
+          createdAt > volumeUpdatedAt.getTime()
+        ) {
+          volumeUpdatedAt = new Date(createdAt);
+        }
+      } else if (createdAt >= previousSince && createdAt < since) {
+        grossPreviousTotal += grossUsd;
+        netPreviousTotal += netUsd;
+        feePreviousTotal += feeUsd;
+      }
+    }
+  } catch {
+    // return zeros
+  }
+
+  const formatHour = (ts: number) => {
+    const d = new Date(ts);
+    return d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+  const formatDay = (ts: number) => {
+    const d = new Date(ts);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+  const formatLabel = (ts: number, value: number) => {
+    const d = new Date(ts);
+    const dateStr = d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    return `${dateStr}: $${value.toFixed(2)}`;
+  };
+
+  const grossSeries: VolumeChartPoint[] = bucketKeys.map((ts) => {
+    const value = grossByBucket[ts] ?? 0;
+    return {
+      date: useHourly ? formatHour(ts) : formatDay(ts),
+      value,
+      label: formatLabel(ts, value),
+    };
+  });
+
+  const netSeries: VolumeChartPoint[] = bucketKeys.map((ts) => {
+    const value = netByBucket[ts] ?? 0;
+    return {
+      date: useHourly ? formatHour(ts) : formatDay(ts),
+      value,
+      label: formatLabel(ts, value),
+    };
+  });
+
+  const feeSeries: VolumeChartPoint[] = bucketKeys.map((ts) => {
+    const value = feeByBucket[ts] ?? 0;
+    return {
+      date: useHourly ? formatHour(ts) : formatDay(ts),
+      value,
+      label: formatLabel(ts, value),
+    };
+  });
+
+  const prevChange = (current: number, previous: number) =>
+    previous === 0 ? (current === 0 ? 0 : 100) : ((current - previous) / previous) * 100;
+
+  return {
+    grossSeries,
+    netSeries,
+    feeSeries,
+    grossTotal,
+    netTotal,
+    feeTotal,
+    updatedAt: volumeUpdatedAt,
+    grossPrevious: {
+      value: grossPreviousTotal,
+      changePercent: prevChange(grossTotal, grossPreviousTotal),
+    },
+    netPrevious: {
+      value: netPreviousTotal,
+      changePercent: prevChange(netTotal, netPreviousTotal),
+    },
+    feePrevious: {
+      value: feePreviousTotal,
+      changePercent: prevChange(feeTotal, feePreviousTotal),
+    },
   };
 }
 

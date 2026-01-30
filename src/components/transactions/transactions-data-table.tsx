@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-table";
 import { ChevronDown, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -79,11 +80,17 @@ const columns: ColumnDef<TransactionRow>[] = [
     accessorKey: "id",
     header: "ID",
     meta: { headerLabel: "ID" },
-    cell: ({ row }) => (
-      <span className="font-mono text-muted-foreground">
-        {row.getValue("id")?.toString().slice(0, 8)}…
-      </span>
-    ),
+    cell: ({ row }) => {
+      const id = row.original.id ?? "";
+      return (
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-muted-foreground">
+            {id.slice(0, 8)}…
+          </span>
+          <CopyButton value={id} label="Copy transaction ID" />
+        </div>
+      );
+    },
   },
   {
     accessorKey: "type",
@@ -153,21 +160,33 @@ const columns: ColumnDef<TransactionRow>[] = [
     accessorKey: "fromIdentifier",
     header: "From identifier",
     meta: { headerLabel: "From identifier" },
-    cell: ({ row }) => (
-      <span className="max-w-[120px] truncate font-mono text-xs text-muted-foreground" title={row.original.fromIdentifier}>
-        {row.original.fromIdentifier || "—"}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const val = row.original.fromIdentifier || "";
+      return (
+        <div className="flex items-center gap-2">
+          <span className="max-w-[120px] truncate font-mono text-xs text-muted-foreground" title={val || undefined}>
+            {val || "—"}
+          </span>
+          <CopyButton value={val} label="Copy from identifier" hideWhenEmpty />
+        </div>
+      );
+    },
   },
   {
     accessorKey: "toIdentifier",
     header: "To identifier",
     meta: { headerLabel: "To identifier" },
-    cell: ({ row }) => (
-      <span className="max-w-[120px] truncate font-mono text-xs text-muted-foreground" title={row.original.toIdentifier}>
-        {row.original.toIdentifier || "—"}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const val = row.original.toIdentifier || "";
+      return (
+        <div className="flex items-center gap-2">
+          <span className="max-w-[120px] truncate font-mono text-xs text-muted-foreground" title={val || undefined}>
+            {val || "—"}
+          </span>
+          <CopyButton value={val} label="Copy to identifier" hideWhenEmpty />
+        </div>
+      );
+    },
   },
   {
     accessorKey: "fromType",

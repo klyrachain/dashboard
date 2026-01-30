@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Activity } from "lucide-react";
 import { TransactionStatus } from "@/types/enums";
 import type { RecentTransaction } from "@/lib/data";
@@ -165,7 +166,10 @@ export function DashboardRecentActivity({
               {filtered.map((tx) => (
                 <TableRow key={tx.id}>
                   <TableCell className="font-mono text-slate-700">
-                    {tx.id.slice(0, 8)}…
+                    <div className="flex items-center gap-2">
+                      <span>{tx.id.slice(0, 8)}…</span>
+                      <CopyButton value={tx.id} label="Copy transaction ID" />
+                    </div>
                   </TableCell>
                   <TableCell className="font-medium text-slate-900">
                     {tx.type}

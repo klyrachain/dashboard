@@ -8,7 +8,7 @@ type InvoiceDetailPageProps = {
 
 export default async function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
   const { id } = await params;
-  const invoice = getInvoiceById(id);
+  const invoice = await getInvoiceById(id);
   if (!invoice) notFound();
 
   const serialized = serializeInvoice(invoice);

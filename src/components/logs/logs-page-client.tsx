@@ -197,9 +197,9 @@ export function LogsPageClient() {
         </div>
       </div>
 
-      <div className="flex flex-row gap-4">
+      <div className="flex flex-row gap-4 h-[85%]">
         <Card className="flex flex-col overflow-hidden bg-white w-2/3">
-          <CardHeader className="border-b py-3 flex flex-row items-center justify-between">
+          <CardHeader className="border-b border-slate-200 py-3 flex flex-row items-center justify-between">
             <p className="text-sm font-medium text-slate-600">Requests</p>
             <span className="text-xs text-slate-400">
               {meta.total} total · page {meta.page}
@@ -253,7 +253,7 @@ export function LogsPageClient() {
             )}
           </CardContent>
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t px-4 py-2">
+            <div className="flex items-center justify-between border-t border-slate-200 px-4 py-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -277,8 +277,8 @@ export function LogsPageClient() {
           )}
         </Card>
 
-        <Card className="flex flex-col overflow-hidden bg-white w-full">
-          <CardHeader className="border-b py-3">
+        <Card className="flex flex-col overflow-hidden bg-white w-full h-full">
+          <CardHeader className="border-b border-slate-200 py-3">
             <p className="text-sm font-medium text-slate-600">
               {selected ? `${selected.method} ${selected.path}` : "Select a request"}
             </p>

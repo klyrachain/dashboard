@@ -16,6 +16,7 @@ import { formatInvoiceCurrency } from "@/lib/data-invoices";
 
 type InvoicesTableProps = {
   data: InvoiceListItem[];
+  meta?: { page: number; limit: number; total: number };
 };
 
 function getStatusVariant(
@@ -34,7 +35,7 @@ function getStatusVariant(
   }
 }
 
-export function InvoicesTable({ data }: InvoicesTableProps) {
+export function InvoicesTable({ data, meta: _meta }: InvoicesTableProps) {
   const router = useRouter();
 
   return (

@@ -1,15 +1,20 @@
 /**
- * Inventory data — Core API only (GET /api/inventory, GET /api/inventory/:id/history).
+ * Inventory data — Core API only (GET /api/inventory, GET /api/inventory/history, GET /api/inventory/:id/history).
  * No database fallback. Returns [] if Core is unavailable.
  */
-import { getCoreInventory, getCoreInventoryHistory } from "@/lib/core-api";
+import {
+  getCoreInventory,
+  getCoreInventoryHistory,
+  getCoreInventoryHistoryList,
+} from "@/lib/core-api";
 
 export type InventoryAssetRow = {
   id: string;
   chain: string;
   token: string;
   balance: string;
-  updatedAt: Date;
+  /** ISO date string (serializable for Redux state). */
+  updatedAt: string;
 };
 
 /** Normalize Core API inventory item to InventoryAssetRow. Supports symbol/currentBalance (Core) or token/balance. */
@@ -27,8 +32,10 @@ export function coreAssetToRow(item: unknown): InventoryAssetRow | null {
       : String(rawBalance).trim();
   const updatedAt =
     o.updatedAt instanceof Date
-      ? o.updatedAt
-      : new Date(String(o.updatedAt ?? ""));
+      ? o.updatedAt.toISOString()
+      : typeof o.updatedAt === "string"
+        ? o.updatedAt
+        : new Date(String(o.updatedAt ?? "")).toISOString();
   if (!chain || !token) return null;
   return { id, chain, token, balance, updatedAt };
 }
@@ -48,6 +55,107 @@ export type InventoryHistoryPoint = {
   balance: number;
   label: string;
 };
+
+/** One row from GET /api/inventory/history (Decimal fields as strings). */
+export type InventoryHistoryRow = {
+  id: string;
+  createdAt: Date;
+  assetId: string;
+  type: string;
+  amount: string;
+  quantity: string;
+  initialPurchasePrice: string;
+  providerQuotePrice: string;
+  asset: { id: string; chain: string; symbol: string };
+};
+
+export type InventoryHistoryListResult = {
+  items: InventoryHistoryRow[];
+  meta: { page: number; limit: number; total: number };
+};
+
+function str(v: unknown): string {
+  if (v == null) return "";
+  return String(v).trim();
+}
+
+function parseDate(v: unknown): Date {
+  if (v instanceof Date) return v;
+  const s = str(v);
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? new Date(0) : new Date(t);
+}
+
+/** Normalize Core API inventory/history item to InventoryHistoryRow. */
+function coreHistoryItemToRow(item: unknown): InventoryHistoryRow | null {
+  if (!item || typeof item !== "object") return null;
+  const o = item as Record<string, unknown>;
+  const id = str(o.id);
+  if (!id) return null;
+  const asset = o.asset as Record<string, unknown> | undefined;
+  return {
+    id,
+    createdAt: parseDate(o.createdAt),
+    assetId: str(o.assetId),
+    type: str(o.type),
+    amount: str(o.amount ?? ""),
+    quantity: str(o.quantity ?? ""),
+    initialPurchasePrice: str(o.initialPurchasePrice ?? ""),
+    providerQuotePrice: str(o.providerQuotePrice ?? ""),
+    asset: {
+      id: asset ? str(asset.id) : "",
+      chain: asset ? str(asset.chain) : "",
+      symbol: asset ? str(asset.symbol) : "",
+    },
+  };
+}
+
+/**
+ * Fetches inventory history list from Core GET /api/inventory/history.
+ * Optional filters: assetId, chain. Pagination: page, limit (default 20, max 100).
+ */
+export async function getInventoryHistoryList(params?: {
+  page?: number;
+  limit?: number;
+  assetId?: string;
+  chain?: string;
+}): Promise<InventoryHistoryListResult> {
+  const defaultMeta = {
+    page: params?.page ?? 1,
+    limit: params?.limit ?? 20,
+    total: 0,
+  };
+  try {
+    const result = await getCoreInventoryHistoryList({
+      page: params?.page,
+      limit: params?.limit,
+      assetId: params?.assetId,
+      chain: params?.chain,
+    });
+    if (!result.ok || !result.data || typeof result.data !== "object") {
+      return { items: [], meta: defaultMeta };
+    }
+    const envelope = result.data as {
+      success?: boolean;
+      data?: unknown[];
+      meta?: { page: number; limit: number; total: number };
+    };
+    if (!envelope.success || !Array.isArray(envelope.data)) {
+      return { items: [], meta: defaultMeta };
+    }
+    const items = envelope.data
+      .map(coreHistoryItemToRow)
+      .filter((r): r is InventoryHistoryRow => r !== null);
+    const meta = envelope.meta ?? {
+      page: defaultMeta.page,
+      limit: defaultMeta.limit,
+      total: items.length,
+    };
+    return { items, meta };
+  } catch {
+    return { items: [], meta: defaultMeta };
+  }
+}
 
 /** Fetches inventory assets from Core API only. Returns [] if Core is unavailable or returns no data. */
 export async function getInventoryAssets(): Promise<InventoryAssetRow[]> {

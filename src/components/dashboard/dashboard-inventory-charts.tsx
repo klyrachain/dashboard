@@ -75,9 +75,7 @@ export function DashboardInventoryCharts({
 
   const lastUpdated = React.useMemo(() => {
     if (initialAssets.length === 0) return null;
-    const dates = initialAssets.map((a) =>
-      a.updatedAt instanceof Date ? a.updatedAt.getTime() : new Date(a.updatedAt).getTime()
-    );
+    const dates = initialAssets.map((a) => new Date(a.updatedAt).getTime());
     const latest = new Date(Math.max(...dates));
     return formatLastUpdated(latest);
   }, [initialAssets]);

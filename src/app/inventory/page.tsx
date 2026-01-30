@@ -1,11 +1,27 @@
 import { InventoryCards } from "@/components/inventory/inventory-cards";
 import { InventoryChart } from "@/components/inventory/inventory-chart";
-import { getInventoryAssets, getInventoryHistory } from "@/lib/data-inventory";
+import { InventoryHistoryTable } from "@/components/inventory/inventory-history-table";
+import {
+  getInventoryAssets,
+  getInventoryHistory,
+  getInventoryHistoryList,
+} from "@/lib/data-inventory";
 
-export default async function InventoryPage() {
-  const [assets, history] = await Promise.all([
+type InventoryPageProps = {
+  searchParams: Promise<{ page?: string; limit?: string; assetId?: string; chain?: string }>;
+};
+
+export default async function InventoryPage({ searchParams }: InventoryPageProps) {
+  const params = await searchParams;
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(params.limit ?? "20", 10) || 20));
+  const assetId = params.assetId?.trim() || undefined;
+  const chain = params.chain?.trim() || undefined;
+
+  const [assets, history, historyList] = await Promise.all([
     getInventoryAssets(),
     getInventoryHistory(),
+    getInventoryHistoryList({ page, limit, assetId, chain }),
   ]);
 
   return (
@@ -18,7 +34,13 @@ export default async function InventoryPage() {
       </div>
 
       <InventoryCards assets={assets} />
-      <InventoryChart data={history} />
+      {/* <InventoryChart data={history} /> */}
+      <InventoryHistoryTable
+        result={historyList}
+        currentPage={page}
+        assetId={assetId}
+        chain={chain}
+      />
     </div>
   );
 }

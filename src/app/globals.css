@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Ensure Tailwind scans all of src (components, layout, etc.). Without this, only files
+   under the CSS file's directory may be scanned, so utilities like bg-* in components
+   were never generated. */
+@source "../**/*.{tsx,ts,jsx,js}";
+
 :root {
   /* Font roles: change these to swap fonts app-wide (e.g. set --font-primary-stack to --font-ranade for Ranade everywhere). */
   --font-primary-stack:
@@ -96,6 +101,29 @@
   --color-chart-5: var(--chart-5);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
+  /* Explicit indigo/slate so bg-indigo-*, text-indigo-*, bg-slate-* etc. always resolve (Tailwind v4) */
+  --color-indigo-50: oklch(0.962 0.018 272.314);
+  --color-indigo-100: oklch(0.93 0.034 272.788);
+  --color-indigo-200: oklch(0.87 0.065 274.039);
+  --color-indigo-300: oklch(0.785 0.115 274.713);
+  --color-indigo-400: oklch(0.673 0.182 276.935);
+  --color-indigo-500: oklch(0.585 0.233 277.117);
+  --color-indigo-600: oklch(0.511 0.262 276.966);
+  --color-indigo-700: oklch(0.457 0.24 277.023);
+  --color-indigo-800: oklch(0.398 0.195 277.366);
+  --color-indigo-900: oklch(0.359 0.144 278.697);
+  --color-indigo-950: oklch(0.257 0.09 281.288);
+  --color-slate-50: oklch(0.984 0.003 247.858);
+  --color-slate-100: oklch(0.968 0.007 247.896);
+  --color-slate-200: oklch(0.929 0.013 255.508);
+  --color-slate-300: oklch(0.869 0.022 252.894);
+  --color-slate-400: oklch(0.704 0.04 256.788);
+  --color-slate-500: oklch(0.554 0.046 257.417);
+  --color-slate-600: oklch(0.446 0.043 257.281);
+  --color-slate-700: oklch(0.372 0.044 257.287);
+  --color-slate-800: oklch(0.279 0.041 260.031);
+  --color-slate-900: oklch(0.208 0.042 265.755);
+  --color-slate-950: oklch(0.129 0.042 264.695);
   --font-primary: var(--font-primary-stack);
   --font-secondary: var(--font-secondary-stack);
   --font-tertiary: var(--font-tertiary-stack);
@@ -117,6 +145,21 @@ body {
   color: var(--foreground);
   font-family: var(--font-primary-stack), system-ui, sans-serif;
   font-size: var(--text-size-body);
+}
+
+/* Fallback: Tailwind v4 did not emit these utilities in dev; define as plain rules
+   with literal values so they always apply (no dependency on theme var scope). */
+.bg-indigo-100 {
+  background-color: oklch(0.93 0.034 272.788);
+}
+.text-indigo-800 {
+  color: oklch(0.398 0.195 277.366);
+}
+.bg-indigo-500 {
+  background-color: oklch(0.585 0.233 277.117);
+}
+.bg-indigo-600 {
+  background-color: oklch(0.511 0.262 276.966);
 }
 
 /* Stripe-style: refined density; main bg applied in dashboard-shell */

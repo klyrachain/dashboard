@@ -5,6 +5,7 @@ import { Search, ChevronDown, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { CopyButton } from "@/components/ui/copy-button";
 import type { UserWithTransactions } from "@/lib/data-users";
 
 function EmptyUsersState() {
@@ -101,9 +102,15 @@ export function UsersList({
                       ) : (
                         <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                       )}
-                      <span className="font-mono text-sm text-muted-foreground">
-                        {user.id.slice(0, 8)}…
-                      </span>
+                      <div
+                        className="flex items-center gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="font-mono text-sm text-muted-foreground">
+                          {user.id.slice(0, 8)}…
+                        </span>
+                        <CopyButton value={user.id} label="Copy user ID" />
+                      </div>
                       <span className="font-medium">
                         {user.email ?? user.address ?? "—"}
                       </span>
@@ -128,9 +135,12 @@ export function UsersList({
                               key={tx.id}
                               className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2 text-sm"
                             >
-                              <span className="font-mono text-muted-foreground">
-                                {tx.id.slice(0, 8)}…
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-muted-foreground">
+                                  {tx.id.slice(0, 8)}…
+                                </span>
+                                <CopyButton value={tx.id} label="Copy transaction ID" />
+                              </div>
                               <span>{tx.type}</span>
                               <Badge
                                 variant={

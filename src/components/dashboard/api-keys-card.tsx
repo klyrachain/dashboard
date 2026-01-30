@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Copy, Check, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import type { ApiKeyRow } from "@/lib/data-stripe-dashboard";
 
 function EmptyApiKeysState() {
@@ -23,14 +22,6 @@ function EmptyApiKeysState() {
 }
 
 export function ApiKeysCard({ rows }: { rows: ApiKeyRow[] }) {
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-
-  const handleCopy = (index: number, value: string) => {
-    void navigator.clipboard.writeText(value);
-    setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex(null), 2000);
-  };
-
   const hasData = rows.length > 0;
 
   return (
@@ -49,7 +40,7 @@ export function ApiKeysCard({ rows }: { rows: ApiKeyRow[] }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {hasData ? (
-          rows.map((row, index) => (
+          rows.map((row) => (
             <div
               key={row.label}
               className="flex items-center justify-between gap-4 rounded-md bg-slate-50 px-3 py-2"
@@ -60,19 +51,11 @@ export function ApiKeysCard({ rows }: { rows: ApiKeyRow[] }) {
                   {row.value}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 shrink-0 text-slate-500 hover:text-slate-700"
-                onClick={() => handleCopy(index, row.value)}
-                aria-label={`Copy ${row.label}`}
-              >
-                {copiedIndex === index ? (
-                  <Check className="size-4 text-green-600" />
-                ) : (
-                  <Copy className="size-4" />
-                )}
-              </Button>
+              <CopyButton
+                value={row.value}
+                label={`Copy ${row.label}`}
+                className="text-slate-500 hover:text-slate-700"
+              />
             </div>
           ))
         ) : (

@@ -2,58 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Wallet,
-  ArrowLeftRight,
-  Users,
-  Package,
-  Link2,
-  FileText,
-  Building2,
-  Landmark,
-  Key,
-  Webhook,
-  ScrollText,
-  Settings,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import { Settings, ChevronDown, ChevronRight, LayoutPanelLeft, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { RootState } from "@/store";
+import { setTheme, setTestMode, type LayoutTheme } from "@/store/layout-slice";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
-
-const coreNav = [
-  { href: "/", label: "Home", icon: LayoutDashboard },
-  { href: "/balances", label: "Balances", icon: Wallet },
-  { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
-  { href: "/users", label: "Customers", icon: Users },
-  { href: "/inventory", label: "Product catalog", icon: Package },
-];
-
-const offchainNav = [
-  { href: "/providers", label: "Providers", icon: Building2 },
-  { href: "/payment-links", label: "Payment Links", icon: Link2 },
-  { href: "/invoices", label: "Invoices", icon: FileText },
-];
-
-const connectNav = [
-  { href: "/", label: "Overview", icon: Building2 },
-  { href: "/users", label: "Accounts", icon: Users },
-  { href: "/transactions", label: "Payouts", icon: Landmark },
-];
-
-const developersNav = [
-  { href: "/settings", label: "API Keys", icon: Key },
-  { href: "/settings", label: "Webhooks", icon: Webhook },
-  { href: "/logs", label: "Logs", icon: ScrollText },
-];
+import { navGroups } from "@/lib/nav-config";
 
 function NavGroup({
   title,
@@ -107,7 +71,9 @@ function NavGroup({
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const [testMode, setTestMode] = useState(true);
+  const dispatch = useDispatch();
+  const theme = useSelector((s: RootState) => s.layout.theme);
+  const testMode = useSelector((s: RootState) => s.layout.testMode);
 
   return (
     <aside className="flex h-full w-64 flex-col bg-slate-900 text-white">
@@ -140,10 +106,14 @@ export function AppSidebar() {
       </div>
 
       <nav className="flex flex-1 flex-col gap-4 overflow-auto p-3">
-        <NavGroup title="Core" items={coreNav} pathname={pathname} />
-        <NavGroup title="Offchain" items={offchainNav} pathname={pathname} />
-        <NavGroup title="Connect" items={connectNav} pathname={pathname} />
-        <NavGroup title="Developers" items={developersNav} pathname={pathname} />
+        {navGroups.map((group) => (
+          <NavGroup
+            key={group.title}
+            title={group.title}
+            items={group.items}
+            pathname={pathname}
+          />
+        ))}
       </nav>
 
       <div className="space-y-1 p-3">
@@ -159,13 +129,41 @@ export function AppSidebar() {
           <Settings className="size-4 shrink-0" aria-hidden />
           Settings
         </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 text-white/70 hover:bg-white/10 hover:text-white"
+            >
+              {theme === "sidebar" ? (
+                <LayoutPanelLeft className="size-4 shrink-0" aria-hidden />
+              ) : (
+                <LayoutDashboard className="size-4 shrink-0" aria-hidden />
+              )}
+              <span className="text-sm">
+                {theme === "sidebar" ? "Sidebar layout" : "Top nav layout"}
+              </span>
+              <ChevronDown className="size-4 shrink-0" aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem onClick={() => dispatch(setTheme("sidebar" as LayoutTheme))}>
+              <LayoutPanelLeft className="size-4" aria-hidden />
+              Sidebar layout
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => dispatch(setTheme("no-sidebar" as LayoutTheme))}>
+              <LayoutDashboard className="size-4" aria-hidden />
+              Top nav layout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <div className="flex items-center justify-between rounded-md px-3 py-2">
           <span className="text-sm font-normal text-white/60">
             Test mode
           </span>
           <Switch
             checked={testMode}
-            onCheckedChange={setTestMode}
+            onCheckedChange={(v) => dispatch(setTestMode(v))}
             aria-label="Toggle test mode"
             className="data-[state=checked]:bg-indigo-500"
           />

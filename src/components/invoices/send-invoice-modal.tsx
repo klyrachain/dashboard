@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { sendInvoiceAction } from "@/app/invoices/actions";
+import { sendInvoiceAction, createInvoiceAction } from "@/app/invoices/actions";
 
 type SendInvoiceModalProps = {
   open: boolean;
@@ -33,6 +33,7 @@ export function SendInvoiceModal({
   const [email, setEmail] = useState(initialEmail);
   const [subject, setSubject] = useState("");
   const [dueDays, setDueDays] = useState("14");
+  const [amount, setAmount] = useState("0");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,13 +58,33 @@ export function SendInvoiceModal({
         setError(result.error ?? "Failed to send");
       }
     } else {
-      // New invoice send (list page): mock
-      await new Promise((r) => setTimeout(r, 600));
-      setIsSubmitting(false);
-      setEmail("");
-      setSubject("");
-      setDueDays("14");
-      onOpenChange(false);
+      // New invoice (list page): create via Core API and optionally send
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + Math.max(1, parseInt(dueDays, 10) || 14));
+      const amountNum = Math.max(0, parseFloat(amount) || 0);
+      try {
+        const result = await createInvoiceAction({
+          billedTo: email.trim(),
+          subject: subject.trim() || "Invoice",
+          dueDate: dueDate.toISOString(),
+          lineItems: [
+            {
+              productName: subject.trim() || "Invoice",
+              qty: 1,
+              unitPrice: amountNum,
+              amount: amountNum,
+            },
+          ],
+          sendNow: true,
+        });
+        setIsSubmitting(false);
+        // If we get here, creation failed (success path redirects and throws)
+        setError(result.error ?? "Failed to create invoice");
+      } catch {
+        setIsSubmitting(false);
+        onOpenChange(false);
+        // Redirect threw; navigation to new invoice will happen
+      }
     }
   };
 
@@ -95,16 +116,30 @@ export function SendInvoiceModal({
             />
           </div>
           {!invoiceId && (
-            <div className="space-y-2">
-              <Label htmlFor="send-invoice-due">Due in (days)</Label>
-              <Input
-                id="send-invoice-due"
-                type="number"
-                min={1}
-                value={dueDays}
-                onChange={(e) => setDueDays(e.target.value)}
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="send-invoice-amount">Amount (USD)</Label>
+                <Input
+                  id="send-invoice-amount"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  placeholder="0"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="send-invoice-due">Due in (days)</Label>
+                <Input
+                  id="send-invoice-due"
+                  type="number"
+                  min={1}
+                  value={dueDays}
+                  onChange={(e) => setDueDays(e.target.value)}
+                />
+              </div>
+            </>
           )}
           {error && (
             <p className="text-sm text-destructive">{error}</p>

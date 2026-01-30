@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CopyButton } from "@/components/ui/copy-button";
 import type { UserWithTransactions } from "@/lib/data-users";
 import { format } from "date-fns";
 
@@ -42,31 +43,49 @@ const columns: ColumnDef<UserWithTransactions>[] = [
     accessorKey: "id",
     header: "ID",
     meta: { headerLabel: "ID" },
-    cell: ({ row }) => (
-      <span className="font-mono text-muted-foreground text-xs">
-        {row.getValue("id")?.toString().slice(0, 8)}…
-      </span>
-    ),
+    cell: ({ row }) => {
+      const id = row.original.id ?? "";
+      return (
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-muted-foreground text-xs">
+            {id.slice(0, 8)}…
+          </span>
+          <CopyButton value={id} label="Copy user ID" />
+        </div>
+      );
+    },
   },
   {
     accessorKey: "email",
     header: "Email",
     meta: { headerLabel: "Email" },
-    cell: ({ row }) => (
-      <span className="truncate max-w-[200px] block" title={row.original.email ?? undefined}>
-        {row.original.email ?? "—"}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const email = row.original.email ?? "";
+      return (
+        <div className="flex items-center gap-2">
+          <span className="truncate max-w-[200px] block" title={email || undefined}>
+            {email || "—"}
+          </span>
+          <CopyButton value={email} label="Copy email" hideWhenEmpty />
+        </div>
+      );
+    },
   },
   {
     accessorKey: "address",
     header: "Address",
     meta: { headerLabel: "Address" },
-    cell: ({ row }) => (
-      <span className="font-mono text-xs text-muted-foreground truncate max-w-[160px] block" title={row.original.address ?? undefined}>
-        {row.original.address ?? "—"}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const address = row.original.address ?? "";
+      return (
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-muted-foreground truncate max-w-[160px] block" title={address || undefined}>
+            {address || "—"}
+          </span>
+          <CopyButton value={address} label="Copy address" hideWhenEmpty />
+        </div>
+      );
+    },
   },
   {
     accessorKey: "createdAt",

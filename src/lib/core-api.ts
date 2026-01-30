@@ -247,6 +247,31 @@ export async function getCoreInventoryAsset(id: string) {
   return fetchCoreGet<unknown>(`api/inventory/${encodeURIComponent(id)}`);
 }
 
+/**
+ * GET /api/inventory/history — list all inventory history (paginated).
+ * Query: page, limit (default 20, max 100), assetId, chain.
+ * Response: { success, data: [...], meta: { page, limit, total } }.
+ * Each item includes InventoryHistory fields + asset: { id, chain, symbol }.
+ */
+export async function getCoreInventoryHistoryList(params?: {
+  page?: number;
+  limit?: number;
+  assetId?: string;
+  chain?: string;
+}) {
+  const limit =
+    params?.limit != null
+      ? Math.min(100, Math.max(1, params.limit))
+      : undefined;
+  return fetchCoreGet<unknown[]>("api/inventory/history", {
+    page: params?.page,
+    limit: limit ?? 20,
+    assetId: params?.assetId,
+    chain: params?.chain,
+  });
+}
+
+/** GET /api/inventory/:id/history — history for one asset (legacy/per-asset). */
 export async function getCoreInventoryHistory(
   id: string,
   params?: { page?: number; limit?: number }
@@ -271,6 +296,217 @@ export async function getCoreCacheBalance(chain: string, token: string) {
 
 export async function getCoreQueuePoll(params?: { limit?: number }) {
   return fetchCoreGet<unknown>("api/queue/poll", { limit: params?.limit });
+}
+
+// ——— Invoices API ———
+
+/** GET /api/invoices — list with ?page, ?limit (default 20, max 100), ?status */
+export async function getCoreInvoices(params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+}) {
+  const limit =
+    params?.limit != null
+      ? Math.min(100, Math.max(1, params.limit))
+      : undefined;
+  return fetchCoreGet<unknown[]>("api/invoices", {
+    page: params?.page,
+    limit: limit ?? 20,
+    status: params?.status,
+  });
+}
+
+/** GET /api/invoices/:id — full invoice; 404 if not found */
+export async function getCoreInvoice(id: string) {
+  return fetchCoreGet<unknown>(`api/invoices/${encodeURIComponent(id)}`);
+}
+
+/** Request body for POST /api/invoices — required: billedTo, subject, dueDate, lineItems (≥1). */
+export type CreateCoreInvoiceBody = {
+  billedTo: string;
+  subject: string;
+  dueDate: string;
+  lineItems: Array<{
+    productName: string;
+    qty: number;
+    unitPrice: number;
+    amount?: number;
+  }>;
+  billingDetails?: string;
+  discountPercent?: number;
+  termsAndConditions?: string;
+  notesContent?: string;
+  sendNow?: boolean;
+};
+
+/** POST /api/invoices — create; required: billedTo, subject, dueDate, lineItems; optional sendNow. Normalizes line item amount to qty×unitPrice when missing. */
+export async function createCoreInvoice(body: CreateCoreInvoiceBody) {
+  const lineItems = body.lineItems.map((li) => ({
+    productName: li.productName,
+    qty: li.qty,
+    unitPrice: li.unitPrice,
+    amount: li.amount ?? li.qty * li.unitPrice,
+  }));
+
+  const payload: Record<string, unknown> = {
+    billedTo: body.billedTo.trim(),
+    subject: body.subject.trim(),
+    dueDate: body.dueDate,
+    lineItems,
+  };
+  if (body.billingDetails != null && body.billingDetails !== "") {
+    payload.billingDetails = body.billingDetails.trim();
+  }
+  if (body.discountPercent != null && body.discountPercent > 0) {
+    payload.discountPercent = body.discountPercent;
+  }
+  if (body.termsAndConditions != null && body.termsAndConditions !== "") {
+    payload.termsAndConditions = body.termsAndConditions;
+  }
+  if (body.notesContent != null && body.notesContent !== "") {
+    payload.notesContent = body.notesContent;
+  }
+  if (body.sendNow === true) {
+    payload.sendNow = true;
+  }
+
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const res = await fetch(`${base}/api/invoices`, {
+    method: "POST",
+    headers: coreHeaders("api/invoices"),
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  const data = (await res.json().catch(() => ({}))) as
+    | CoreFetchSuccess<unknown>
+    | CoreApiError;
+  return { ok: res.ok, status: res.status, data };
+}
+
+/** PATCH /api/invoices/:id — partial update; 409 if Paid/Cancelled */
+export async function updateCoreInvoice(
+  id: string,
+  body: {
+    subject?: string;
+    dueDate?: string;
+    notes?: string | null;
+    notesContent?: string;
+    billedTo?: string;
+    billingDetails?: string;
+    termsAndConditions?: string;
+    lineItems?: Array<{
+      id?: string;
+      productName: string;
+      qty: number;
+      unitPrice: number;
+      amount?: number;
+    }>;
+  }
+) {
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const res = await fetch(`${base}/api/invoices/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: coreHeaders("api/invoices"),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  const data = (await res.json().catch(() => ({}))) as
+    | CoreFetchSuccess<unknown>
+    | CoreApiError;
+  return { ok: res.ok, status: res.status, data };
+}
+
+/** POST /api/invoices/:id/send — send/resend; optional toEmail */
+export async function sendCoreInvoice(id: string, toEmail?: string) {
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const res = await fetch(
+    `${base}/api/invoices/${encodeURIComponent(id)}/send`,
+    {
+      method: "POST",
+      headers: coreHeaders("api/invoices"),
+      body: JSON.stringify(toEmail != null ? { toEmail } : {}),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    }
+  );
+  const data = (await res.json().catch(() => ({}))) as
+    | CoreFetchSuccess<unknown>
+    | CoreApiError;
+  return { ok: res.ok, status: res.status, data };
+}
+
+/** POST /api/invoices/:id/duplicate — new draft copy; returns new invoice in data */
+export async function duplicateCoreInvoice(id: string) {
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const res = await fetch(
+    `${base}/api/invoices/${encodeURIComponent(id)}/duplicate`,
+    {
+      method: "POST",
+      headers: coreHeaders("api/invoices"),
+      body: JSON.stringify({}),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    }
+  );
+  const data = (await res.json().catch(() => ({}))) as
+    | CoreFetchSuccess<unknown>
+    | CoreApiError;
+  return { ok: res.ok, status: res.status, data };
+}
+
+/** POST /api/invoices/:id/mark-paid — set status Paid, set paidAt */
+export async function markCoreInvoicePaid(id: string) {
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const res = await fetch(
+    `${base}/api/invoices/${encodeURIComponent(id)}/mark-paid`,
+    {
+      method: "POST",
+      headers: coreHeaders("api/invoices"),
+      body: JSON.stringify({}),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    }
+  );
+  const data = (await res.json().catch(() => ({}))) as
+    | CoreFetchSuccess<unknown>
+    | CoreApiError;
+  return { ok: res.ok, status: res.status, data };
+}
+
+/** POST /api/invoices/:id/cancel — set status Cancelled */
+export async function cancelCoreInvoice(id: string) {
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const res = await fetch(
+    `${base}/api/invoices/${encodeURIComponent(id)}/cancel`,
+    {
+      method: "POST",
+      headers: coreHeaders("api/invoices"),
+      body: JSON.stringify({}),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    }
+  );
+  const data = (await res.json().catch(() => ({}))) as
+    | CoreFetchSuccess<unknown>
+    | CoreApiError;
+  return { ok: res.ok, status: res.status, data };
+}
+
+/** GET /api/invoices/:id/export — ?format=csv (default) or pdf; PDF returns 501 */
+export async function getCoreInvoiceExport(
+  id: string,
+  format: "csv" | "pdf" = "csv"
+): Promise<{ ok: boolean; status: number; blob: Blob; filename?: string }> {
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const url = `${base}/api/invoices/${encodeURIComponent(id)}/export?format=${format}`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: coreHeaders(`api/invoices/${id}/export`),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  const contentType = res.headers.get("content-type") ?? "";
+  const disposition = res.headers.get("content-disposition") ?? "";
+  const filenameMatch = disposition.match(/filename="?([^";\n]+)"?/);
+  const filename = filenameMatch ? filenameMatch[1].trim() : undefined;
+  const blob = await res.blob();
+  return { ok: res.ok, status: res.status, blob, filename };
 }
 
 /**

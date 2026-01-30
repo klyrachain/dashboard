@@ -3,7 +3,7 @@ import { InvoicesTable } from "@/components/invoices/invoices-table";
 import { InvoicesPageClient } from "@/components/invoices/invoices-page-client";
 
 export default async function InvoicesPage() {
-  const data = await getInvoiceList();
+  const { items, meta } = await getInvoiceList();
 
   return (
     <div className="space-y-6 font-primary text-body">
@@ -19,7 +19,7 @@ export default async function InvoicesPage() {
         <InvoicesPageClient />
       </div>
       <div className="rounded-lg border border-slate-200 bg-white font-tertiary text-table tabular-nums">
-        <InvoicesTable data={data} />
+        <InvoicesTable data={items} meta={meta} />
       </div>
     </div>
   );

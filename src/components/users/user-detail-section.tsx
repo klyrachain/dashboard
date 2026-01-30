@@ -3,6 +3,15 @@
 import * as React from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -13,7 +22,32 @@ import {
 } from "@/components/ui/table";
 import type { UserWithTransactions, UserTransactionRow } from "@/lib/data-users";
 import { format } from "date-fns";
-import { User, FileText, Activity } from "lucide-react";
+import { User, FileText, Activity, ChevronLeft, ChevronRight } from "lucide-react";
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+const DEFAULT_PAGE_SIZE = 10;
+
+function DetailRowWithCopy({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <div>
+      <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</dt>
+      <dd className="mt-1 flex items-center gap-2">
+        <span className={className} title={value || undefined}>
+          {value || "—"}
+        </span>
+        <CopyButton value={value} label={`Copy ${label}`} hideWhenEmpty />
+      </dd>
+    </div>
+  );
+}
 
 function getStatusVariant(
   status: string
@@ -35,7 +69,10 @@ function TransactionRow({ tx }: { tx: UserTransactionRow }) {
   return (
     <TableRow>
       <TableCell className="font-mono text-muted-foreground text-xs">
-        {tx.id.slice(0, 8)}…
+        <div className="flex items-center gap-2">
+          <span>{tx.id.slice(0, 8)}…</span>
+          <CopyButton value={tx.id} label="Copy transaction ID" />
+        </div>
       </TableCell>
       <TableCell>{tx.type}</TableCell>
       <TableCell>
@@ -60,6 +97,14 @@ export type UserDetailSectionProps = {
 };
 
 export function UserDetailSection({ user, transactions: userTransactions, onAnalyze }: UserDetailSectionProps) {
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(DEFAULT_PAGE_SIZE);
+
+  // Reset to first page when user or transaction list changes
+  React.useEffect(() => {
+    setPage(1);
+  }, [user?.id, userTransactions.length]);
+
   if (!user) {
     return (
       <Card className="border-dashed">
@@ -79,6 +124,13 @@ export function UserDetailSection({ user, transactions: userTransactions, onAnal
   }
 
   const txs = userTransactions;
+  const totalCount = txs.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const startIndex = (page - 1) * pageSize;
+  const paginatedTxs = txs.slice(startIndex, startIndex + pageSize);
+  const from = totalCount === 0 ? 0 : startIndex + 1;
+  const to = Math.min(startIndex + pageSize, totalCount);
+
   const completed = txs.filter((t) => t.status === "COMPLETED").length;
   const failed = txs.filter((t) => t.status === "FAILED").length;
   const pending = txs.filter((t) => t.status === "PENDING" || t.status === "ACTIVE").length;
@@ -133,24 +185,21 @@ export function UserDetailSection({ user, transactions: userTransactions, onAnal
         <Card>
           <CardContent className="pt-6">
             <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">ID</dt>
-                <dd className="mt-1 font-mono text-sm break-all" title={user.id}>
-                  {user.id}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</dt>
-                <dd className="mt-1 text-sm truncate max-w-[240px]" title={user.email ?? undefined}>
-                  {user.email ?? "—"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Address</dt>
-                <dd className="mt-1 font-mono text-sm truncate max-w-[280px]" title={user.address ?? undefined}>
-                  {user.address ?? "—"}
-                </dd>
-              </div>
+              <DetailRowWithCopy
+                label="ID"
+                value={user.id}
+                className="min-w-0 flex-1 font-mono text-sm break-all"
+              />
+              <DetailRowWithCopy
+                label="Email"
+                value={user.email ?? ""}
+                className="min-w-0 flex-1 truncate text-sm max-w-[240px]"
+              />
+              <DetailRowWithCopy
+                label="Address"
+                value={user.address ?? ""}
+                className="min-w-0 flex-1 font-mono text-sm truncate max-w-[280px]"
+              />
               <div>
                 <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Created</dt>
                 <dd className="mt-1 text-sm text-muted-foreground">
@@ -190,25 +239,76 @@ export function UserDetailSection({ user, transactions: userTransactions, onAnal
               </div>
             </CardContent>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">ID</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>From amount</TableHead>
-                    <TableHead>To amount</TableHead>
-                    <TableHead>Created</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {txs.map((tx) => (
-                    <TransactionRow key={tx.id} tx={tx} />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[100px]">ID</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>From amount</TableHead>
+                      <TableHead>To amount</TableHead>
+                      <TableHead>Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedTxs.map((tx) => (
+                      <TransactionRow key={tx.id} tx={tx} />
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 px-4 py-3">
+                <div className="flex items-center gap-4">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {from}–{to} of {totalCount}
+                  </p>
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(v) => {
+                      setPageSize(Number(v));
+                      setPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-[72px]" aria-label="Rows per page">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-muted-foreground">per page</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <span className="min-w-[100px] text-center text-sm text-muted-foreground">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    aria-label="Next page"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </Card>
       </section>
