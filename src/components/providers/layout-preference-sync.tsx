@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useStore } from "react-redux";
+import type { RootState } from "@/store";
 import { setTheme, setTestMode } from "@/store/layout-slice";
 import {
   getLayoutPreferenceFromCookie,
@@ -14,7 +15,7 @@ import {
  * - On layout state change: writes cookie.
  */
 export function LayoutPreferenceSync() {
-  const store = useStore();
+  const store = useStore<RootState>();
   const didHydrate = useRef(false);
 
   useEffect(() => {

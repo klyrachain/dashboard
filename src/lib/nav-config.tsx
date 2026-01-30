@@ -57,7 +57,7 @@ export const connectNav: NavGroupConfig = {
 export const developersNav: NavGroupConfig = {
   title: "Developers",
   items: [
-    { href: "/settings", label: "API Keys", icon: Key },
+    { href: "/developers/api", label: "API Keys", icon: Key },
     { href: "/settings", label: "Webhooks", icon: Webhook },
     { href: "/logs", label: "Logs", icon: ScrollText },
   ],

@@ -109,7 +109,9 @@ async function fetchCore<T>(
 async function fetchCoreGet<T>(
   path: string,
   params?: Record<string, string | number | undefined>
-): Promise<{ ok: boolean; data: CoreFetchSuccess<T> | CoreApiError }> {
+): Promise<{
+  status: number; ok: boolean; data: CoreFetchSuccess<T> | CoreApiError 
+}> {
   const search = new URLSearchParams();
   if (params) {
     for (const [k, v] of Object.entries(params)) {
@@ -118,11 +120,11 @@ async function fetchCoreGet<T>(
   }
   const qs = search.toString();
   const fullPath = qs ? `${path}?${qs}` : path;
-  const { ok, data } = await fetchCore<CoreFetchSuccess<T> | CoreApiError>(
+  const { ok, status, data } = await fetchCore<CoreFetchSuccess<T> | CoreApiError>(
     fullPath,
     { timeout: FETCH_TIMEOUT_MS }
   );
-  return { ok, data: data as CoreFetchSuccess<T> | CoreApiError };
+  return { ok, status, data: data as CoreFetchSuccess<T> | CoreApiError };
 }
 
 /**
@@ -564,10 +566,11 @@ export async function createOrder(
       };
     }
 
+    const err = json as unknown as CoreApiError;
     return {
       success: false,
-      error: (json as CoreApiError).error ?? "Something went wrong.",
-      details: (json as CoreApiError).details,
+      error: err.error ?? "Something went wrong.",
+      details: err.details,
     };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Network error";
@@ -598,9 +601,10 @@ export async function sendAdminWebhook(
     if (res.status === 202 && json.success && "data" in json) {
       return { success: true, data: json.data };
     }
+    const err = json as unknown as CoreApiError;
     return {
       success: false,
-      error: (json as CoreApiError).error ?? "Something went wrong.",
+      error: err.error ?? "Something went wrong.",
     };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Network error";

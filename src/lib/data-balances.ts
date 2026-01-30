@@ -310,7 +310,7 @@ export async function getPendingState(): Promise<PendingState> {
     }).catch(() => {});
     // #endregion
     const activeOrdersCount = allRows.length;
-    const floatingAmountUsd = allRows.reduce(
+    const floatingAmountUsd = allRows.reduce<number>(
       (sum, item) => sum + parseTransactionAmount(item),
       0
     );
