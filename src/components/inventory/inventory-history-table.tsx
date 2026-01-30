@@ -76,7 +76,7 @@ export function InventoryHistoryTable({
       <CardHeader>
         <CardTitle>Inventory History</CardTitle>
         <p className="text-sm text-muted-foreground">
-          All history (paginated). Filter by asset or chain via query params.
+          All inventory history. Filter by asset or chain via query params.
         </p>
       </CardHeader>
       <CardContent>
