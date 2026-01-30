@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { RelativeTime } from "@/components/ui/relative-time";
 import type { VolumeChartPoint } from "@/lib/data-stripe-dashboard";
 
 type HeroVolumeCardsProps = {
@@ -17,6 +18,7 @@ type HeroVolumeCardsProps = {
   netValue: string;
   grossChartData: VolumeChartPoint[];
   netChartData: VolumeChartPoint[];
+  /** ISO date string for "last updated"; displayed as relative time (e.g. "Updated 5 minutes ago"). */
   updatedAt: string;
   grossPrevious: { value: number; changePercent: number };
   netPrevious: { value: number; changePercent: number };
@@ -53,7 +55,9 @@ export function HeroVolumeCards({
           <p className="text-3xl font-semibold tracking-tight text-slate-900">
             ${grossValue}
           </p>
-          <p className="text-xs text-slate-500">{updatedAt}</p>
+          <p className="text-xs text-slate-500">
+            <RelativeTime date={updatedAt} prefix="Updated " />
+          </p>
         </CardHeader>
         <CardContent className="pt-0">
           <div className="h-[140px] w-full">
@@ -138,7 +142,9 @@ export function HeroVolumeCards({
           <p className="text-3xl font-semibold tracking-tight text-slate-900">
             ${netValue}
           </p>
-          <p className="text-xs text-slate-500">{updatedAt}</p>
+          <p className="text-xs text-slate-500">
+            <RelativeTime date={updatedAt} prefix="Updated " />
+          </p>
         </CardHeader>
         <CardContent className="pt-0">
           <div className="h-[140px] w-full">

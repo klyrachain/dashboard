@@ -8,12 +8,10 @@ import {
   ArrowLeftRight,
   Users,
   Package,
-  CreditCard,
   Link2,
   FileText,
   Building2,
   Landmark,
-  Receipt,
   Key,
   Webhook,
   ScrollText,
@@ -39,10 +37,10 @@ const coreNav = [
   { href: "/inventory", label: "Product catalog", icon: Package },
 ];
 
-const billingNav = [
-  { href: "/settings", label: "Subscriptions", icon: CreditCard },
-  { href: "/settings", label: "Payment Links", icon: Link2 },
-  { href: "/settings", label: "Invoices", icon: FileText },
+const offchainNav = [
+  { href: "/providers", label: "Providers", icon: Building2 },
+  { href: "/payment-links", label: "Payment Links", icon: Link2 },
+  { href: "/invoices", label: "Invoices", icon: FileText },
 ];
 
 const connectNav = [
@@ -143,7 +141,7 @@ export function AppSidebar() {
 
       <nav className="flex flex-1 flex-col gap-4 overflow-auto p-3">
         <NavGroup title="Core" items={coreNav} pathname={pathname} />
-        <NavGroup title="Billing" items={billingNav} pathname={pathname} />
+        <NavGroup title="Offchain" items={offchainNav} pathname={pathname} />
         <NavGroup title="Connect" items={connectNav} pathname={pathname} />
         <NavGroup title="Developers" items={developersNav} pathname={pathname} />
       </nav>

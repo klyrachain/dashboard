@@ -17,6 +17,8 @@ const LOW_LIQUIDITY_THRESHOLD = 1000;
 export type DashboardKpis = {
   volumeDay: string;
   volumeWeek: string;
+  /** Timestamp of the latest transaction used for volume; used for "Updated X ago". */
+  volumeUpdatedAt: Date | null;
   activeOrders: number;
   lowLiquidityAlerts: number;
 };
@@ -41,6 +43,7 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
   let volumeDay = 0;
   let volumeWeek = 0;
   let activeOrders = 0;
+  let volumeUpdatedAt: Date | null = null;
 
   try {
     const result = await getCoreTransactions({ limit: 200, page: 1 });
@@ -77,6 +80,12 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
         if (status === TransactionStatus.COMPLETED) {
           if (createdAt >= since24h) volumeDay += amountUsd;
           if (createdAt >= since7d) volumeWeek += amountUsd;
+          if (
+            !volumeUpdatedAt ||
+            createdAt > volumeUpdatedAt.getTime()
+          ) {
+            volumeUpdatedAt = new Date(createdAt);
+          }
         }
         if (
           status === TransactionStatus.PENDING ||
@@ -110,6 +119,7 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }),
+    volumeUpdatedAt,
     activeOrders,
     lowLiquidityAlerts,
   };

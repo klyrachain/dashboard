@@ -12,7 +12,6 @@ import {
   stripeApiKeys,
   stripeRecommendations,
   stripePreviousPeriod,
-  stripeVolumeUpdatedAt,
 } from "@/lib/data-stripe-dashboard";
 
 export async function DashboardContent() {
@@ -23,6 +22,8 @@ export async function DashboardContent() {
 
   const grossValue = kpis.volumeWeek || "0.00";
   const netValue = kpis.volumeDay || "0.00";
+  const updatedAt =
+    kpis.volumeUpdatedAt?.toISOString() ?? new Date().toISOString();
 
   return (
     <div className="space-y-8">
@@ -33,7 +34,7 @@ export async function DashboardContent() {
         netValue={netValue}
         grossChartData={getGrossVolumeChartData()}
         netChartData={getNetVolumeChartData()}
-        updatedAt={stripeVolumeUpdatedAt}
+        updatedAt={updatedAt}
         grossPrevious={stripePreviousPeriod.gross}
         netPrevious={stripePreviousPeriod.net}
       />

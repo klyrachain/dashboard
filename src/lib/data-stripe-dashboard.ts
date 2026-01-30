@@ -96,5 +96,3 @@ export const stripePreviousPeriod = {
   gross: { value: 16.0, changePercent: -100 },
   net: { value: 15.24, changePercent: -100 },
 };
-
-export const stripeVolumeUpdatedAt = "Updated 5 minutes ago";
