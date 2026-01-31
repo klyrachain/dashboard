@@ -1,11 +1,6 @@
-import { InventoryCards } from "@/components/inventory/inventory-cards";
-import { InventoryChart } from "@/components/inventory/inventory-chart";
+import { InventoryAssetContainer } from "@/components/inventory/inventory-asset-container";
 import { InventoryHistoryTable } from "@/components/inventory/inventory-history-table";
-import {
-  getInventoryAssets,
-  getInventoryHistory,
-  getInventoryHistoryList,
-} from "@/lib/data-inventory";
+import { getInventoryHistoryList } from "@/lib/data-inventory";
 
 type InventoryPageProps = {
   searchParams: Promise<{ page?: string; limit?: string; assetId?: string; chain?: string }>;
@@ -18,11 +13,7 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
   const assetId = params.assetId?.trim() || undefined;
   const chain = params.chain?.trim() || undefined;
 
-  const [assets, history, historyList] = await Promise.all([
-    getInventoryAssets(),
-    getInventoryHistory(),
-    getInventoryHistoryList({ page, limit, assetId, chain }),
-  ]);
+  const historyList = await getInventoryHistoryList({ page, limit, assetId, chain });
 
   return (
     <div className="space-y-8">
@@ -33,8 +24,7 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
         </p>
       </div>
 
-      <InventoryCards assets={assets} />
-      {/* <InventoryChart data={history} /> */}
+      <InventoryAssetContainer />
       <InventoryHistoryTable
         result={historyList}
         currentPage={page}

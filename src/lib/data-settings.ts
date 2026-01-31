@@ -1,0 +1,431 @@
+/**
+ * Platform Settings data layer — GET/PATCH for Core /api/settings/*.
+ * @see Platform Settings API — Frontend Integration Report
+ */
+
+import {
+  getCoreSettingsGeneral,
+  patchCoreSettingsGeneral,
+  getCoreSettingsFinancials,
+  patchCoreSettingsFinancials,
+  getCoreSettingsProviders,
+  patchCoreSettingsProviders,
+  patchCoreSettingsProviderById,
+  getCoreSettingsRisk,
+  patchCoreSettingsRisk,
+  getCoreSettingsTeamAdmins,
+  postCoreSettingsTeamInvite,
+  getCoreSettingsApi,
+  patchCoreSettingsApi,
+  postCoreSettingsApiRotateWebhookSecret,
+} from "@/lib/core-api";
+
+type Envelope<T> = { success?: boolean; data?: T; error?: string };
+
+function extract<T>(res: { ok: boolean; data: unknown }): { ok: boolean; data: T | null; error?: string } {
+  if (!res.ok || !res.data || typeof res.data !== "object") {
+    const err =
+      res.data && typeof res.data === "object" && "error" in res.data
+        ? String((res.data as { error: string }).error)
+        : "Request failed";
+    return { ok: false, data: null, error: err };
+  }
+  const envelope = res.data as Envelope<T>;
+  if (envelope.success === false) {
+    return { ok: false, data: null, error: envelope.error ?? "Request failed" };
+  }
+  const payload = envelope.data;
+  return { ok: true, data: payload ?? null, error: payload ? undefined : envelope.error };
+}
+
+// ——— General ———
+
+export type SettingsGeneral = {
+  publicName: string;
+  supportEmail: string;
+  supportPhone?: string;
+  defaultCurrency: string;
+  timezone: string;
+  maintenanceMode: boolean;
+};
+
+const defaultGeneral: SettingsGeneral = {
+  publicName: "MyCryptoApp",
+  supportEmail: "",
+  supportPhone: "",
+  defaultCurrency: "USD",
+  timezone: "Africa/Accra",
+  maintenanceMode: false,
+};
+
+function parseGeneral(raw: unknown): SettingsGeneral {
+  if (!raw || typeof raw !== "object") return defaultGeneral;
+  const o = raw as Record<string, unknown>;
+  return {
+    publicName: typeof o.publicName === "string" ? o.publicName : defaultGeneral.publicName,
+    supportEmail: typeof o.supportEmail === "string" ? o.supportEmail : defaultGeneral.supportEmail,
+    supportPhone: typeof o.supportPhone === "string" ? o.supportPhone : defaultGeneral.supportPhone,
+    defaultCurrency: typeof o.defaultCurrency === "string" ? o.defaultCurrency : defaultGeneral.defaultCurrency,
+    timezone: typeof o.timezone === "string" ? o.timezone : defaultGeneral.timezone,
+    maintenanceMode: o.maintenanceMode === true,
+  };
+}
+
+export async function getSettingsGeneral(): Promise<{
+  ok: boolean;
+  data: SettingsGeneral;
+  error?: string;
+}> {
+  const res = await getCoreSettingsGeneral();
+  const out = extract<unknown>(res);
+  return {
+    ok: out.ok,
+    data: out.data ? parseGeneral(out.data) : defaultGeneral,
+    error: out.error,
+  };
+}
+
+export async function patchSettingsGeneral(
+  body: Partial<SettingsGeneral>
+): Promise<{ ok: boolean; data: SettingsGeneral | null; error?: string }> {
+  const res = await patchCoreSettingsGeneral(body as Record<string, unknown>);
+  const out = extract<unknown>(res);
+  return {
+    ok: out.ok,
+    data: out.data ? parseGeneral(out.data) : null,
+    error: out.error,
+  };
+}
+
+// ——— Financials ———
+
+export type SettingsFinancials = {
+  baseFeePercent: number;
+  fixedFee: number;
+  minTransactionSize: number;
+  maxTransactionSize: number;
+  lowBalanceAlert: number;
+};
+
+const defaultFinancials: SettingsFinancials = {
+  baseFeePercent: 1,
+  fixedFee: 0.5,
+  minTransactionSize: 5,
+  maxTransactionSize: 10000,
+  lowBalanceAlert: 500,
+};
+
+function parseFinancials(raw: unknown): SettingsFinancials {
+  if (!raw || typeof raw !== "object") return defaultFinancials;
+  const o = raw as Record<string, unknown>;
+  return {
+    baseFeePercent: typeof o.baseFeePercent === "number" ? o.baseFeePercent : defaultFinancials.baseFeePercent,
+    fixedFee: typeof o.fixedFee === "number" ? o.fixedFee : defaultFinancials.fixedFee,
+    minTransactionSize: typeof o.minTransactionSize === "number" ? o.minTransactionSize : defaultFinancials.minTransactionSize,
+    maxTransactionSize: typeof o.maxTransactionSize === "number" ? o.maxTransactionSize : defaultFinancials.maxTransactionSize,
+    lowBalanceAlert: typeof o.lowBalanceAlert === "number" ? o.lowBalanceAlert : defaultFinancials.lowBalanceAlert,
+  };
+}
+
+export async function getSettingsFinancials(): Promise<{
+  ok: boolean;
+  data: SettingsFinancials;
+  error?: string;
+}> {
+  const res = await getCoreSettingsFinancials();
+  const out = extract<unknown>(res);
+  return {
+    ok: out.ok,
+    data: out.data ? parseFinancials(out.data) : defaultFinancials,
+    error: out.error,
+  };
+}
+
+export async function patchSettingsFinancials(
+  body: Partial<SettingsFinancials>
+): Promise<{ ok: boolean; data: SettingsFinancials | null; error?: string }> {
+  const res = await patchCoreSettingsFinancials(body as Record<string, unknown>);
+  const out = extract<unknown>(res);
+  return {
+    ok: out.ok,
+    data: out.data ? parseFinancials(out.data) : null,
+    error: out.error,
+  };
+}
+
+// ——— Providers ———
+
+export type SettingsProvider = {
+  id: string;
+  enabled: boolean;
+  priority: number;
+  apiKeyMasked: string;
+  status?: string;
+  latencyMs?: number | null;
+};
+
+export type SettingsProviders = {
+  maxSlippagePercent: number;
+  providers: SettingsProvider[];
+};
+
+const defaultProviders: SettingsProviders = {
+  maxSlippagePercent: 0.5,
+  providers: [],
+};
+
+function parseProvider(raw: unknown): SettingsProvider | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const id = String(o.id ?? "");
+  if (!id) return null;
+  return {
+    id,
+    enabled: o.enabled === true,
+    priority: typeof o.priority === "number" ? o.priority : 1,
+    apiKeyMasked: typeof o.apiKeyMasked === "string" ? o.apiKeyMasked : "••••••••",
+    status: typeof o.status === "string" ? o.status : undefined,
+    latencyMs: typeof o.latencyMs === "number" ? o.latencyMs : null,
+  };
+}
+
+export async function getSettingsProviders(): Promise<{
+  ok: boolean;
+  data: SettingsProviders;
+  error?: string;
+}> {
+  const res = await getCoreSettingsProviders();
+  const out = extract<unknown>(res);
+  if (!out.ok || !out.data || typeof out.data !== "object") {
+    return { ok: false, data: defaultProviders, error: out.error };
+  }
+  const o = out.data as Record<string, unknown>;
+  const maxSlippagePercent = typeof o.maxSlippagePercent === "number" ? o.maxSlippagePercent : 0.5;
+  const list = Array.isArray(o.providers) ? o.providers : [];
+  const providers = list.map(parseProvider).filter((p): p is SettingsProvider => p != null);
+  return {
+    ok: true,
+    data: { maxSlippagePercent, providers },
+    error: undefined,
+  };
+}
+
+export async function patchSettingsProviders(body: {
+  maxSlippagePercent?: number;
+  providers?: Array<{ id: string; enabled?: boolean; priority?: number }>;
+}): Promise<{ ok: boolean; data: SettingsProviders | null; error?: string }> {
+  const res = await patchCoreSettingsProviders(body as Record<string, unknown>);
+  const out = extract<unknown>(res);
+  if (!out.ok) return { ok: false, data: null, error: out.error };
+  if (!out.data || typeof out.data !== "object") return { ok: true, data: null };
+  const o = out.data as Record<string, unknown>;
+  const maxSlippagePercent = typeof o.maxSlippagePercent === "number" ? o.maxSlippagePercent : 0.5;
+  const list = Array.isArray(o.providers) ? o.providers : [];
+  const providers = list.map(parseProvider).filter((p): p is SettingsProvider => p != null);
+  return { ok: true, data: { maxSlippagePercent, providers } };
+}
+
+export async function patchSettingsProviderById(
+  id: string,
+  body: { apiKey?: string; enabled?: boolean; priority?: number }
+): Promise<{ ok: boolean; data: SettingsProvider | null; error?: string }> {
+  const res = await patchCoreSettingsProviderById(id, body as Record<string, unknown>);
+  const out = extract<unknown>(res);
+  if (!out.ok) return { ok: false, data: null, error: out.error };
+  const p = out.data ? parseProvider(out.data) : null;
+  return { ok: true, data: p };
+}
+
+// ——— Risk ———
+
+export type SettingsRisk = {
+  enforceKycOver1000: boolean;
+  blockHighRiskIp: boolean;
+  blacklist: string[];
+};
+
+const defaultRisk: SettingsRisk = {
+  enforceKycOver1000: true,
+  blockHighRiskIp: true,
+  blacklist: [],
+};
+
+export async function getSettingsRisk(): Promise<{
+  ok: boolean;
+  data: SettingsRisk;
+  error?: string;
+}> {
+  const res = await getCoreSettingsRisk();
+  const out = extract<unknown>(res);
+  if (!out.ok || !out.data || typeof out.data !== "object") {
+    return { ok: false, data: defaultRisk, error: out.error };
+  }
+  const o = out.data as Record<string, unknown>;
+  const blacklist = Array.isArray(o.blacklist)
+    ? o.blacklist.filter((x): x is string => typeof x === "string")
+    : [];
+  return {
+    ok: true,
+    data: {
+      enforceKycOver1000: o.enforceKycOver1000 === true,
+      blockHighRiskIp: o.blockHighRiskIp === true,
+      blacklist,
+    },
+  };
+}
+
+export async function patchSettingsRisk(body: {
+  enforceKycOver1000?: boolean;
+  blockHighRiskIp?: boolean;
+  blacklist?: string[];
+}): Promise<{ ok: boolean; data: SettingsRisk | null; error?: string }> {
+  const res = await patchCoreSettingsRisk(body as Record<string, unknown>);
+  const out = extract<unknown>(res);
+  if (!out.ok) return { ok: false, data: null, error: out.error };
+  if (!out.data || typeof out.data !== "object") return { ok: true, data: null };
+  const o = out.data as Record<string, unknown>;
+  const blacklist = Array.isArray(o.blacklist)
+    ? o.blacklist.filter((x): x is string => typeof x === "string")
+    : [];
+  return {
+    ok: true,
+    data: {
+      enforceKycOver1000: o.enforceKycOver1000 === true,
+      blockHighRiskIp: o.blockHighRiskIp === true,
+      blacklist,
+    },
+  };
+}
+
+// ——— Team ———
+
+export type SettingsAdmin = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  twoFaEnabled: boolean;
+};
+
+export async function getSettingsTeamAdmins(): Promise<{
+  ok: boolean;
+  data: SettingsAdmin[];
+  error?: string;
+}> {
+  const res = await getCoreSettingsTeamAdmins();
+  const out = extract<unknown[]>(res);
+  if (!out.ok || !Array.isArray(out.data)) {
+    return { ok: false, data: [], error: out.error };
+  }
+  const data = out.data
+    .map((row) => {
+      if (!row || typeof row !== "object") return null;
+      const o = row as Record<string, unknown>;
+      const id = String(o.id ?? "");
+      if (!id) return null;
+      return {
+        id,
+        name: String(o.name ?? ""),
+        email: String(o.email ?? ""),
+        role: String(o.role ?? "viewer"),
+        twoFaEnabled: o.twoFaEnabled === true,
+      };
+    })
+    .filter((r): r is SettingsAdmin => r != null);
+  return { ok: true, data };
+}
+
+export async function postSettingsTeamInvite(body: {
+  email: string;
+  role?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const res = await postCoreSettingsTeamInvite(body);
+  if (res.ok) return { ok: true };
+  const err =
+    res.data && typeof res.data === "object" && "error" in res.data
+      ? String((res.data as { error: string }).error)
+      : "Invite failed";
+  return { ok: false, error: err };
+}
+
+// ——— API & Webhooks ———
+
+export type SettingsApi = {
+  webhookSigningSecretMasked: string;
+  slackWebhookUrl: string;
+  alertEmails: string;
+};
+
+const defaultApi: SettingsApi = {
+  webhookSigningSecretMasked: "whsec_••••••••••••••••",
+  slackWebhookUrl: "",
+  alertEmails: "",
+};
+
+export async function getSettingsApi(): Promise<{
+  ok: boolean;
+  data: SettingsApi;
+  error?: string;
+}> {
+  const res = await getCoreSettingsApi();
+  const out = extract<unknown>(res);
+  if (!out.ok || !out.data || typeof out.data !== "object") {
+    return { ok: false, data: defaultApi, error: out.error };
+  }
+  const o = out.data as Record<string, unknown>;
+  return {
+    ok: true,
+    data: {
+      webhookSigningSecretMasked:
+        typeof o.webhookSigningSecretMasked === "string"
+          ? o.webhookSigningSecretMasked
+          : defaultApi.webhookSigningSecretMasked,
+      slackWebhookUrl: typeof o.slackWebhookUrl === "string" ? o.slackWebhookUrl : "",
+      alertEmails: typeof o.alertEmails === "string" ? o.alertEmails : "",
+    },
+  };
+}
+
+export async function patchSettingsApi(body: {
+  slackWebhookUrl?: string;
+  alertEmails?: string;
+}): Promise<{ ok: boolean; data: SettingsApi | null; error?: string }> {
+  const res = await patchCoreSettingsApi(body as Record<string, unknown>);
+  const out = extract<unknown>(res);
+  if (!out.ok) return { ok: false, data: null, error: out.error };
+  if (!out.data || typeof out.data !== "object") return { ok: true, data: null };
+  const o = out.data as Record<string, unknown>;
+  return {
+    ok: true,
+    data: {
+      webhookSigningSecretMasked:
+        typeof o.webhookSigningSecretMasked === "string"
+          ? o.webhookSigningSecretMasked
+          : defaultApi.webhookSigningSecretMasked,
+      slackWebhookUrl: typeof o.slackWebhookUrl === "string" ? o.slackWebhookUrl : "",
+      alertEmails: typeof o.alertEmails === "string" ? o.alertEmails : "",
+    },
+  };
+}
+
+export async function postSettingsApiRotateWebhookSecret(): Promise<{
+  ok: boolean;
+  webhookSigningSecretMasked?: string;
+  error?: string;
+}> {
+  const res = await postCoreSettingsApiRotateWebhookSecret();
+  if (!res.ok) {
+    const err =
+      res.data && typeof res.data === "object" && "error" in res.data
+        ? String((res.data as { error: string }).error)
+        : "Rotate failed";
+    return { ok: false, error: err };
+  }
+  const envelope = res.data as Envelope<{ webhookSigningSecretMasked?: string }>;
+  const data = envelope?.data;
+  const masked =
+    data && typeof data === "object" && "webhookSigningSecretMasked" in data
+      ? String((data as { webhookSigningSecretMasked: string }).webhookSigningSecretMasked)
+      : undefined;
+  return { ok: true, webhookSigningSecretMasked: masked };
+}

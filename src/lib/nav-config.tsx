@@ -13,6 +13,8 @@ import {
   Webhook,
   ScrollText,
   LineChart,
+  BarChart3,
+  Store,
 } from "lucide-react";
 
 export type NavItem = {
@@ -49,10 +51,10 @@ export const offchainNav: NavGroupConfig = {
 export const connectNav: NavGroupConfig = {
   title: "Connect",
   items: [
-    { href: "/", label: "Overview", icon: Building2 },
+    { href: "/connect", label: "Overview", icon: BarChart3 },
     { href: "/connect/quotes", label: "Quotes", icon: LineChart },
-    { href: "/users", label: "Accounts", icon: Users },
-    { href: "/transactions", label: "Payouts", icon: Landmark },
+    { href: "/connect/merchants", label: "Merchants", icon: Store },
+    { href: "/connect/settlements", label: "Settlements", icon: Landmark },
   ],
 };
 
@@ -60,7 +62,7 @@ export const developersNav: NavGroupConfig = {
   title: "Developers",
   items: [
     { href: "/developers/api", label: "API Keys", icon: Key },
-    { href: "/settings", label: "Webhooks", icon: Webhook },
+    { href: "/settings/api", label: "Webhooks", icon: Webhook },
     { href: "/logs", label: "Logs", icon: ScrollText },
   ],
 };

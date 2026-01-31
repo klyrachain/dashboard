@@ -370,6 +370,57 @@ export async function getCoreInventoryAsset(id: string) {
   return fetchCoreGet<unknown>(`api/inventory/${encodeURIComponent(id)}`);
 }
 
+/** Body for POST /api/inventory — create inventory asset. */
+export type CreateCoreInventoryBody = {
+  chain: string;
+  token?: string;
+  symbol?: string;
+  balance?: string | number;
+  walletAddress?: string;
+  chainId?: number;
+};
+
+export async function postCoreInventory(body: CreateCoreInventoryBody) {
+  const payload: Record<string, unknown> = {
+    chain: body.chain,
+    balance: body.balance ?? "0",
+  };
+  if (body.token != null) payload.token = body.token;
+  if (body.symbol != null) payload.symbol = body.symbol;
+  if (body.walletAddress != null) payload.walletAddress = body.walletAddress;
+  if (body.chainId != null) payload.chainId = body.chainId;
+  return fetchCorePost<unknown>("api/inventory", payload);
+}
+
+/** Body for PATCH /api/inventory/:id. */
+export type UpdateCoreInventoryBody = {
+  chain?: string;
+  token?: string;
+  symbol?: string;
+  balance?: string | number;
+};
+
+export async function patchCoreInventory(id: string, body: UpdateCoreInventoryBody) {
+  const payload: Record<string, unknown> = {};
+  if (body.chain != null) payload.chain = body.chain;
+  if (body.token != null) payload.token = body.token;
+  if (body.symbol != null) payload.symbol = body.symbol;
+  if (body.balance != null) payload.balance = body.balance;
+  return fetchCorePatch<unknown>(`api/inventory/${encodeURIComponent(id)}`, payload);
+}
+
+export async function deleteCoreInventory(id: string) {
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const path = `api/inventory/${encodeURIComponent(id)}`;
+  const res = await fetch(`${base}/${path}`, {
+    method: "DELETE",
+    headers: coreHeaders(path),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  const data = (await res.json().catch(() => ({}))) as unknown;
+  return { ok: res.ok, status: res.status, data };
+}
+
 /**
  * GET /api/inventory/history — list all inventory history (paginated).
  * Query: page, limit (default 20, max 100), assetId, chain.
@@ -630,6 +681,171 @@ export async function getCoreInvoiceExport(
   const filename = filenameMatch ? filenameMatch[1].trim() : undefined;
   const blob = await res.blob();
   return { ok: res.ok, status: res.status, blob, filename };
+}
+
+// ——— Access API ———
+
+/** GET /api/access — current API key context (platform vs merchant, key info, business). */
+export async function getCoreAccess() {
+  return fetchCoreGet<unknown>("api/access");
+}
+
+// ——— Connect (B2B) API ———
+
+/** GET /api/connect/overview — B2B dashboard metrics (platform key only; 403 for merchant). */
+export async function getCoreConnectOverview() {
+  return fetchCoreGet<unknown>("api/connect/overview");
+}
+
+/** GET /api/connect/merchants — list merchants; query: page, limit, status, riskLevel. */
+export async function getCoreConnectMerchants(params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  riskLevel?: string;
+}) {
+  return fetchCoreGet<unknown[]>("api/connect/merchants", {
+    page: params?.page,
+    limit: params?.limit,
+    status: params?.status,
+    riskLevel: params?.riskLevel,
+  });
+}
+
+/** GET /api/connect/merchants/:id — merchant detail (API keys, webhook, volume). */
+export async function getCoreConnectMerchant(id: string) {
+  return fetchCoreGet<unknown>(`api/connect/merchants/${encodeURIComponent(id)}`);
+}
+
+/** GET /api/connect/settlements — list payouts; query: page, limit, status. */
+export async function getCoreConnectSettlements(params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+}) {
+  return fetchCoreGet<unknown[]>("api/connect/settlements", {
+    page: params?.page,
+    limit: params?.limit,
+    status: params?.status,
+  });
+}
+
+/** GET /api/connect/settlements/:id — payout detail (timeline, source transactions). */
+export async function getCoreConnectSettlement(id: string) {
+  return fetchCoreGet<unknown>(`api/connect/settlements/${encodeURIComponent(id)}`);
+}
+
+// ——— Platform Settings API ———
+
+async function fetchCorePatch<T>(
+  path: string,
+  body: Record<string, unknown>
+): Promise<{ ok: boolean; status: number; data: T }> {
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: coreHeaders(path),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  const data = (await res.json().catch(() => ({}))) as T;
+  return { ok: res.ok, status: res.status, data };
+}
+
+/** GET /api/settings/general */
+export async function getCoreSettingsGeneral() {
+  return fetchCoreGet<unknown>("api/settings/general");
+}
+
+/** PATCH /api/settings/general */
+export async function patchCoreSettingsGeneral(body: Record<string, unknown>) {
+  return fetchCorePatch<unknown>("api/settings/general", body);
+}
+
+/** GET /api/settings/financials */
+export async function getCoreSettingsFinancials() {
+  return fetchCoreGet<unknown>("api/settings/financials");
+}
+
+/** PATCH /api/settings/financials */
+export async function patchCoreSettingsFinancials(body: Record<string, unknown>) {
+  return fetchCorePatch<unknown>("api/settings/financials", body);
+}
+
+/** GET /api/settings/providers */
+export async function getCoreSettingsProviders() {
+  return fetchCoreGet<unknown>("api/settings/providers");
+}
+
+/** PATCH /api/settings/providers */
+export async function patchCoreSettingsProviders(body: Record<string, unknown>) {
+  return fetchCorePatch<unknown>("api/settings/providers", body);
+}
+
+/** PATCH /api/settings/providers/:id — set apiKey, enabled, priority */
+export async function patchCoreSettingsProviderById(
+  id: string,
+  body: Record<string, unknown>
+) {
+  return fetchCorePatch<unknown>(
+    `api/settings/providers/${encodeURIComponent(id)}`,
+    body
+  );
+}
+
+/** GET /api/settings/risk */
+export async function getCoreSettingsRisk() {
+  return fetchCoreGet<unknown>("api/settings/risk");
+}
+
+/** PATCH /api/settings/risk */
+export async function patchCoreSettingsRisk(body: Record<string, unknown>) {
+  return fetchCorePatch<unknown>("api/settings/risk", body);
+}
+
+/** GET /api/settings/team/admins */
+export async function getCoreSettingsTeamAdmins() {
+  return fetchCoreGet<unknown[]>("api/settings/team/admins");
+}
+
+/** POST /api/settings/team/invite */
+export async function postCoreSettingsTeamInvite(body: {
+  email: string;
+  role?: string;
+}) {
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const res = await fetch(`${base}/api/settings/team/invite`, {
+    method: "POST",
+    headers: coreHeaders("api/settings/team/invite"),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  const data = (await res.json().catch(() => ({}))) as unknown;
+  return { ok: res.ok, status: res.status, data };
+}
+
+/** GET /api/settings/api */
+export async function getCoreSettingsApi() {
+  return fetchCoreGet<unknown>("api/settings/api");
+}
+
+/** PATCH /api/settings/api */
+export async function patchCoreSettingsApi(body: Record<string, unknown>) {
+  return fetchCorePatch<unknown>("api/settings/api", body);
+}
+
+/** POST /api/settings/api/rotate-webhook-secret */
+export async function postCoreSettingsApiRotateWebhookSecret() {
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const res = await fetch(`${base}/api/settings/api/rotate-webhook-secret`, {
+    method: "POST",
+    headers: coreHeaders("api/settings/api/rotate-webhook-secret"),
+    body: JSON.stringify({}),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  const data = (await res.json().catch(() => ({}))) as unknown;
+  return { ok: res.ok, status: res.status, data };
 }
 
 /**
