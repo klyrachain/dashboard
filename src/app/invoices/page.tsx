@@ -3,7 +3,7 @@ import { InvoicesTable } from "@/components/invoices/invoices-table";
 import { InvoicesPageClient } from "@/components/invoices/invoices-page-client";
 
 export default async function InvoicesPage() {
-  const { items, meta } = await getInvoiceList();
+  const { items, meta, error } = await getInvoiceList();
 
   return (
     <div className="space-y-6 font-primary text-body">
@@ -18,6 +18,18 @@ export default async function InvoicesPage() {
         </div>
         <InvoicesPageClient />
       </div>
+      {error && (
+        <div
+          className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 font-secondary text-caption text-amber-800"
+          role="alert"
+        >
+          <strong>Could not load invoices.</strong> {error}
+          <span className="block mt-1 text-amber-700">
+            Ensure the Core API is running at the configured URL and the invoices
+            endpoints are implemented (see md/core-invoices-api-spec.md).
+          </span>
+        </div>
+      )}
       <div className="rounded-lg border border-slate-200 bg-white font-tertiary text-table tabular-nums">
         <InvoicesTable data={items} meta={meta} />
       </div>

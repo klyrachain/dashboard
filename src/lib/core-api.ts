@@ -15,12 +15,12 @@ import type {
   CoreWebhookOrderSuccess,
 } from "@/types/core-api";
 
-const DEFAULT_CORE_URL = "http://localhost:4000";
+// const DEFAULT_CORE_URL = "http://localhost:4000";
 const HEALTH_TIMEOUT_MS = 5000;
 const FETCH_TIMEOUT_MS = 15000;
 
 export function getCoreBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_CORE_URL ?? DEFAULT_CORE_URL;
+  return process.env.NEXT_PUBLIC_CORE_URL!;
 }
 
 /** API key for protected routes (server-only; do not use NEXT_PUBLIC_). */
@@ -31,7 +31,11 @@ function getCoreApiKey(): string | undefined {
 /** Paths that skip auth (public). Everything else requires x-api-key. */
 function isPublicPath(path: string): boolean {
   const pathname = path.replace(/\?.*$/, "").replace(/^\//, "").toLowerCase();
-  return pathname === "health" || pathname === "ready";
+  return (
+    pathname === "health" ||
+    pathname === "ready" ||
+    pathname.startsWith("api/quote")
+  );
 }
 
 function coreHeaders(path: string, extra?: HeadersInit): HeadersInit {
@@ -84,7 +88,7 @@ async function fetchCore<T>(
         sessionId: "debug-session",
         hypothesisId: ["A", "B", "D", "E"],
       }),
-    }).catch(() => {});
+    }).catch(() => { });
     return { ok: res.ok, status: res.status, data };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -99,7 +103,7 @@ async function fetchCore<T>(
         sessionId: "debug-session",
         hypothesisId: "C",
       }),
-    }).catch(() => {});
+    }).catch(() => { });
     throw err;
   }
   // #endregion
@@ -110,7 +114,7 @@ async function fetchCoreGet<T>(
   path: string,
   params?: Record<string, string | number | undefined>
 ): Promise<{
-  status: number; ok: boolean; data: CoreFetchSuccess<T> | CoreApiError 
+  status: number; ok: boolean; data: CoreFetchSuccess<T> | CoreApiError
 }> {
   const search = new URLSearchParams();
   if (params) {
@@ -125,6 +129,69 @@ async function fetchCoreGet<T>(
     { timeout: FETCH_TIMEOUT_MS }
   );
   return { ok, status, data: data as CoreFetchSuccess<T> | CoreApiError };
+}
+
+/** POST request to Core; returns envelope { success, data }. */
+async function fetchCorePost<T>(
+  path: string,
+  body: Record<string, unknown>
+): Promise<{ ok: boolean; status: number; data: T }> {
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: coreHeaders(path),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  const data = (await res.json().catch(() => ({}))) as T;
+  return { ok: res.ok, status: res.status, data };
+}
+
+/** POST api/quote/swap — single provider quote (0x | squid | lifi). Payload: provider, from_token, to_token, amount, from_chain, to_chain, from_address. */
+const QUOTE_SWAP_PATH = "api/quote/swap";
+
+export type CoreQuoteSwapBody = {
+  provider: string;
+  from_token: string;
+  to_token: string;
+  amount: string;
+  from_chain: number;
+  to_chain: number;
+  from_address: string;
+  to_address?: string;
+  slippage?: number;
+};
+
+export async function postCoreQuoteSwap(body: CoreQuoteSwapBody) {
+  const payload: Record<string, unknown> = {
+    provider: body.provider,
+    from_token: body.from_token,
+    to_token: body.to_token,
+    amount: body.amount,
+    from_chain: body.from_chain,
+    to_chain: body.to_chain,
+    from_address: body.from_address,
+  };
+  if (body.to_address != null && body.to_address !== "") payload.to_address = body.to_address;
+  if (body.slippage != null) payload.slippage = body.slippage;
+  return fetchCorePost<unknown>(QUOTE_SWAP_PATH, payload);
+}
+
+/** POST /api/quote/best — best quote across providers (no provider in body). */
+export type CoreQuoteBestBody = {
+  from_token: string;
+  to_token: string;
+  amount: string;
+  from_chain: number;
+  to_chain: number;
+  from_address: string;
+  to_address?: string;
+  slippage?: number;
+};
+
+export async function postCoreQuoteBest(body: CoreQuoteBestBody) {
+  return fetchCorePost<unknown>("api/quote/best", body as Record<string, unknown>);
 }
 
 /**
@@ -237,11 +304,15 @@ export async function getCoreInventory(params?: {
   page?: number;
   limit?: number;
   chain?: string;
+  chainId?: number;
+  address?: string;
 }) {
   return fetchCoreGet<unknown[]>("api/inventory", {
     page: params?.page,
     limit: params?.limit,
     chain: params?.chain,
+    chainId: params?.chainId,
+    address: params?.address,
   });
 }
 

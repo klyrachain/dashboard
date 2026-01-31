@@ -24,9 +24,11 @@ export async function createInvoiceAction(
   const { ok, status, data } = await createCoreInvoice(body);
   if (!ok || !data || typeof data !== "object") {
     const err =
-      data && typeof data === "object" && "error" in data
-        ? String((data as { error: string }).error)
-        : "Failed to create invoice.";
+      status === 404
+        ? "Not Found — Core API may not have the invoices endpoint. Check that the Core server implements POST /api/invoices."
+        : data && typeof data === "object" && "error" in data
+          ? String((data as { error: string }).error)
+          : "Failed to create invoice.";
     return { success: false, error: err };
   }
   const envelope = data as { success?: boolean; data?: { id?: string } };
@@ -49,7 +51,12 @@ export async function sendInvoiceAction(
     revalidatePath(`/invoices/${id}`);
     return { success: true };
   }
-  const err = data && typeof data === "object" && "error" in data ? String((data as { error: string }).error) : "Failed to send invoice";
+  const err =
+    status === 404
+      ? "Not Found — Invoice or Core send endpoint may not exist."
+      : data && typeof data === "object" && "error" in data
+        ? String((data as { error: string }).error)
+        : "Failed to send invoice";
   return { success: false, error: err };
 }
 
@@ -118,9 +125,14 @@ export async function cancelInvoiceAction(id: string): Promise<InvoiceActionResu
 }
 
 export async function duplicateInvoiceAction(id: string): Promise<InvoiceActionResult & { newId?: string }> {
-  const { ok, data } = await duplicateCoreInvoice(id);
+  const { ok, status, data } = await duplicateCoreInvoice(id);
   if (!ok || !data || typeof data !== "object") {
-    const err = data && typeof data === "object" && "error" in data ? String((data as { error: string }).error) : "Failed to duplicate invoice";
+    const err =
+      status === 404
+        ? "Not Found — Invoice or Core duplicate endpoint may not exist."
+        : data && typeof data === "object" && "error" in data
+          ? String((data as { error: string }).error)
+          : "Failed to duplicate invoice";
     return { success: false, error: err };
   }
   const envelope = data as { success?: boolean; data?: { id?: string } };

@@ -170,60 +170,89 @@ function mapInvoice(raw: CoreInvoiceRaw): Invoice {
 export type InvoiceListResult = {
   items: InvoiceListItem[];
   meta: { page: number; limit: number; total: number };
+  /** Set when Core API is unreachable or returns an error (e.g. 404). */
+  error?: string;
 };
 
 /**
  * List invoices from Core API with pagination and optional status filter.
+ * Never throws; returns empty items and optional error message if Core is unreachable.
  */
 export async function getInvoiceList(params?: {
   page?: number;
   limit?: number;
   status?: string;
 }): Promise<InvoiceListResult> {
-  const { ok, data } = await getCoreInvoices({
+  const defaultMeta = {
     page: params?.page ?? 1,
     limit: params?.limit ?? 20,
-    status: params?.status,
-  });
-
-  if (!ok || !data || typeof data !== "object") {
-    return {
-      items: [],
-      meta: { page: params?.page ?? 1, limit: params?.limit ?? 20, total: 0 },
-    };
-  }
-
-  const envelope = data as { success?: boolean; data?: unknown[]; meta?: { page: number; limit: number; total: number } };
-  if (!envelope.success || !Array.isArray(envelope.data)) {
-    return {
-      items: [],
-      meta: { page: params?.page ?? 1, limit: params?.limit ?? 20, total: 0 },
-    };
-  }
-
-  const list = envelope.data;
-  const meta = envelope.meta ?? { page: 1, limit: 20, total: list.length };
-
-  return {
-    items: list.map((row) => mapListItem(row as CoreInvoiceListItemRaw)),
-    meta,
+    total: 0,
   };
+
+  try {
+    const { ok, status, data } = await getCoreInvoices({
+      page: params?.page ?? 1,
+      limit: params?.limit ?? 20,
+      status: params?.status,
+    });
+
+    if (!ok || !data || typeof data !== "object") {
+      const message =
+        status === 404
+          ? "Not Found"
+          : data && typeof data === "object" && "error" in data
+            ? String((data as { error: string }).error)
+            : "Core API error";
+      return { items: [], meta: defaultMeta, error: message };
+    }
+
+    const envelope = data as {
+      success?: boolean;
+      data?: unknown[];
+      meta?: { page: number; limit: number; total: number };
+    };
+    const list = Array.isArray(envelope?.data)
+      ? envelope.data
+      : Array.isArray(data)
+        ? (data as unknown[])
+        : [];
+    if (!envelope?.success && list.length === 0) {
+      const message =
+        data && typeof data === "object" && "error" in data
+          ? String((data as { error: string }).error)
+          : "Core API error";
+      return { items: [], meta: defaultMeta, error: message };
+    }
+
+    const meta = envelope.meta ?? { page: 1, limit: 20, total: list.length };
+    return {
+      items: list.map((row) => mapListItem(row as CoreInvoiceListItemRaw)),
+      meta,
+    };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Unable to load invoices";
+    return { items: [], meta: defaultMeta, error: message };
+  }
 }
 
 /**
- * Get full invoice by id from Core API. Returns null if 404 or error.
+ * Get full invoice by id from Core API. Returns null if 404 or error. Never throws.
  */
 export async function getInvoiceById(id: string): Promise<Invoice | null> {
-  const { ok, data } = await getCoreInvoice(id);
+  try {
+    const { ok, data } = await getCoreInvoice(id);
 
-  if (!ok || !data || typeof data !== "object") return null;
+    if (!ok || !data || typeof data !== "object") return null;
 
-  const envelope = data as { success?: boolean; data?: unknown };
-  if (!envelope.success) return null;
-  const raw = envelope.data;
-  if (!raw || typeof raw !== "object") return null;
+    const envelope = data as { success?: boolean; data?: unknown };
+    if (!envelope.success) return null;
+    const raw = envelope.data;
+    if (!raw || typeof raw !== "object") return null;
 
-  return mapInvoice(raw as CoreInvoiceRaw);
+    return mapInvoice(raw as CoreInvoiceRaw);
+  } catch {
+    return null;
+  }
 }
 
 export type InvoiceUpdatePayload = {

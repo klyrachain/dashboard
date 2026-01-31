@@ -12,6 +12,7 @@ import {
   Key,
   Webhook,
   ScrollText,
+  LineChart,
 } from "lucide-react";
 
 export type NavItem = {
@@ -49,6 +50,7 @@ export const connectNav: NavGroupConfig = {
   title: "Connect",
   items: [
     { href: "/", label: "Overview", icon: Building2 },
+    { href: "/connect/quotes", label: "Quotes", icon: LineChart },
     { href: "/users", label: "Accounts", icon: Users },
     { href: "/transactions", label: "Payouts", icon: Landmark },
   ],
