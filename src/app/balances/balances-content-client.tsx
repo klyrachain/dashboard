@@ -9,7 +9,7 @@ import { RecentActivityTable } from "@/components/balances/recent-activity-table
 import { useGetInventoryQuery } from "@/store/inventory-api";
 import {
   buildBalancesFromAssets,
-  formatAmount,
+  formatTokenAmount,
   formatCurrency,
   type AggregatedAsset,
   type PendingState,
@@ -50,7 +50,7 @@ function AggregationRow({ asset }: { asset: AggregatedAsset }) {
           Total {asset.symbol}
         </span>
         <span className="font-mono text-2xl font-semibold text-slate-900">
-          {formatAmount(asset.totalAmount)}
+          {formatTokenAmount(asset.totalAmount, asset.symbol)}
         </span>
       </div>
       {nonZero.length > 0 && (
@@ -216,7 +216,7 @@ export function BalancesContentClient({
                       className="flex justify-between font-mono"
                     >
                       <span>{c.symbol}</span>
-                      <span>{formatAmount(c.amount)}</span>
+                      <span>{formatTokenAmount(c.amount, c.symbol)}</span>
                     </li>
                   ))}
                 </ul>

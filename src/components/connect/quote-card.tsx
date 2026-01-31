@@ -12,6 +12,12 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { QuoteResult, QuoteData } from "@/lib/data-quotes";
+import {
+  getTokenDecimalsForWei,
+  formatTokenAmountFromWei,
+  formatTokenRate,
+} from "@/lib/format-token";
+import { mapQuoteError } from "@/lib/user-feedback-copy";
 
 type QuoteCardProps = {
   result: QuoteResult;
@@ -19,21 +25,6 @@ type QuoteCardProps = {
   id: string;
 };
 
-/** Decimals by symbol (USDC/USDT = 6, ETH = 18, else 18). */
-function getDecimals(symbol: string): number {
-  const s = (symbol || "").toUpperCase();
-  if (s === "USDC" || s === "USDT") return 6;
-  return 18;
-}
-
-function formatAmount(wei: string, decimals: number = 6): string {
-  const n = BigInt(wei);
-  const div = BigInt(10 ** decimals);
-  const whole = n / div;
-  const frac = n % div;
-  const fracStr = frac.toString().padStart(decimals, "0").slice(0, 6);
-  return `${whole}.${fracStr}`.replace(/\.?0+$/, "");
-}
 
 /** Human-readable rate: (to_amount / 10^toDec) / (from_amount / 10^fromDec) = units of toToken per 1 fromToken. */
 function humanRate(
@@ -80,16 +71,17 @@ export function QuoteCard({ result, id }: QuoteCardProps) {
     transition,
   };
 
-  const fromDecimals = getDecimals(pair.fromToken);
-  const toDecimals = getDecimals(pair.toToken);
+  const fromDecimals = getTokenDecimalsForWei(pair.fromToken);
+  const toDecimals = getTokenDecimalsForWei(pair.toToken);
   const chartData = data ? chartDataFromQuote(data, fromDecimals, toDecimals) : [];
   const rateHuman =
     data && Number(data.from_amount) > 0
       ? humanRate(data.from_amount, data.to_amount, fromDecimals, toDecimals)
       : 0;
   const toAmountFormatted = data
-    ? formatAmount(data.to_amount, toDecimals)
+    ? formatTokenAmountFromWei(data.to_amount, pair.toToken)
     : "—";
+  const rateFormatted = rateHuman > 0 ? formatTokenRate(rateHuman, pair.toToken) : "—";
 
   return (
     <Card
@@ -108,7 +100,12 @@ export function QuoteCard({ result, id }: QuoteCardProps) {
       </CardHeader>
       <CardContent className="pt-0">
         {!ok && (
-          <p className="text-sm text-amber-600">{error ?? "Quote failed"}</p>
+          <div className="flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-md border border-dashed border-slate-200 bg-slate-50/50 px-4 py-6 text-center h-[140px]">
+            <p className="text-sm font-medium text-slate-500">No data available</p>
+            <p className="text-xs text-slate-500">
+              {error === "Loading…" ? "Loading…" : mapQuoteError(error)}
+            </p>
+          </div>
         )}
         {ok && data && (
           <>
@@ -116,7 +113,7 @@ export function QuoteCard({ result, id }: QuoteCardProps) {
               {toAmountFormatted} <span className="text-sm font-normal text-slate-500">{pair.toToken}</span>
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              Rate: {rateHuman > 0 ? (rateHuman >= 1 ? rateHuman.toFixed(4) : rateHuman.toFixed(6)) : "—"} {pair.toToken}/{pair.fromToken}
+              Rate: {rateFormatted} {pair.toToken}/{pair.fromToken}
             </p>
             {data.estimated_duration_seconds != null && (
               <p className="text-xs text-slate-400 mt-0.5">
@@ -145,7 +142,7 @@ export function QuoteCard({ result, id }: QuoteCardProps) {
                     <XAxis dataKey="name" hide />
                     <YAxis hide domain={["auto", "auto"]} />
                     <Tooltip
-                      formatter={(value: number) => [value >= 1 ? value.toFixed(4) : value.toFixed(6), "Rate"]}
+                      formatter={(value: number) => [formatTokenRate(value, pair.toToken), "Rate"]}
                       contentStyle={{ fontSize: "12px" }}
                     />
                     <Area

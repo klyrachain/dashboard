@@ -13,7 +13,7 @@ export default async function ConnectQuotesPage() {
         </h1>
         <p className="font-secondary text-caption text-muted-foreground mt-1">
           Fiat↔crypto (onramp) and swap quotes for the most traded token pairs.
-          Chains and tokens from BACKEND_URL. Drag swap cards to reorder.
+          Drag swap cards to reorder.
         </p>
       </div>
 
@@ -23,7 +23,7 @@ export default async function ConnectQuotesPage() {
         <h2 className="text-lg font-semibold tracking-tight text-slate-900">
           Swap quotes (most traded pairs)
         </h2>
-        <QuotesPageClient pairs={pairs} chainsCount={chains.length} tokensCount={tokens.length} />
+        <QuotesPageClient pairs={pairs} />
       </section>
     </div>
   );

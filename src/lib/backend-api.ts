@@ -8,7 +8,7 @@
 const FETCH_TIMEOUT_MS = 15000;
 
 export function getBackendBaseUrl(): string {
-  const url = process.env.BACKEND_URL?.trim()?.replace(/\/$/, "");
+  const url = process.env.NEXT_PUBLIC_BACKEND_URL?.trim()?.replace(/\/$/, "");
   if (!url) return "";
   return url;
 }

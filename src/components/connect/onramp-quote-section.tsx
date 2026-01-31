@@ -18,6 +18,7 @@ import type { OnrampQuoteResult } from "@/lib/data-onramp-quote";
 import type { BackendChain, BackendToken } from "@/lib/backend-api";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { onrampAmountRequired, mapQuoteError } from "@/lib/user-feedback-copy";
 
 /** Truncate long text (e.g. token names) to a reasonable length. */
 function truncateLabel(text: string, maxLen: number = 35): string {
@@ -112,7 +113,7 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
     try {
       const num = parseFloat(amount);
       if (Number.isNaN(num) || num <= 0) {
-        setResult({ ok: false, error: "Enter a valid amount." });
+        setResult({ ok: false, error: onrampAmountRequired });
         return;
       }
       const data = await getOnrampQuoteAction({
@@ -374,7 +375,7 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
                 )}
               </dl>
             ) : (
-              <p>{result.error ?? "Quote failed."}</p>
+              <p>{mapQuoteError(result.error)}</p>
             )}
           </div>
         )}

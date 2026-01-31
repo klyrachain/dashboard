@@ -16,6 +16,7 @@ import type {
   VolumeGranularity,
   VolumeChartResult,
 } from "@/lib/data-dashboard";
+import { volumeLoadError } from "@/lib/user-feedback-copy";
 
 const DEFAULT_RANGE: VolumeDateRange = "7d";
 const DEFAULT_GRANULARITY: VolumeGranularity = "daily";
@@ -55,8 +56,8 @@ export function DashboardVolumeSection() {
           netPrevious: result.netPrevious,
           feePrevious: result.feePrevious,
         });
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load volume");
+      } catch {
+        setError(volumeLoadError);
         setData(null);
       } finally {
         setLoading(false);

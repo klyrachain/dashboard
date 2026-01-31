@@ -20,6 +20,7 @@ import { getQuotesAction } from "@/app/connect/quotes/actions";
 import { QuoteCard } from "./quote-card";
 import type { TokenPair, QuoteResult, SwapQuoteProvider } from "@/lib/data-quotes";
 import { Button } from "@/components/ui/button";
+import { quotesEmpty } from "@/lib/user-feedback-copy";
 import {
   Select,
   SelectContent,
@@ -37,11 +38,9 @@ const PROVIDER_OPTIONS: { value: SwapQuoteProvider; label: string }[] = [
 
 type QuotesPageClientProps = {
   pairs: TokenPair[];
-  chainsCount?: number;
-  tokensCount?: number;
 };
 
-export function QuotesPageClient({ pairs, chainsCount = 0, tokensCount = 0 }: QuotesPageClientProps) {
+export function QuotesPageClient({ pairs }: QuotesPageClientProps) {
   const [order, setOrder] = useState<string[]>(() =>
     pairs.map((p) => p.label)
   );
@@ -100,9 +99,7 @@ export function QuotesPageClient({ pairs, chainsCount = 0, tokensCount = 0 }: Qu
   if (pairs.length === 0) {
     return (
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-8 text-center font-secondary text-caption text-slate-600">
-        {chainsCount === 0 || tokensCount === 0
-          ? "Chains/tokens not loaded. Set BACKEND_URL and ensure GET /api/squid/chains and /api/squid/tokens are available."
-          : "No token pairs resolved. Ensure Core API (transactions) is available and pairs exist in backend tokens."}
+        {quotesEmpty}
       </div>
     );
   }
@@ -110,11 +107,6 @@ export function QuotesPageClient({ pairs, chainsCount = 0, tokensCount = 0 }: Qu
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        {chainsCount > 0 && tokensCount > 0 && (
-          <span className="text-xs text-slate-500">
-            Chains: {chainsCount}, Tokens: {tokensCount}
-          </span>
-        )}
         <Select
           value={provider}
           onValueChange={(v) => setProvider(v as SwapQuoteProvider)}
@@ -149,12 +141,12 @@ export function QuotesPageClient({ pairs, chainsCount = 0, tokensCount = 0 }: Qu
           items={order}
           strategy={rectSortingStrategy}
         >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 p-2">
             {orderedPairs.map((pair) => {
               const result = resultsByLabel.get(pair.label) ?? {
                 pair,
                 ok: false,
-                error: loading ? "Loading…" : "No quote",
+                error: loading ? "Loading…" : undefined,
               };
               return (
                 <QuoteCard

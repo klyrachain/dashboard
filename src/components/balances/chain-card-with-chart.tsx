@@ -10,7 +10,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { formatAmount, formatCurrency, type ChainBalance } from "@/lib/data-balances";
+import { formatCurrency, type ChainBalance } from "@/lib/data-balances";
+import { formatTokenAmount } from "@/lib/format-token";
 import { getTokenUsdRate } from "@/lib/token-rates";
 
 type ChainChartPoint = {
@@ -106,7 +107,7 @@ export function ChainCardWithChart({ chain }: { chain: ChainBalance }) {
                       <div className="rounded-md border border-border bg-background px-3 py-2 text-xs shadow-sm">
                         <p className="font-medium text-foreground">{p.symbol}</p>
                         <p className="text-muted-foreground">
-                          Amount: {formatAmount(p.amount)} {p.symbol}
+                          Amount: {formatTokenAmount(p.amount, p.symbol)} {p.symbol}
                         </p>
                         <p className="text-muted-foreground">
                           USD: {formatCurrency(p.amountUsd)}
@@ -136,7 +137,7 @@ export function ChainCardWithChart({ chain }: { chain: ChainBalance }) {
               >
                 <span className="text-slate-500">{t.symbol}</span>
                 <span className="font-mono font-medium text-slate-900">
-                  {formatAmount(t.amount)}
+                  {formatTokenAmount(t.amount, t.symbol)}
                 </span>
               </div>
             ))}

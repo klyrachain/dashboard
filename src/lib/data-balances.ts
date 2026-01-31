@@ -54,13 +54,15 @@ export interface BalanceActivity {
   availableOn: Date;
 }
 
-/** Format numbers with comma separation (no decimals for large numbers). */
+/** Format numbers with comma separation. Prefer formatTokenAmount for token amounts. */
 export function formatAmount(value: number, decimals = 2): string {
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(value);
 }
+
+export { formatTokenAmount } from "@/lib/format-token";
 
 /** Format currency with $ and commas. */
 export function formatCurrency(value: number, decimals = 2): string {

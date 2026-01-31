@@ -27,8 +27,7 @@ function EmptyHistoryState() {
           </div>
           <p className="text-sm font-medium text-slate-600">No data</p>
           <p className="text-xs text-slate-500">
-            No history data. Chart will appear when data is available from
-            Core.
+            No history data yet. Once you have activity, it'll show up here.
           </p>
         </div>
       </CardContent>

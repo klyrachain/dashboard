@@ -10,7 +10,7 @@ import {
   getPendingState,
   getClaimableState,
   getRecentBalanceActivity,
-  formatAmount,
+  formatTokenAmount,
   formatCurrency,
   type AggregatedAsset,
 } from "@/lib/data-balances";
@@ -46,7 +46,7 @@ function AggregationRow({ asset }: { asset: AggregatedAsset }) {
           Total {asset.symbol}
         </span>
         <span className="font-mono text-2xl font-semibold text-slate-900">
-          {formatAmount(asset.totalAmount)}
+          {formatTokenAmount(asset.totalAmount, asset.symbol)}
         </span>
       </div>
       {nonZero.length > 0 && (
@@ -204,7 +204,7 @@ export async function BalancesContent() {
                       className="flex justify-between font-mono"
                     >
                       <span>{c.symbol}</span>
-                      <span>{formatAmount(c.amount)}</span>
+                      <span>{formatTokenAmount(c.amount, c.symbol)}</span>
                     </li>
                   ))}
                 </ul>
