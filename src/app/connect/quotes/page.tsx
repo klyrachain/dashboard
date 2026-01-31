@@ -1,9 +1,9 @@
-import { getMostTradedPairs } from "@/lib/data-quotes";
+import { getChainsTokensAndPairs } from "@/lib/data-quotes";
 import { QuotesPageClient } from "@/components/connect/quotes-page-client";
 import { OnrampQuoteSection } from "@/components/connect/onramp-quote-section";
 
 export default async function ConnectQuotesPage() {
-  const pairs = await getMostTradedPairs(8);
+  const { chains, tokens, pairs } = await getChainsTokensAndPairs(8);
 
   return (
     <div className="space-y-8 font-primary text-body">
@@ -13,17 +13,17 @@ export default async function ConnectQuotesPage() {
         </h1>
         <p className="font-secondary text-caption text-muted-foreground mt-1">
           Fiat↔crypto (onramp) and swap quotes for the most traded token pairs.
-          Drag swap cards to reorder.
+          Chains and tokens from BACKEND_URL. Drag swap cards to reorder.
         </p>
       </div>
 
-      <OnrampQuoteSection />
+      <OnrampQuoteSection chains={chains} tokens={tokens} />
 
       <section className="space-y-4">
         <h2 className="text-lg font-semibold tracking-tight text-slate-900">
           Swap quotes (most traded pairs)
         </h2>
-        <QuotesPageClient pairs={pairs} />
+        <QuotesPageClient pairs={pairs} chainsCount={chains.length} tokensCount={tokens.length} />
       </section>
     </div>
   );

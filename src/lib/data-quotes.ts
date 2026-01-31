@@ -1,13 +1,18 @@
 /**
- * Quotes page data: token pairs and quotes using inventory (chainId, tokenAddress, symbol, address).
- * Inventory from GET /api/inventory; pairs from transactions; quotes from POST api/quote/swap.
+ * Quotes page data: token pairs (via transformer + BACKEND_URL chains/tokens) and swap quotes (Core API).
+ * Pairs: raw list from Core transactions → resolved with chain ID + token address via backend chains/tokens.
+ * Quotes: POST api/quote/swap (single provider) or api/quote/best; chain id + token address required.
+ * @see md/quotes-integration.md, md/quote-api.md
  */
 
 import {
   getCoreTransactions,
   getCoreInventory,
   postCoreQuoteSwap,
+  postCoreQuoteBest,
 } from "@/lib/core-api";
+import { getBackendChains, getBackendTokens, type BackendChain, type BackendToken } from "@/lib/backend-api";
+import { expandPairs, type RawPair } from "@/lib/quotes-pair-transformer";
 
 /** One inventory asset from GET /api/inventory (chainId, tokenAddress, symbol, address, wallet). */
 export type InventoryAssetForQuote = {
@@ -48,8 +53,19 @@ export type InventoryQuoteContext = {
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const EVM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 
+/** Fixed wallet address used for quote from_address / to_address (required by Squid/LiFi). */
+export const QUOTE_FROM_ADDRESS = "0x9f08eFb0767Bf180B8b8094FaaEF9DAB5a0755e1";
+
 function isEvmAddress(s: string): boolean {
   return EVM_ADDRESS_REGEX.test(String(s).trim());
+}
+
+/** Native ETH sentinel (lowercase); valid for quote API. */
+const NATIVE_ETH_ADDRESS_LC = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
+function isValidQuoteTokenAddress(s: string): boolean {
+  const t = String(s).trim().toLowerCase();
+  return EVM_ADDRESS_REGEX.test(t) || t === NATIVE_ETH_ADDRESS_LC;
 }
 
 /** Parse one inventory item from API (chainId, tokenAddress, symbol, address, wallet). */
@@ -123,20 +139,6 @@ export async function getInventoryQuoteContext(): Promise<InventoryQuoteContext>
   return { tokenByChainAndSymbol, chainNameToId, firstWalletAddress };
 }
 
-function resolveChainId(chainName: string, ctx: InventoryQuoteContext): number {
-  const key = chainName.trim().toUpperCase();
-  return ctx.chainNameToId.get(key) ?? 8453;
-}
-
-function resolveTokenAddress(
-  chainId: number,
-  symbol: string,
-  ctx: InventoryQuoteContext
-): string {
-  const key = `${chainId}:${symbol.trim().toUpperCase()}`;
-  return ctx.tokenByChainAndSymbol.get(key) ?? symbol;
-}
-
 /** Default amount in wei for "1 unit": 1e6 for USDC/USDT, 1e18 for others. */
 function defaultAmountWei(symbol: string): string {
   const s = symbol.toUpperCase();
@@ -144,16 +146,12 @@ function defaultAmountWei(symbol: string): string {
   return "1000000000000000000";
 }
 
-/**
- * Derive most-traded token pairs from transactions, resolving to chainId and tokenAddress
- * using inventory. Only includes pairs where both tokens exist in inventory.
- */
-export async function getMostTradedPairs(limit: number = 8): Promise<TokenPair[]> {
-  const ctx = await getInventoryQuoteContext();
+/** Build raw pair list from Core transactions (symbol + chain name, count). */
+async function getRawPairsFromTransactions(limit: number): Promise<RawPair[]> {
   const pairCounts = new Map<
     string,
     { count: number; from: string; to: string; fromChain: string; toChain: string }
- >();
+  >();
 
   try {
     const result = await getCoreTransactions({ limit: 500, page: 1 });
@@ -198,16 +196,11 @@ export async function getMostTradedPairs(limit: number = 8): Promise<TokenPair[]
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, limit);
 
-  const fallbackPairs: Array<{
-    from: string;
-    to: string;
-    fromChain: string;
-    toChain: string;
-  }> = [
-    { from: "USDC", to: "ETH", fromChain: "BASE", toChain: "BASE" },
-    { from: "USDC", to: "USDT", fromChain: "BASE", toChain: "BASE" },
-    { from: "ETH", to: "USDC", fromChain: "BASE", toChain: "BASE" },
-    { from: "USDC", to: "ETH", fromChain: "ETHEREUM", toChain: "ETHEREUM" },
+  const fallbackPairs: RawPair[] = [
+    { from: "USDC", to: "ETH", fromChain: "BASE", toChain: "BASE", count: 0 },
+    { from: "USDC", to: "USDT", fromChain: "BASE", toChain: "BASE", count: 0 },
+    { from: "ETH", to: "USDC", fromChain: "BASE", toChain: "BASE", count: 0 },
+    { from: "USDC", to: "ETH", fromChain: "ETHEREUM", toChain: "ETHEREUM", count: 0 },
   ];
 
   const toExpand =
@@ -218,38 +211,39 @@ export async function getMostTradedPairs(limit: number = 8): Promise<TokenPair[]
           ...fallbackPairs.slice(0, limit - sorted.length),
         ];
 
-  const expanded: TokenPair[] = [];
-  const seen = new Set<string>();
+  return toExpand.map((p) => ({
+    ...p,
+    count: pairCounts.get(
+      `${p.fromChain}:${p.from}:${p.toChain}:${p.to}`.toLowerCase()
+    )?.count ?? 0,
+  }));
+}
 
-  for (const p of toExpand) {
-    const fromChainId = resolveChainId(p.fromChain, ctx);
-    const toChainId = resolveChainId(p.toChain, ctx);
-    const fromAddress = resolveTokenAddress(fromChainId, p.from, ctx);
-    const toAddress = resolveTokenAddress(toChainId, p.to, ctx);
-    if (!isEvmAddress(fromAddress) || !isEvmAddress(toAddress)) continue;
+/**
+ * Derive most-traded token pairs from transactions, resolving to chainId and tokenAddress
+ * using BACKEND_URL chains/tokens. Only includes pairs where both tokens resolve.
+ */
+export async function getMostTradedPairs(limit: number = 8): Promise<TokenPair[]> {
+  const { pairs } = await getChainsTokensAndPairs(limit);
+  return pairs;
+}
 
-    const labelKey = `${p.from}/${p.to}`.toLowerCase();
-    if (seen.has(labelKey)) continue;
-    seen.add(labelKey);
-
-    const pairKey = `${p.fromChain}:${p.from}:${p.toChain}:${p.to}`.toLowerCase();
-    const count = pairCounts.get(pairKey)?.count ?? 0;
-
-    expanded.push({
-      fromToken: p.from,
-      toToken: p.to,
-      fromChain: p.fromChain,
-      toChain: p.toChain,
-      fromChainId,
-      toChainId,
-      fromAddress,
-      toAddress,
-      label: `${p.from}/${p.to}`,
-      count,
-    });
-  }
-
-  return expanded;
+/**
+ * Fetch chains and tokens from BACKEND_URL and resolve pairs for the quotes page.
+ * Use this on connect/quotes so the page has chains, tokens, and pairs in one place.
+ */
+export async function getChainsTokensAndPairs(limit: number = 8): Promise<{
+  chains: BackendChain[];
+  tokens: BackendToken[];
+  pairs: TokenPair[];
+}> {
+  const [chains, tokens, rawPairs] = await Promise.all([
+    getBackendChains(),
+    getBackendTokens(),
+    getRawPairsFromTransactions(limit),
+  ]);
+  const pairs = expandPairs(rawPairs, chains, tokens);
+  return { chains, tokens, pairs };
 }
 
 export type QuoteData = {
@@ -269,25 +263,57 @@ export type QuoteResult = {
   error?: string;
 };
 
+/** Supported swap quote provider: single provider or "best" (backend picks best rate). */
+export type SwapQuoteProvider = "0x" | "squid" | "lifi" | "best";
+
 /**
- * Fetch swap quote for one pair via POST api/quote/swap (provider: squid).
- * Uses from_token, to_token = pair.fromAddress, pair.toAddress (inventory tokenAddress);
- * from_chain, to_chain = pair.fromChainId, pair.toChainId; from_address from inventory or zero.
+ * Fetch swap quote for one pair. Uses chain id + token address (required by quote API).
+ * Does not call the API if either token address is missing or invalid.
+ * provider "best" → POST api/quote/best; otherwise POST api/quote/swap with that provider.
  */
 export async function getQuoteForPair(
   pair: TokenPair,
   amountWei?: string,
-  fromAddress?: string | null
+  fromAddress?: string | null,
+  provider: SwapQuoteProvider = "squid"
 ): Promise<QuoteResult> {
+  if (!isValidQuoteTokenAddress(pair.fromAddress) || !isValidQuoteTokenAddress(pair.toAddress)) {
+    return { pair, ok: false, error: "Token address required (resolve from chains/tokens)." };
+  }
+
   const amount = amountWei ?? defaultAmountWei(pair.fromToken);
   const resolvedFrom =
     fromAddress && isEvmAddress(fromAddress)
       ? fromAddress
-      : (await getInventoryQuoteContext()).firstWalletAddress ?? ZERO_ADDRESS;
+      : QUOTE_FROM_ADDRESS;
 
   try {
+    if (provider === "best") {
+      const res = await postCoreQuoteBest({
+        from_token: pair.fromAddress,
+        to_token: pair.toAddress,
+        amount,
+        from_chain: pair.fromChainId,
+        to_chain: pair.toChainId,
+        from_address: resolvedFrom,
+      });
+      if (!res.ok || !res.data || typeof res.data !== "object") {
+        const err =
+          res.data &&
+          typeof res.data === "object" &&
+          "error" in res.data
+            ? String((res.data as { error: string }).error)
+            : "Quote failed";
+        return { pair, ok: false, error: err };
+      }
+      const envelope = res.data as { success?: boolean; data?: { best?: QuoteData } };
+      const quote = envelope?.data?.best;
+      if (!quote) return { pair, ok: false, error: "No quote data" };
+      return { pair, ok: true, data: quote };
+    }
+
     const res = await postCoreQuoteSwap({
-      provider: "squid",
+      provider,
       from_token: pair.fromAddress,
       to_token: pair.toAddress,
       amount,
@@ -317,16 +343,27 @@ export async function getQuoteForPair(
   }
 }
 
-/** Fetch quotes for multiple pairs; from_address from first wallet in inventory. */
+/** Delay helper for throttling. */
+function delayMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Throttle: ms between each quote request to avoid "too many requests" / DoS. One request at a time with cooldown. */
+const QUOTE_THROTTLE_MS = 2000;
+
+/**
+ * Fetch quotes for multiple pairs; one request per pair, with cooldown between requests.
+ * Uses fixed from_address (QUOTE_FROM_ADDRESS). Pairs without valid token addresses are skipped (no request).
+ */
 export async function getQuotesForPairs(
   pairs: TokenPair[],
-  amountWei?: string
+  amountWei?: string,
+  provider: SwapQuoteProvider = "squid"
 ): Promise<QuoteResult[]> {
-  const ctx = await getInventoryQuoteContext();
-  const fromAddress = ctx.firstWalletAddress;
   const results: QuoteResult[] = [];
-  for (const pair of pairs) {
-    results.push(await getQuoteForPair(pair, amountWei, fromAddress));
+  for (let i = 0; i < pairs.length; i++) {
+    if (i > 0) await delayMs(QUOTE_THROTTLE_MS);
+    results.push(await getQuoteForPair(pairs[i], amountWei, QUOTE_FROM_ADDRESS, provider));
   }
   return results;
 }

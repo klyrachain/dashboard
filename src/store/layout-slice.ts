@@ -1,5 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+
 export type LayoutTheme = "sidebar" | "no-sidebar";
 
 type LayoutState = {

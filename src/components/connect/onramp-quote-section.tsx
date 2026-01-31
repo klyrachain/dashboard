@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +12,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getOnrampQuoteAction } from "@/app/connect/quotes/actions";
 import type { OnrampQuoteResult } from "@/lib/data-onramp-quote";
+import type { BackendChain, BackendToken } from "@/lib/backend-api";
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+/** Truncate long text (e.g. token names) to a reasonable length. */
+function truncateLabel(text: string, maxLen: number = 35): string {
+  const t = (text || "").trim();
+  if (t.length <= maxLen) return t;
+  return t.slice(0, maxLen).trim() + "…";
+}
 
 const COUNTRIES = [
   { value: "GH", label: "Ghana (GHS)" },
@@ -22,16 +33,71 @@ const COUNTRIES = [
   { value: "ZA", label: "South Africa (ZAR)" },
 ];
 
-const CHAINS = [
+const FALLBACK_CHAINS = [
   { value: "8453", label: "Base (8453)" },
   { value: "1", label: "Ethereum (1)" },
   { value: "137", label: "Polygon (137)" },
 ];
 
-export function OnrampQuoteSection() {
+type OnrampQuoteSectionProps = {
+  chains?: BackendChain[];
+  tokens?: BackendToken[];
+};
+
+export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSectionProps) {
+  const chainOptions = useMemo(() => {
+    const list =
+      chains.length > 0
+        ? chains.map((c) => ({ value: String(c.chainId), label: `${c.networkName} (${c.chainId})` }))
+        : FALLBACK_CHAINS;
+    return [...list].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+  }, [chains]);
+
   const [country, setCountry] = useState("GH");
-  const [chainId, setChainId] = useState(8453);
+  const [chainId, setChainId] = useState(() => {
+    const first = chainOptions[0]?.value;
+    return first ? Number(first) : 8453;
+  });
+  const [chainSearch, setChainSearch] = useState("");
+  const [chainOpen, setChainOpen] = useState(false);
+  const filteredChainOptions = useMemo(() => {
+    const q = chainSearch.trim().toLowerCase();
+    if (!q) return chainOptions;
+    return chainOptions.filter((o) => o.label.toLowerCase().includes(q));
+  }, [chainOptions, chainSearch]);
+
+  const tokensOnChain = useMemo(
+    () => tokens.filter((t) => Number(t.chainId) === chainId),
+    [tokens, chainId]
+  );
+  const tokenOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const list = tokensOnChain
+      .filter((t) => {
+        const s = (t.symbol || "").toUpperCase();
+        if (!s || seen.has(s)) return false;
+        seen.add(s);
+        return true;
+      })
+      .map((t) => ({
+        value: t.symbol,
+        label: `${t.symbol} (${truncateLabel(t.name || t.address.slice(0, 8), 35)})`,
+      }));
+    return [...list].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+  }, [tokensOnChain]);
+  const [tokenSearch, setTokenSearch] = useState("");
+  const [tokenOpen, setTokenOpen] = useState(false);
+  const filteredTokenOptions = useMemo(() => {
+    const q = tokenSearch.trim().toLowerCase();
+    if (!q) return tokenOptions;
+    return tokenOptions.filter((o) => o.label.toLowerCase().includes(q));
+  }, [tokenOptions, tokenSearch]);
   const [token, setToken] = useState("USDC");
+  useEffect(() => {
+    if (tokenOptions.length > 0 && !tokenOptions.some((t) => t.value === token)) {
+      setToken(tokenOptions[0].value);
+    }
+  }, [chainId, tokenOptions, token]);
   const [amount, setAmount] = useState("100");
   const [amountIn, setAmountIn] = useState<"fiat" | "crypto">("fiat");
   const [purchaseMethod, setPurchaseMethod] = useState<"buy" | "sell">("buy");
@@ -93,30 +159,118 @@ export function OnrampQuoteSection() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="onramp-chain">Chain</Label>
-            <Select
-              value={String(chainId)}
-              onValueChange={(v) => setChainId(Number(v))}
-            >
-              <SelectTrigger id="onramp-chain">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CHAINS.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={chainOpen} onOpenChange={setChainOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  id="onramp-chain"
+                  variant="outline"
+                  role="combobox"
+                  className="h-9 w-full justify-between font-normal"
+                >
+                  <span className="truncate">
+                    {chainOptions.find((c) => c.value === String(chainId))?.label ?? "Chain"}
+                  </span>
+                  <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popper-anchor-width)] min-w-[8rem] max-w-[280px] p-0" align="start">
+                <div className="p-2 border-b border-slate-100">
+                  <Input
+                    placeholder="Search chains…"
+                    value={chainSearch}
+                    onChange={(e) => setChainSearch(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="max-h-[280px] overflow-y-auto p-1">
+                  {filteredChainOptions.length > 0 ? (
+                    filteredChainOptions.map((c) => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        className={cn(
+                          "flex w-full cursor-pointer items-center rounded-sm py-1.5 pl-2 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                          c.value === String(chainId) && "bg-accent"
+                        )}
+                        onClick={() => {
+                          setChainId(Number(c.value));
+                          setChainSearch("");
+                          setChainOpen(false);
+                        }}
+                      >
+                        <span className="truncate">{c.label}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="py-4 text-center text-sm text-slate-500">No chain found</div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="space-y-2">
             <Label htmlFor="onramp-token">Token (symbol or address)</Label>
-            <Input
-              id="onramp-token"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="USDC or 0x..."
-            />
+            {tokens.length > 0 ? (
+              <Popover open={tokenOpen} onOpenChange={setTokenOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="onramp-token"
+                    variant="outline"
+                    role="combobox"
+                    className="h-9 w-full justify-between font-normal"
+                  >
+                    <span className="truncate">
+                      {tokenOptions.find((t) => t.value === token)?.label ?? token ?? "Token"}
+                    </span>
+                    <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popper-anchor-width)] min-w-[8rem] max-w-[280px] p-0" align="start">
+                  <div className="p-2 border-b border-slate-100">
+                    <Input
+                      placeholder="Search tokens…"
+                      value={tokenSearch}
+                      onChange={(e) => setTokenSearch(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="max-h-[280px] overflow-y-auto p-1">
+                    {filteredTokenOptions.length > 0 ? (
+                      filteredTokenOptions.map((t) => (
+                        <button
+                          key={t.value}
+                          type="button"
+                          className={cn(
+                            "flex w-full cursor-pointer items-center rounded-sm py-1.5 pl-2 pr-2 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                            t.value === token && "bg-accent"
+                          )}
+                          onClick={() => {
+                            setToken(t.value);
+                            setTokenSearch("");
+                            setTokenOpen(false);
+                          }}
+                        >
+                          <span className="truncate" title={t.label}>
+                            {t.label}
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="py-4 text-center text-sm text-slate-500">
+                        {tokenOptions.length === 0 ? "No tokens on this chain" : "No token found"}
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Input
+                id="onramp-token"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="USDC or 0x..."
+              />
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="onramp-amount">Amount</Label>

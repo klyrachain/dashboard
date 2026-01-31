@@ -19,6 +19,13 @@ type QuoteCardProps = {
   id: string;
 };
 
+/** Decimals by symbol (USDC/USDT = 6, ETH = 18, else 18). */
+function getDecimals(symbol: string): number {
+  const s = (symbol || "").toUpperCase();
+  if (s === "USDC" || s === "USDT") return 6;
+  return 18;
+}
+
 function formatAmount(wei: string, decimals: number = 6): string {
   const n = BigInt(wei);
   const div = BigInt(10 ** decimals);
@@ -28,11 +35,28 @@ function formatAmount(wei: string, decimals: number = 6): string {
   return `${whole}.${fracStr}`.replace(/\.?0+$/, "");
 }
 
-/** Build chart data from quote: single point + slight variance for visual. */
-function chartDataFromQuote(data: QuoteData): Array<{ name: string; rate: number }> {
-  const from = Number(data.from_amount);
-  const to = Number(data.to_amount);
-  const rate = from > 0 ? to / from : 0;
+/** Human-readable rate: (to_amount / 10^toDec) / (from_amount / 10^fromDec) = units of toToken per 1 fromToken. */
+function humanRate(
+  fromAmountWei: string,
+  toAmountWei: string,
+  fromDecimals: number,
+  toDecimals: number
+): number {
+  const from = Number(fromAmountWei);
+  const to = Number(toAmountWei);
+  if (from <= 0) return 0;
+  const fromHuman = from / 10 ** fromDecimals;
+  const toHuman = to / 10 ** toDecimals;
+  return fromHuman > 0 ? toHuman / fromHuman : 0;
+}
+
+/** Build chart data from quote: human rate + slight variance for visual. */
+function chartDataFromQuote(
+  data: QuoteData,
+  fromDecimals: number,
+  toDecimals: number
+): Array<{ name: string; rate: number }> {
+  const rate = humanRate(data.from_amount, data.to_amount, fromDecimals, toDecimals);
   return [
     { name: "0", rate: rate * 0.98 },
     { name: "1", rate },
@@ -56,13 +80,15 @@ export function QuoteCard({ result, id }: QuoteCardProps) {
     transition,
   };
 
-  const chartData = data ? chartDataFromQuote(data) : [];
-  const rate =
+  const fromDecimals = getDecimals(pair.fromToken);
+  const toDecimals = getDecimals(pair.toToken);
+  const chartData = data ? chartDataFromQuote(data, fromDecimals, toDecimals) : [];
+  const rateHuman =
     data && Number(data.from_amount) > 0
-      ? Number(data.to_amount) / Number(data.from_amount)
+      ? humanRate(data.from_amount, data.to_amount, fromDecimals, toDecimals)
       : 0;
   const toAmountFormatted = data
-    ? formatAmount(data.to_amount, pair.toToken.toUpperCase() === "USDC" || pair.toToken.toUpperCase() === "USDT" ? 6 : 18)
+    ? formatAmount(data.to_amount, toDecimals)
     : "—";
 
   return (
@@ -90,7 +116,7 @@ export function QuoteCard({ result, id }: QuoteCardProps) {
               {toAmountFormatted} <span className="text-sm font-normal text-slate-500">{pair.toToken}</span>
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              Rate: {rate > 0 ? rate.toFixed(6) : "—"} {pair.toToken}/{pair.fromToken}
+              Rate: {rateHuman > 0 ? (rateHuman >= 1 ? rateHuman.toFixed(4) : rateHuman.toFixed(6)) : "—"} {pair.toToken}/{pair.fromToken}
             </p>
             {data.estimated_duration_seconds != null && (
               <p className="text-xs text-slate-400 mt-0.5">
@@ -119,7 +145,7 @@ export function QuoteCard({ result, id }: QuoteCardProps) {
                     <XAxis dataKey="name" hide />
                     <YAxis hide domain={["auto", "auto"]} />
                     <Tooltip
-                      formatter={(value: number) => [value.toFixed(6), "Rate"]}
+                      formatter={(value: number) => [value >= 1 ? value.toFixed(4) : value.toFixed(6), "Rate"]}
                       contentStyle={{ fontSize: "12px" }}
                     />
                     <Area

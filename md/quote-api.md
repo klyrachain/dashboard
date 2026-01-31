@@ -2,6 +2,8 @@
 
 This document describes the **swap quote** endpoints: a single POST endpoint that returns quotes from **0x**, **Squid Router**, or **LiFi** based on the `provider` parameter. No onramp/offramp quotes here; this is for **swap** (this token for that token) only.
 
+**Important:** Swap quote requests **must** use **chain ID** (number) and **token contract address** — chain names or token symbols are not accepted. The dashboard resolves pairs using chains/tokens from `BACKEND_URL` (GET `/api/squid/chains`, GET `/api/squid/tokens`) so that requests send the correct `from_chain`/`to_chain` and `from_token`/`to_token`. See [quotes-integration.md](./quotes-integration.md).
+
 For **onramp quotes** (fiat↔crypto via Fonbnk, with optional swap when the requested token is not in the pool), see [onramp-quote-api.md](./onramp-quote-api.md).
 
 **Base path:** `/api/quote`  
