@@ -48,3 +48,17 @@ export const onrampAmountRequired = "Please enter an amount to get a quote.";
 /** Volume/chart load failure (no technical detail). */
 export const volumeLoadError =
   "Things are taking a little longer than usual. We're still trying to reach the network.";
+
+/** Invoice list load failure — map raw API error to sweet copy. */
+export function mapInvoiceLoadError(raw: string | undefined | null): string {
+  if (!raw || !raw.trim()) return serverError;
+  const lower = raw.toLowerCase();
+  if (lower.includes("timeout") || lower.includes("network")) return apiTimeout;
+  if (lower.includes("500") || lower.includes("server")) return serverError;
+  if (lower.includes("404") || lower.includes("not found")) return notFound;
+  return serverError;
+}
+
+/** Empty state: no invoices yet. */
+export const invoicesEmpty =
+  "No invoices yet. Create one to get started.";

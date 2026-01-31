@@ -1,9 +1,28 @@
 import { getInvoiceList } from "@/lib/data-invoices";
 import { InvoicesTable } from "@/components/invoices/invoices-table";
 import { InvoicesPageClient } from "@/components/invoices/invoices-page-client";
+import { mapInvoiceLoadError } from "@/lib/user-feedback-copy";
 
-export default async function InvoicesPage() {
-  const { items, meta, error } = await getInvoiceList();
+type InvoicesPageProps = {
+  searchParams: Promise<{ status?: string; page?: string }>;
+};
+
+const VALID_STATUSES = ["Paid", "Pending", "Overdue", "Draft", "Cancelled"] as const;
+
+export default async function InvoicesPage({ searchParams }: InvoicesPageProps) {
+  const params = await searchParams;
+  const status =
+    params.status && (VALID_STATUSES as readonly string[]).includes(params.status)
+      ? params.status
+      : undefined;
+  const page = params.page ? Math.max(1, parseInt(params.page, 10)) : 1;
+  const { items, meta, error } = await getInvoiceList({
+    page: Number.isNaN(page) ? 1 : page,
+    limit: 20,
+    status,
+  });
+
+  const empty = items.length === 0 && !error;
 
   return (
     <div className="space-y-6 font-primary text-body">
@@ -16,22 +35,27 @@ export default async function InvoicesPage() {
             View and manage invoices. Send new invoices to customers.
           </p>
         </div>
-        <InvoicesPageClient />
+        <InvoicesPageClient statusFilter={status} />
       </div>
       {error && (
         <div
           className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 font-secondary text-caption text-amber-800"
           role="alert"
         >
-          <strong>Could not load invoices.</strong> {error}
-          <span className="block mt-1 text-amber-700">
-            Ensure the Core API is running at the configured URL and the invoices
-            endpoints are implemented (see md/core-invoices-api-spec.md).
-          </span>
+          {mapInvoiceLoadError(error)}
         </div>
       )}
       <div className="rounded-lg border border-slate-200 bg-white font-tertiary text-table tabular-nums">
-        <InvoicesTable data={items} meta={meta} />
+        {empty ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+            <p className="text-sm font-medium text-slate-600">It&apos;s quiet here</p>
+            <p className="text-xs text-slate-500">
+              No invoices yet. Create one to get started.
+            </p>
+          </div>
+        ) : (
+          <InvoicesTable data={items} meta={meta} statusFilter={status} />
+        )}
       </div>
     </div>
   );

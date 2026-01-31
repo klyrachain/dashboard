@@ -196,35 +196,48 @@ export async function getInvoiceList(params?: {
       status: params?.status,
     });
 
-    if (!ok || !data || typeof data !== "object") {
-      const message =
-        status === 404
+    const envelope =
+      data && typeof data === "object"
+        ? (data as {
+            success?: boolean;
+            data?: unknown[];
+            meta?: { page: number; limit: number; total: number };
+            error?: string;
+          })
+        : null;
+
+    const errorMessage =
+      envelope && "error" in envelope && typeof envelope.error === "string"
+        ? envelope.error
+        : status === 404
           ? "Not Found"
-          : data && typeof data === "object" && "error" in data
-            ? String((data as { error: string }).error)
-            : "Core API error";
-      return { items: [], meta: defaultMeta, error: message };
+          : !ok
+            ? "Request failed"
+            : null;
+
+    if (!ok || errorMessage) {
+      return {
+        items: [],
+        meta: defaultMeta,
+        error: errorMessage ?? "Unable to load invoices",
+      };
     }
 
-    const envelope = data as {
-      success?: boolean;
-      data?: unknown[];
-      meta?: { page: number; limit: number; total: number };
+    if (envelope?.success === false) {
+      return {
+        items: [],
+        meta: defaultMeta,
+        error: envelope.error ?? "Request failed",
+      };
+    }
+
+    const list = Array.isArray(envelope?.data) ? envelope.data : [];
+    const meta = envelope?.meta ?? {
+      page: params?.page ?? 1,
+      limit: params?.limit ?? 20,
+      total: list.length,
     };
-    const list = Array.isArray(envelope?.data)
-      ? envelope.data
-      : Array.isArray(data)
-        ? (data as unknown[])
-        : [];
-    if (!envelope?.success && list.length === 0) {
-      const message =
-        data && typeof data === "object" && "error" in data
-          ? String((data as { error: string }).error)
-          : "Core API error";
-      return { items: [], meta: defaultMeta, error: message };
-    }
 
-    const meta = envelope.meta ?? { page: 1, limit: 20, total: list.length };
     return {
       items: list.map((row) => mapListItem(row as CoreInvoiceListItemRaw)),
       meta,
