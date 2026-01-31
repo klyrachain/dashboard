@@ -194,6 +194,56 @@ export async function postCoreQuoteBest(body: CoreQuoteBestBody) {
   return fetchCorePost<unknown>("api/quote/best", body as Record<string, unknown>);
 }
 
+/** POST api/quote/onramp — fiat↔crypto quote (Fonbnk; optional swap when token not in pool). */
+export type CoreQuoteOnrampBody = {
+  country: string;
+  chain_id: number;
+  token: string;
+  amount: number;
+  amount_in: "fiat" | "crypto";
+  purchase_method?: "buy" | "sell";
+  from_address?: string;
+  token_decimals?: number;
+};
+
+/** Onramp quote response data (pool token or with swap). */
+export type CoreQuoteOnrampData = {
+  country: string;
+  currency: string;
+  chain_id: number;
+  token: string;
+  token_symbol?: string;
+  amount: number;
+  amount_in: "fiat" | "crypto";
+  rate: number;
+  fee: number;
+  total_crypto: string;
+  total_fiat: number;
+  swap?: {
+    from_chain_id: number;
+    from_token: string;
+    to_chain_id: number;
+    to_token: string;
+    from_amount: string;
+    to_amount: string;
+    provider: string;
+  };
+};
+
+export async function postCoreQuoteOnramp(body: CoreQuoteOnrampBody) {
+  const payload: Record<string, unknown> = {
+    country: body.country.trim(),
+    chain_id: body.chain_id,
+    token: body.token.trim(),
+    amount: body.amount,
+    amount_in: body.amount_in,
+  };
+  if (body.purchase_method != null) payload.purchase_method = body.purchase_method;
+  if (body.from_address != null && body.from_address !== "") payload.from_address = body.from_address;
+  if (body.token_decimals != null) payload.token_decimals = body.token_decimals;
+  return fetchCorePost<{ success?: boolean; data?: CoreQuoteOnrampData }>("api/quote/onramp", payload);
+}
+
 /**
  * Liveness — process is up.
  * GET /health → 200 { ok: true }
