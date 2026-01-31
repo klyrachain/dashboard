@@ -5,6 +5,7 @@ import type { RootState } from "@/store";
 import { AppSidebar } from "./app-sidebar";
 import { Topbar } from "./topbar";
 import { HeaderNoSidebar } from "./header-no-sidebar";
+import { StatusIndicator } from "@/components/status-indicator";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const theme = useSelector((state: RootState) => state.layout.theme);
@@ -14,6 +15,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen flex-col overflow-hidden">
         <HeaderNoSidebar />
         <main className="flex-1 overflow-auto bg-slate-50 p-6">{children}</main>
+        <StatusIndicator />
       </div>
     );
   }
@@ -25,6 +27,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <Topbar />
         <main className="flex-1 overflow-auto bg-slate-50 p-6">{children}</main>
       </div>
+      <StatusIndicator />
     </div>
   );
 }

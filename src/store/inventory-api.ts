@@ -1,6 +1,7 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
 import type { InventoryAssetRow } from "@/lib/data-inventory";
 import { normalizeInventoryFromApi, coreAssetToRow } from "@/lib/data-inventory";
+import { baseQueryWithStatus } from "./base-query-with-status";
 
 export type InventoryApiResponse = {
   success: boolean;
@@ -27,13 +28,7 @@ export type UpdateInventoryBody = {
 export const inventoryApi = createApi({
   reducerPath: "inventoryApi",
   tagTypes: ["Inventory"],
-  baseQuery: fetchBaseQuery({
-    baseUrl: "",
-    prepareHeaders: (headers) => {
-      headers.set("Content-Type", "application/json");
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithStatus,
   endpoints: (builder) => ({
     getInventory: builder.query<InventoryAssetRow[], void | { limit?: number }>({
       query: (params) => ({

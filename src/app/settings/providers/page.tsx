@@ -1,9 +1,9 @@
-import { getSettingsProviders } from "@/lib/data-settings";
+import { getProvidersFromCore } from "@/lib/data-providers";
 import { ProvidersSettingsContent } from "@/components/settings/providers-settings-content";
 import { mapInvoiceLoadError } from "@/lib/user-feedback-copy";
 
 export default async function SettingsProvidersPage() {
-  const { ok, data, error } = await getSettingsProviders();
+  const { ok, data: providers, error } = await getProvidersFromCore();
 
   return (
     <div className="space-y-8">
@@ -23,7 +23,7 @@ export default async function SettingsProvidersPage() {
           {mapInvoiceLoadError(error)}
         </div>
       )}
-      <ProvidersSettingsContent initialData={ok ? data : undefined} />
+      <ProvidersSettingsContent initialProviders={ok ? providers : undefined} />
     </div>
   );
 }

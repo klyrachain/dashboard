@@ -89,6 +89,53 @@ export async function saveProviderByIdAction(
   return { success: false, error: result.error };
 }
 
+// Providers (Provider Routing API — GET /api/providers, PATCH, rotate-key)
+export async function getProvidersRoutingAction() {
+  const { getProvidersFromCore } = await import("@/lib/data-providers");
+  return getProvidersFromCore();
+}
+
+export async function updateProviderRoutingAction(
+  id: string,
+  body: {
+    status?: "ACTIVE" | "INACTIVE" | "MAINTENANCE";
+    operational?: boolean;
+    enabled?: boolean;
+    priority?: number;
+    fee?: number | null;
+    name?: string | null;
+  }
+): Promise<SettingsActionResult> {
+  const { patchCoreProvider } = await import("@/lib/core-api");
+  const result = await patchCoreProvider(id, body);
+  if (result.ok) {
+    revalidatePath("/settings/providers");
+    return { success: true };
+  }
+  const err =
+    result.data && typeof result.data === "object" && "error" in result.data
+      ? String((result.data as { error: string }).error)
+      : "Update failed";
+  return { success: false, error: err };
+}
+
+export async function rotateProviderKeyRoutingAction(
+  id: string,
+  apiKey: string
+): Promise<SettingsActionResult> {
+  const { postCoreProviderRotateKey } = await import("@/lib/core-api");
+  const result = await postCoreProviderRotateKey(id, { apiKey: apiKey.trim() });
+  if (result.ok) {
+    revalidatePath("/settings/providers");
+    return { success: true };
+  }
+  const err =
+    result.data && typeof result.data === "object" && "error" in result.data
+      ? String((result.data as { error: string }).error)
+      : "Rotate key failed";
+  return { success: false, error: err };
+}
+
 // Risk
 export async function getRiskAction() {
   return getSettingsRisk();

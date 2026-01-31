@@ -690,6 +690,54 @@ export async function getCoreAccess() {
   return fetchCoreGet<unknown>("api/access");
 }
 
+// ——— Provider Routing API ———
+
+/** GET /api/providers — list all providers (routing table). Ordered by priority desc, then code. */
+export async function getCoreProviders() {
+  return fetchCoreGet<unknown[]>("api/providers");
+}
+
+/** GET /api/providers/:id — one provider by UUID. */
+export async function getCoreProviderById(id: string) {
+  return fetchCoreGet<unknown>(`api/providers/${encodeURIComponent(id)}`);
+}
+
+/** Body for PATCH /api/providers/:id — status, operational, enabled, priority, fee, name. */
+export type UpdateCoreProviderBody = {
+  status?: "ACTIVE" | "INACTIVE" | "MAINTENANCE";
+  operational?: boolean;
+  enabled?: boolean;
+  priority?: number;
+  fee?: number | null;
+  name?: string | null;
+};
+
+/** PATCH /api/providers/:id — update provider. */
+export async function patchCoreProvider(id: string, body: UpdateCoreProviderBody) {
+  const payload: Record<string, unknown> = {};
+  if (body.status != null) payload.status = body.status;
+  if (body.operational != null) payload.operational = body.operational;
+  if (body.enabled != null) payload.enabled = body.enabled;
+  if (body.priority != null) payload.priority = body.priority;
+  if (body.fee !== undefined) payload.fee = body.fee;
+  if (body.name !== undefined) payload.name = body.name;
+  return fetchCorePatch<unknown>(`api/providers/${encodeURIComponent(id)}`, payload);
+}
+
+/** POST /api/providers/:id/rotate-key — set/rotate API key. Body: { apiKey }. */
+export async function postCoreProviderRotateKey(id: string, body: { apiKey: string }) {
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const path = `api/providers/${encodeURIComponent(id)}/rotate-key`;
+  const res = await fetch(`${base}/${path}`, {
+    method: "POST",
+    headers: coreHeaders(path),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  const data = (await res.json().catch(() => ({}))) as unknown;
+  return { ok: res.ok, status: res.status, data };
+}
+
 // ——— Connect (B2B) API ———
 
 /** GET /api/connect/overview — B2B dashboard metrics (platform key only; 403 for merchant). */
