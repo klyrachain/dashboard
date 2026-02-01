@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
 import type { InventoryAssetRow } from "@/lib/data-inventory";
 import {
   useGetInventoryQuery,
+  useGetInventoryAssetQuery,
   useCreateInventoryMutation,
   useUpdateInventoryMutation,
   useDeleteInventoryMutation,
@@ -94,68 +95,60 @@ function AssetCard({
 
 type AssetFormState = {
   chain: string;
+  chainId: string;
+  address: string;
   token: string;
+  tokenAddress: string;
   balance: string;
 };
 
 const defaultForm: AssetFormState = {
   chain: "",
+  chainId: "",
+  address: "",
   token: "",
+  tokenAddress: "",
   balance: "0",
 };
 
-function AssetFormDialog({
-  open,
-  onOpenChange,
+function AssetFormBody({
   title,
   initialValues,
   onSubmit,
   isSubmitting,
   submitLabel,
+  formError = null,
+  onCancel,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   title: string;
   initialValues: AssetFormState;
   onSubmit: (values: AssetFormState) => void;
   isSubmitting: boolean;
   submitLabel: string;
+  formError?: string | null;
+  onCancel: () => void;
 }) {
-  const [chain, setChain] = useState(initialValues.chain);
-  const [token, setToken] = useState(initialValues.token);
-  const [balance, setBalance] = useState(initialValues.balance);
-
-  useEffect(() => {
-    if (open) {
-      setChain(initialValues.chain);
-      setToken(initialValues.token);
-      setBalance(initialValues.balance);
-    }
-  }, [open, initialValues.chain, initialValues.token, initialValues.balance]);
-
-  const reset = () => {
-    setChain(initialValues.chain);
-    setToken(initialValues.token);
-    setBalance(initialValues.balance);
-  };
-
-  const handleOpenChange = (next: boolean) => {
-    if (!next) reset();
-    onOpenChange(next);
-  };
+  const [formState, setFormState] = useState<AssetFormState>(initialValues);
+  const { chain, chainId, address, token, tokenAddress, balance } = formState;
+  const setChain = (v: string) => setFormState((s) => ({ ...s, chain: v }));
+  const setChainId = (v: string) => setFormState((s) => ({ ...s, chainId: v }));
+  const setAddress = (v: string) => setFormState((s) => ({ ...s, address: v }));
+  const setToken = (v: string) => setFormState((s) => ({ ...s, token: v }));
+  const setTokenAddress = (v: string) => setFormState((s) => ({ ...s, tokenAddress: v }));
+  const setBalance = (v: string) => setFormState((s) => ({ ...s, balance: v }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ chain, token, balance });
+    onSubmit({ chain, chainId, address, token, tokenAddress, balance });
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
+          {formError && (
+            <p className="text-sm text-destructive" role="alert">
+              {formError}
+            </p>
+          )}
           <div className="space-y-2">
             <Label htmlFor="asset-chain">Chain</Label>
             <Input
@@ -167,6 +160,28 @@ function AssetFormDialog({
             />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="asset-chain-id">Chain ID</Label>
+            <Input
+              id="asset-chain-id"
+              type="number"
+              inputMode="numeric"
+              value={chainId}
+              onChange={(e) => setChainId(e.target.value)}
+              placeholder="e.g. 1 (Ethereum), 137 (Polygon)"
+              required={title === "Add asset"}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="asset-address">Address</Label>
+            <Input
+              id="asset-address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="e.g. 0x… (wallet address)"
+              required={title === "Add asset"}
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="asset-token">Token / Symbol</Label>
             <Input
               id="asset-token"
@@ -174,6 +189,16 @@ function AssetFormDialog({
               onChange={(e) => setToken(e.target.value)}
               placeholder="e.g. USDC, ETH"
               required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="asset-token-address">Token address</Label>
+            <Input
+              id="asset-token-address"
+              value={tokenAddress}
+              onChange={(e) => setTokenAddress(e.target.value)}
+              placeholder="e.g. 0x… (contract address)"
+              required={title === "Add asset"}
             />
           </div>
           <div className="space-y-2">
@@ -190,7 +215,7 @@ function AssetFormDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => handleOpenChange(false)}
+              onClick={onCancel}
               disabled={isSubmitting}
             >
               Cancel
@@ -200,9 +225,76 @@ function AssetFormDialog({
             </Button>
           </DialogFooter>
         </form>
+  );
+}
+
+function AssetFormDialog({
+  open,
+  onOpenChange,
+  title,
+  initialValues,
+  onSubmit,
+  isSubmitting,
+  submitLabel,
+  formError = null,
+  isLoading = false,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  initialValues: AssetFormState;
+  onSubmit: (values: AssetFormState) => void;
+  isSubmitting: boolean;
+  submitLabel: string;
+  formError?: string | null;
+  isLoading?: boolean;
+}) {
+  const handleOpenChange = (next: boolean) => {
+    onOpenChange(next);
+  };
+
+  const formKey = open
+    ? `${initialValues.chain}-${initialValues.chainId}-${initialValues.address}-${initialValues.token}-${initialValues.tokenAddress}-${initialValues.balance}`
+    : "closed";
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        {open && isLoading ? (
+          <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+            Loading asset…
+          </div>
+        ) : (
+          open && (
+            <AssetFormBody
+              key={formKey}
+              title={title}
+              initialValues={initialValues}
+              onSubmit={onSubmit}
+              isSubmitting={isSubmitting}
+              submitLabel={submitLabel}
+              formError={formError}
+              onCancel={() => onOpenChange(false)}
+            />
+          )
+        )}
       </DialogContent>
     </Dialog>
   );
+}
+
+function assetToFormState(asset: InventoryAssetRow): AssetFormState {
+  return {
+    chain: asset.chain ?? "",
+    chainId: asset.chainId != null ? String(asset.chainId) : "",
+    address: asset.address ?? "",
+    token: asset.token ?? "",
+    tokenAddress: asset.tokenAddress ?? "",
+    balance: asset.balance ?? "0",
+  };
 }
 
 export function InventoryAssetContainer() {
@@ -216,12 +308,50 @@ export function InventoryAssetContainer() {
   const [formError, setFormError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const { data: fullAsset, isLoading: isLoadingEditAsset } = useGetInventoryAssetQuery(
+    editAsset?.id ?? "",
+    { skip: !editAsset?.id }
+  );
+
+  const editInitialValues: AssetFormState = editAsset
+    ? assetToFormState(fullAsset ?? editAsset)
+    : defaultForm;
+
   const handleCreate = async (values: AssetFormState) => {
     setFormError(null);
+    const chain = values.chain.trim();
+    const token = values.token.trim();
+    const address = values.address.trim();
+    const tokenAddress = values.tokenAddress.trim();
+    const chainIdRaw = values.chainId.trim();
+    if (!chain || !token) {
+      setFormError("Chain and token are required.");
+      return;
+    }
+    if (!address) {
+      setFormError("Address is required.");
+      return;
+    }
+    if (!tokenAddress) {
+      setFormError("Token address is required.");
+      return;
+    }
+    if (!chainIdRaw) {
+      setFormError("Chain ID is required and must be a number.");
+      return;
+    }
+    const chainId = parseInt(chainIdRaw, 10);
+    if (Number.isNaN(chainId) || chainId < 0) {
+      setFormError("Chain ID must be a valid non-negative number.");
+      return;
+    }
     const body: CreateInventoryBody = {
-      chain: values.chain.trim(),
-      token: values.token.trim(),
-      symbol: values.token.trim(),
+      chain,
+      chainId,
+      address,
+      tokenAddress,
+      token,
+      symbol: token,
       balance: values.balance.trim() || "0",
     };
     try {
@@ -232,20 +362,34 @@ export function InventoryAssetContainer() {
         setFormError(result.error ?? "Create failed");
       }
     } catch (e) {
-      const err = e as { data?: { error?: string } };
-      setFormError(err?.data?.error ?? "Create failed");
+      const err = e as { data?: { error?: string }; error?: string };
+      const message =
+        err?.data?.error ?? err?.error ?? (e instanceof Error ? e.message : "Create failed");
+      setFormError(message);
     }
   };
 
   const handleUpdate = async (values: AssetFormState) => {
     if (!editAsset) return;
     setFormError(null);
+    const chain = values.chain.trim();
+    const token = values.token.trim();
+    const balance = values.balance.trim();
+    const chainIdRaw = values.chainId.trim();
+    const address = values.address.trim();
+    const tokenAddress = values.tokenAddress.trim();
     const body: UpdateInventoryBody = {
-      chain: values.chain.trim(),
-      token: values.token.trim(),
-      symbol: values.token.trim(),
-      balance: values.balance.trim(),
+      chain: chain || undefined,
+      token: token || undefined,
+      symbol: token || undefined,
+      balance: balance || undefined,
     };
+    if (chainIdRaw) {
+      const chainId = parseInt(chainIdRaw, 10);
+      if (!Number.isNaN(chainId) && chainId >= 0) body.chainId = chainId;
+    }
+    if (address) body.address = address;
+    if (tokenAddress) body.tokenAddress = tokenAddress;
     try {
       const result = await updateInventory({ id: editAsset.id, body }).unwrap();
       if (result.success) {
@@ -254,8 +398,10 @@ export function InventoryAssetContainer() {
         setFormError(result.error ?? "Update failed");
       }
     } catch (e) {
-      const err = e as { data?: { error?: string } };
-      setFormError(err?.data?.error ?? "Update failed");
+      const err = e as { data?: { error?: string }; error?: string; status?: number };
+      const message =
+        err?.data?.error ?? err?.error ?? (e instanceof Error ? e.message : "Update failed");
+      setFormError(message);
     }
   };
 
@@ -337,27 +483,31 @@ export function InventoryAssetContainer() {
 
       <AssetFormDialog
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={(open) => {
+          if (open) setFormError(null);
+          setCreateOpen(open);
+        }}
         title="Add asset"
         initialValues={defaultForm}
         onSubmit={handleCreate}
         isSubmitting={isCreating}
         submitLabel="Create"
+        formError={createOpen ? formError : null}
       />
 
       {editAsset && (
         <AssetFormDialog
           open={!!editAsset}
-          onOpenChange={(open) => !open && setEditAsset(null)}
-          title="Edit asset"
-          initialValues={{
-            chain: editAsset.chain,
-            token: editAsset.token,
-            balance: editAsset.balance,
+          onOpenChange={(open) => {
+            if (!open) setEditAsset(null);
           }}
+          title="Edit asset"
+          initialValues={editInitialValues}
           onSubmit={handleUpdate}
           isSubmitting={isUpdating}
           submitLabel="Save"
+          formError={editAsset ? formError : null}
+          isLoading={isLoadingEditAsset}
         />
       )}
 

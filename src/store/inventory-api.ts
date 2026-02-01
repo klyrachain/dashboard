@@ -11,6 +11,8 @@ export type InventoryApiResponse = {
 
 export type CreateInventoryBody = {
   chain: string;
+  address?: string;
+  tokenAddress?: string;
   token?: string;
   symbol?: string;
   balance?: string | number;
@@ -20,6 +22,9 @@ export type CreateInventoryBody = {
 
 export type UpdateInventoryBody = {
   chain?: string;
+  chainId?: number;
+  address?: string;
+  tokenAddress?: string;
   token?: string;
   symbol?: string;
   balance?: string | number;
@@ -43,7 +48,13 @@ export const inventoryApi = createApi({
 
     getInventoryAsset: builder.query<InventoryAssetRow | null, string>({
       query: (id) => ({ url: `/api/inventory/${encodeURIComponent(id)}` }),
-      transformResponse: (raw: unknown): InventoryAssetRow | null => coreAssetToRow(raw),
+      transformResponse: (raw: unknown): InventoryAssetRow | null => {
+        const payload =
+          raw && typeof raw === "object" && "data" in raw
+            ? (raw as { data: unknown }).data
+            : raw;
+        return coreAssetToRow(payload);
+      },
       providesTags: (_result, _error, id) => [{ type: "Inventory", id }],
     }),
 
@@ -77,6 +88,30 @@ export const inventoryApi = createApi({
         body,
       }),
       invalidatesTags: (_result, _error, { id }) => ["Inventory", { type: "Inventory", id }],
+      async onQueryStarted({ id, body: updateBody }, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          const updated = data?.data;
+          if (updated?.id) {
+            const submitted: Partial<InventoryAssetRow> = {
+              chain: updateBody.chain ?? updated.chain,
+              token: updateBody.token ?? updateBody.symbol ?? updated.token,
+              balance: updateBody.balance != null ? String(updateBody.balance) : updated.balance,
+              chainId: updateBody.chainId ?? updated.chainId,
+              address: updateBody.address ?? updated.address,
+              tokenAddress: updateBody.tokenAddress ?? updated.tokenAddress,
+            };
+            dispatch(
+              inventoryApi.util.updateQueryData("getInventory", undefined, (draft) => {
+                const i = draft.findIndex((a) => a.id === id);
+                if (i >= 0) draft[i] = { ...draft[i], ...updated, ...submitted };
+              })
+            );
+          }
+        } catch {
+          // Refetch will run via invalidatesTags; no need to rollback
+        }
+      },
       transformResponse: (raw: unknown) => {
         const payload =
           raw && typeof raw === "object" && "data" in raw

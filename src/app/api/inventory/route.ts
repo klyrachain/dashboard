@@ -41,18 +41,53 @@ export async function GET(request: Request) {
 
 /**
  * POST /api/inventory — create inventory asset (proxy to Core).
- * Body: { chain, token?, symbol?, balance?, walletAddress?, chainId? }.
+ * Body: { chain, chainId (required number), address (required), tokenAddress (required), token?, symbol?, balance?, walletAddress? }.
  */
 export async function POST(request: Request) {
   try {
+    if (!process.env.NEXT_PUBLIC_CORE_URL?.trim()) {
+      return NextResponse.json(
+        { success: false, error: "Core API URL not configured" },
+        { status: 503 }
+      );
+    }
     const body = (await request.json()) as CreateCoreInventoryBody;
-    if (!body?.chain || typeof body.chain !== "string") {
+    const chain = body?.chain != null ? String(body.chain).trim() : "";
+    if (!chain) {
       return NextResponse.json(
         { success: false, error: "chain is required" },
         { status: 400 }
       );
     }
-    const result = await postCoreInventory(body);
+    const chainId =
+      body?.chainId != null
+        ? typeof body.chainId === "number"
+          ? body.chainId
+          : parseInt(String(body.chainId), 10)
+        : NaN;
+    if (Number.isNaN(chainId) || chainId < 0) {
+      return NextResponse.json(
+        { success: false, error: "chainId is required and must be a number" },
+        { status: 400 }
+      );
+    }
+    const address =
+      body?.address != null ? String(body.address).trim() : "";
+    if (!address) {
+      return NextResponse.json(
+        { success: false, error: "address is required" },
+        { status: 400 }
+      );
+    }
+    const tokenAddress =
+      body?.tokenAddress != null ? String(body.tokenAddress).trim() : "";
+    if (!tokenAddress) {
+      return NextResponse.json(
+        { success: false, error: "tokenAddress is required" },
+        { status: 400 }
+      );
+    }
+    const result = await postCoreInventory({ ...body, chainId, address, tokenAddress });
     if (!result.ok) {
       const err =
         result.data && typeof result.data === "object" && "error" in result.data
@@ -63,7 +98,13 @@ export async function POST(request: Request) {
         { status: result.status ?? 502 }
       );
     }
-    return NextResponse.json(result.data ?? { success: true });
+    // Normalize: Core may return { success, data } or the asset directly
+    const raw = result.data;
+    const data =
+      raw && typeof raw === "object" && "data" in raw
+        ? (raw as { data: unknown }).data
+        : raw;
+    return NextResponse.json({ success: true, data: data ?? null });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json(

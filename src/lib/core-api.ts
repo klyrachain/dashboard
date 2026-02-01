@@ -373,6 +373,8 @@ export async function getCoreInventoryAsset(id: string) {
 /** Body for POST /api/inventory — create inventory asset. */
 export type CreateCoreInventoryBody = {
   chain: string;
+  address?: string;
+  tokenAddress?: string;
   token?: string;
   symbol?: string;
   balance?: string | number;
@@ -385,6 +387,8 @@ export async function postCoreInventory(body: CreateCoreInventoryBody) {
     chain: body.chain,
     balance: body.balance ?? "0",
   };
+  if (body.address != null) payload.address = body.address;
+  if (body.tokenAddress != null) payload.tokenAddress = body.tokenAddress;
   if (body.token != null) payload.token = body.token;
   if (body.symbol != null) payload.symbol = body.symbol;
   if (body.walletAddress != null) payload.walletAddress = body.walletAddress;
@@ -395,6 +399,9 @@ export async function postCoreInventory(body: CreateCoreInventoryBody) {
 /** Body for PATCH /api/inventory/:id. */
 export type UpdateCoreInventoryBody = {
   chain?: string;
+  chainId?: number;
+  address?: string;
+  tokenAddress?: string;
   token?: string;
   symbol?: string;
   balance?: string | number;
@@ -403,6 +410,9 @@ export type UpdateCoreInventoryBody = {
 export async function patchCoreInventory(id: string, body: UpdateCoreInventoryBody) {
   const payload: Record<string, unknown> = {};
   if (body.chain != null) payload.chain = body.chain;
+  if (body.chainId != null) payload.chainId = body.chainId;
+  if (body.address != null) payload.address = body.address;
+  if (body.tokenAddress != null) payload.tokenAddress = body.tokenAddress;
   if (body.token != null) payload.token = body.token;
   if (body.symbol != null) payload.symbol = body.symbol;
   if (body.balance != null) payload.balance = body.balance;

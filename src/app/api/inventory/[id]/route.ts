@@ -55,7 +55,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         { status: result.status ?? 502 }
       );
     }
-    return NextResponse.json(result.data ?? { success: true });
+    const raw = result.data;
+    const data =
+      raw && typeof raw === "object" && "data" in raw
+        ? (raw as { data: unknown }).data
+        : raw;
+    return NextResponse.json({ success: true, data: data ?? null });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json(
