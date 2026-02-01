@@ -28,6 +28,7 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
       <InventoryHistoryTable
         result={historyList}
         currentPage={page}
+        currentLimit={limit}
         assetId={assetId}
         chain={chain}
       />

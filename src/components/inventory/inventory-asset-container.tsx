@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,19 @@ import {
   type CreateInventoryBody,
   type UpdateInventoryBody,
 } from "@/store/inventory-api";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { ExportDataModal } from "@/components/export-data-modal";
+import type { ExportColumn } from "@/lib/export-data";
+import { FileDown, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+
+const INVENTORY_ASSETS_EXPORT_COLUMNS: ExportColumn[] = [
+  { id: "id", label: "ID" },
+  { id: "chain", label: "Chain" },
+  { id: "token", label: "Token" },
+  { id: "balance", label: "Balance" },
+  { id: "updatedAt", label: "Updated" },
+  { id: "address", label: "Address" },
+  { id: "tokenAddress", label: "Token address" },
+];
 
 function EmptyState() {
   return (
@@ -298,15 +310,42 @@ function assetToFormState(asset: InventoryAssetRow): AssetFormState {
 }
 
 export function InventoryAssetContainer() {
-  const { data: assets = [], isLoading, error } = useGetInventoryQuery();
+  const { data: assets = [], isLoading, error, refetch, isFetching } = useGetInventoryQuery();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredAssets = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return assets;
+    return assets.filter(
+      (a) =>
+        (a.id && a.id.toLowerCase().includes(q)) ||
+        (a.chain && a.chain.toLowerCase().includes(q)) ||
+        (a.token && a.token.toLowerCase().includes(q)) ||
+        (a.address && a.address.toLowerCase().includes(q)) ||
+        (a.tokenAddress && a.tokenAddress.toLowerCase().includes(q))
+    );
+  }, [assets, searchQuery]);
   const [createInventory, { isLoading: isCreating }] = useCreateInventoryMutation();
   const [updateInventory, { isLoading: isUpdating }] = useUpdateInventoryMutation();
   const [deleteInventory] = useDeleteInventoryMutation();
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [editAsset, setEditAsset] = useState<InventoryAssetRow | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const exportData = useMemo((): Record<string, unknown>[] => {
+    return filteredAssets.map((a) => ({
+      id: a.id,
+      chain: a.chain,
+      token: a.token,
+      balance: a.balance,
+      updatedAt: a.updatedAt,
+      address: a.address ?? "",
+      tokenAddress: a.tokenAddress ?? "",
+    }));
+  }, [filteredAssets]);
 
   const { data: fullAsset, isLoading: isLoadingEditAsset } = useGetInventoryAssetQuery(
     editAsset?.id ?? "",
@@ -459,17 +498,64 @@ export function InventoryAssetContainer() {
         <h2 id="inventory-assets-heading" className="text-lg font-semibold tracking-tight">
           Inventory assets
         </h2>
-        <Button onClick={() => setCreateOpen(true)} size="sm">
-          <Plus className="size-4 mr-1.5" aria-hidden />
-          Add asset
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExportModalOpen(true)}
+            className="gap-2"
+            aria-label="Export assets"
+          >
+            <FileDown className="size-4" aria-hidden />
+            Export
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="gap-2"
+            aria-label="Refresh inventory"
+          >
+            <Loader2 className={`size-4 ${isFetching ? "animate-spin" : ""}`} aria-hidden />
+            Refresh
+          </Button>
+          <Button onClick={() => setCreateOpen(true)} size="sm">
+            <Plus className="size-4 mr-1.5" aria-hidden />
+            Add asset
+          </Button>
+        </div>
       </div>
+
+      {assets.length > 0 && (
+        <div className="relative max-w-md">
+          <Search
+            className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            type="search"
+            placeholder="Search by chain, token, ID, or address…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 border border-slate-200 bg-white"
+            aria-label="Search assets"
+          />
+        </div>
+      )}
 
       {assets.length === 0 ? (
         <EmptyState />
+      ) : filteredAssets.length === 0 ? (
+        <Card className="bg-white">
+          <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+            <p className="text-sm font-medium text-slate-600">No assets match your search</p>
+            <p className="text-xs text-slate-500">Try a different term or clear the search.</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {assets.map((asset) => (
+          {filteredAssets.map((asset) => (
             <AssetCard
               key={asset.id}
               asset={asset}
@@ -516,6 +602,15 @@ export function InventoryAssetContainer() {
           {formError}
         </p>
       )}
+
+      <ExportDataModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        title="Export inventory assets"
+        columns={INVENTORY_ASSETS_EXPORT_COLUMNS}
+        data={exportData}
+        filenamePrefix="inventory-assets"
+      />
     </section>
   );
 }

@@ -16,6 +16,7 @@ import { formatCurrency } from "@/lib/data-balances";
 import type {
   ConnectSettlementListItem,
   ConnectSettlementDetail,
+  SettlementTimelineStep,
 } from "@/lib/data-connect";
 import { getConnectSettlementByIdAction } from "@/app/connect/actions";
 
@@ -200,7 +201,7 @@ export function ConnectSettlementsClient({
                   <div>
                     <p className="text-sm font-medium text-slate-700 mb-2">Timeline</p>
                     <ul className="space-y-2">
-                      {detail.timeline.map((step, i) => (
+                      {detail.timeline.map((step: SettlementTimelineStep, i: number) => (
                         <li
                           key={i}
                           className={`flex items-center gap-2 text-sm ${step.done ? "text-slate-700" : "text-slate-400"}`}

@@ -13,7 +13,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, RotateCcw } from "lucide-react";
+import { ChevronDown, FileDown, Loader2, RotateCcw, Search } from "lucide-react";
+import { ExportDataModal } from "@/components/export-data-modal";
+import type { ExportColumn } from "@/lib/export-data";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import {
@@ -40,7 +42,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { TransactionStatus, TransactionType } from "@/types/enums";
-import { retryTransaction } from "@/app/transactions/actions";
+import { refreshTransactionsAction, retryTransaction } from "@/app/transactions/actions";
 import type { TransactionRow } from "@/lib/data-transactions";
 
 function getStatusVariant(
@@ -58,6 +60,13 @@ function getStatusVariant(
       return "outline";
   }
 }
+
+/** Preset page sizes for the dropdown; user can also enter any number in the custom input. */
+const PAGE_SIZE_PRESETS = [15, 50, 100, 150, 200] as const;
+const DEFAULT_PAGE_SIZE = 15;
+
+/** localStorage key for persisting column visibility so it survives refresh. */
+const COLUMN_VISIBILITY_STORAGE_KEY = "klyra-transactions-column-visibility";
 
 /** Default visible columns: ID, Type, Status, amounts/fee, tokens/chains, providers, Created, Actions. */
 const defaultColumnVisibility: VisibilityState = {
@@ -290,6 +299,17 @@ const columns: ColumnDef<TransactionRow>[] = [
   },
 ];
 
+const TRANSACTIONS_EXPORT_COLUMNS: ExportColumn[] = columns
+  .filter(
+    (c): c is ColumnDef<TransactionRow> & { accessorKey: string } =>
+      "accessorKey" in c && typeof (c as { accessorKey: string }).accessorKey === "string"
+  )
+  .filter((c) => c.id !== "actions")
+  .map((c) => ({
+    id: c.accessorKey,
+    label: (c.meta as { headerLabel?: string } | undefined)?.headerLabel ?? c.accessorKey,
+  }));
+
 function RetryButton({ transactionId }: { transactionId: string }) {
   const [pending, setPending] = React.useState(false);
   return (
@@ -333,52 +353,126 @@ function getColumnLabel(col: { id: string; columnDef: { meta?: { headerLabel?: s
   return col.columnDef.meta?.headerLabel ?? col.id;
 }
 
+function loadPersistedColumnVisibility(): VisibilityState {
+  try {
+    const raw = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, boolean> | null;
+      if (parsed && typeof parsed === "object") {
+        return { ...defaultColumnVisibility, ...parsed };
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return defaultColumnVisibility;
+}
+
 export function TransactionsDataTable({
   initialData,
 }: {
   initialData: TransactionRow[];
 }) {
+  const [data, setData] = React.useState<TransactionRow[]>(initialData);
+  const [refreshing, setRefreshing] = React.useState(false);
+  React.useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
+
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  // Always start with defaults so server and client first paint match (avoids hydration mismatch)
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>(defaultColumnVisibility);
+  // After mount, apply persisted column visibility from localStorage (client-only)
+  React.useEffect(() => {
+    setColumnVisibility(loadPersistedColumnVisibility());
+  }, []);
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
+    } catch {
+      // ignore
+    }
+  }, [columnVisibility]);
+
+  const [pagination, setPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  const [pageSizeInput, setPageSizeInput] = React.useState(String(DEFAULT_PAGE_SIZE));
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [typeFilter, setTypeFilter] = React.useState<string>("all");
   const [fromChainFilter, setFromChainFilter] = React.useState<string>("all");
   const [toChainFilter, setToChainFilter] = React.useState<string>("all");
   const [dateFrom, setDateFrom] = React.useState<string>("");
   const [dateTo, setDateTo] = React.useState<string>("");
+  const [searchQuery, setSearchQuery] = React.useState<string>("");
+  const [providerFilter, setProviderFilter] = React.useState<string>("all");
+  const searchRefreshDoneForQuery = React.useRef<string | null>(null);
 
   const chainOptions = React.useMemo(() => {
-    const from = new Set(initialData.map((r) => r.fromChain).filter(Boolean));
-    const to = new Set(initialData.map((r) => r.toChain).filter(Boolean));
+    const from = new Set(data.map((r) => r.fromChain).filter(Boolean));
+    const to = new Set(data.map((r) => r.toChain).filter(Boolean));
     return Array.from(new Set([...from, ...to])).sort();
-  }, [initialData]);
+  }, [data]);
+
+  const providerOptions = React.useMemo(() => {
+    const from = new Set(data.map((r) => r.fromProvider).filter(Boolean));
+    const to = new Set(data.map((r) => r.toProvider).filter(Boolean));
+    return Array.from(new Set([...from, ...to])).sort();
+  }, [data]);
 
   const filteredData = React.useMemo(() => {
-    let data = initialData;
+    let list = data;
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (r) =>
+          (r.id && r.id.toLowerCase().includes(q)) ||
+          (r.fromIdentifier && r.fromIdentifier.toLowerCase().includes(q)) ||
+          (r.toIdentifier && r.toIdentifier.toLowerCase().includes(q)) ||
+          (r.fromUserId && r.fromUserId.toLowerCase().includes(q)) ||
+          (r.toUserId && r.toUserId.toLowerCase().includes(q))
+      );
+    }
     if (statusFilter !== "all") {
-      data = data.filter((r) => r.status === statusFilter);
+      list = list.filter((r) => r.status === statusFilter);
     }
     if (typeFilter !== "all") {
-      data = data.filter((r) => r.type === typeFilter);
+      list = list.filter((r) => r.type === typeFilter);
+    }
+    if (providerFilter !== "all") {
+      list = list.filter(
+        (r) => r.fromProvider === providerFilter || r.toProvider === providerFilter
+      );
     }
     if (fromChainFilter !== "all") {
-      data = data.filter((r) => r.fromChain === fromChainFilter);
+      list = list.filter((r) => r.fromChain === fromChainFilter);
     }
     if (toChainFilter !== "all") {
-      data = data.filter((r) => r.toChain === toChainFilter);
+      list = list.filter((r) => r.toChain === toChainFilter);
     }
     if (dateFrom) {
       const from = new Date(dateFrom).getTime();
-      data = data.filter((r) => r.createdAt.getTime() >= from);
+      list = list.filter((r) => r.createdAt.getTime() >= from);
     }
     if (dateTo) {
       const to = new Date(dateTo + "T23:59:59").getTime();
-      data = data.filter((r) => r.createdAt.getTime() <= to);
+      list = list.filter((r) => r.createdAt.getTime() <= to);
     }
-    return data;
-  }, [initialData, statusFilter, typeFilter, fromChainFilter, toChainFilter, dateFrom, dateTo]);
+    return list;
+  }, [
+    data,
+    searchQuery,
+    statusFilter,
+    typeFilter,
+    providerFilter,
+    fromChainFilter,
+    toChainFilter,
+    dateFrom,
+    dateTo,
+  ]);
 
   const table = useReactTable({
     data: filteredData,
@@ -390,17 +484,85 @@ export function TransactionsDataTable({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    initialState: { pagination: { pageSize: 10 } },
+    onPaginationChange: setPagination,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
+      pagination,
     },
   });
 
-  if (initialData.length === 0) {
+  const applyCustomPageSize = React.useCallback(() => {
+    const n = parseInt(pageSizeInput.trim(), 10);
+    if (!Number.isNaN(n) && n >= 1) {
+      setPagination((prev) => ({ ...prev, pageSize: n }));
+      setPageSizeInput(String(n));
+    } else {
+      setPageSizeInput(String(pagination.pageSize));
+    }
+  }, [pageSizeInput, pagination.pageSize]);
+
+  const handlePresetPageSize = (value: string) => {
+    if (value === "custom") return;
+    const n = Number(value);
+    setPagination((prev) => ({ ...prev, pageSize: n }));
+    setPageSizeInput(String(n));
+  };
+
+  const [exportModalOpen, setExportModalOpen] = React.useState(false);
+
+  const exportData = React.useMemo((): Record<string, unknown>[] => {
+    return filteredData.map((row) => {
+      const r: Record<string, unknown> = { ...row };
+      if (row.createdAt instanceof Date) r.createdAt = row.createdAt.toISOString();
+      if (row.updatedAt instanceof Date) r.updatedAt = row.updatedAt.toISOString();
+      return r;
+    });
+  }, [filteredData]);
+
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const next = await refreshTransactionsAction();
+      setData(Array.isArray(next) ? next : []);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  // When search yields no results, trigger one background refresh so newly added transactions can appear
+  React.useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) {
+      searchRefreshDoneForQuery.current = null;
+      return;
+    }
+    if (filteredData.length > 0) return;
+    if (searchRefreshDoneForQuery.current === q) return;
+    searchRefreshDoneForQuery.current = q;
+    refreshTransactionsAction().then((next) => {
+      setData(Array.isArray(next) ? next : []);
+    });
+  }, [searchQuery, filteredData.length]);
+
+  if (data.length === 0) {
     return (
       <div className="space-y-4">
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="gap-2"
+          >
+            {refreshing ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : null}
+            Refresh
+          </Button>
+        </div>
         <EmptyTransactionsState />
       </div>
     );
@@ -408,6 +570,20 @@ export function TransactionsDataTable({
 
   return (
     <div className="space-y-4">
+      <div className="relative">
+        <Search
+          className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          type="search"
+          placeholder="Search by ID, identifier (to/from), or user ID…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 max-w-md border border-slate-200 bg-white"
+          aria-label="Search transactions"
+        />
+      </div>
       <div className="flex flex-wrap items-center gap-4">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[180px]">
@@ -435,6 +611,21 @@ export function TransactionsDataTable({
             <SelectItem value={TransactionType.CLAIM}>Claim</SelectItem>
           </SelectContent>
         </Select>
+        {providerOptions.length > 0 && (
+          <Select value={providerFilter} onValueChange={setProviderFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Provider" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All providers</SelectItem>
+              {providerOptions.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {p}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {chainOptions.length > 0 && (
           <>
             <Select value={fromChainFilter} onValueChange={setFromChainFilter}>
@@ -481,27 +672,54 @@ export function TransactionsDataTable({
             className="w-[140px]"
           />
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto gap-2">
-              Columns <ChevronDown className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
-            {table
-              .getAllColumns()
-              .filter((col) => col.getCanHide())
-              .map((col) => (
-                <DropdownMenuCheckboxItem
-                  key={col.id}
-                  checked={col.getIsVisible()}
-                  onCheckedChange={(v) => col.toggleVisibility(!!v)}
-                >
-                  {getColumnLabel(col)}
-                </DropdownMenuCheckboxItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExportModalOpen(true)}
+            className="gap-2"
+            aria-label="Export transactions"
+          >
+            <FileDown className="size-4" aria-hidden />
+            Export
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="gap-2"
+            aria-label="Refresh transactions"
+          >
+            <Loader2
+              className={`size-4 ${refreshing ? "animate-spin" : ""}`}
+              aria-hidden
+            />
+            Refresh
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                Columns <ChevronDown className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
+              {table
+                .getAllColumns()
+                .filter((col) => col.getCanHide())
+                .map((col) => (
+                  <DropdownMenuCheckboxItem
+                    key={col.id}
+                    checked={col.getIsVisible()}
+                    onCheckedChange={(v) => col.toggleVisibility(!!v)}
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    {getColumnLabel(col)}
+                  </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="rounded-md bg-white">
@@ -550,30 +768,79 @@ export function TransactionsDataTable({
         </Table>
       </div>
 
-      <div className="flex items-center justify-end gap-4">
-        <p className="text-sm text-muted-foreground">
-          Page {table.getState().pagination.pageIndex + 1} of{" "}
-          {table.getPageCount()}
-        </p>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Rows per page</span>
+          <Select
+            value={
+              PAGE_SIZE_PRESETS.includes(pagination.pageSize as (typeof PAGE_SIZE_PRESETS)[number])
+                ? String(pagination.pageSize)
+                : "custom"
+            }
+            onValueChange={handlePresetPageSize}
           >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
+            <SelectTrigger className="w-[90px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_PRESETS.map((n) => (
+                <SelectItem key={n} value={String(n)}>
+                  {n}
+                </SelectItem>
+              ))}
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground">or</span>
+          <Input
+            type="number"
+            min={1}
+            placeholder="Any"
+            value={pageSizeInput}
+            onChange={(e) => setPageSizeInput(e.target.value)}
+            onBlur={applyCustomPageSize}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") applyCustomPageSize();
+            }}
+            className="w-[72px] tabular-nums"
+            aria-label="Custom rows per page"
+          />
+        </div>
+        <div className="flex items-center gap-4">
+          <p className="text-sm text-muted-foreground">
+            Page {table.getState().pagination.pageIndex + 1} of{" "}
+            {table.getPageCount()}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       </div>
+
+      <ExportDataModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        title="Export transactions"
+        columns={TRANSACTIONS_EXPORT_COLUMNS}
+        data={exportData}
+        filenamePrefix="transactions"
+        includeChartsOption
+      />
     </div>
   );
 }

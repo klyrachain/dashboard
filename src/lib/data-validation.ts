@@ -3,6 +3,11 @@
  * @see API report: GET /api/validation/failed, /recent, /report
  */
 
+import {
+  getCoreValidationFailed,
+  getCoreValidationFailedReport,
+} from "@/lib/core-api";
+
 export type FailedValidationPayload = {
   action?: string;
   f_chain?: string;
@@ -132,4 +137,64 @@ export function normalizeRecentFailedList(envelope: unknown): RecentFailedItem[]
   return o.data
     .map(parseRecentFailedItem)
     .filter((r): r is RecentFailedItem => r !== null);
+}
+
+export type ValidationFailedListResult = {
+  items: FailedValidationRow[];
+  meta: { page: number; limit: number; total: number };
+};
+
+/**
+ * Fetches failed validations list from Core GET /api/validation/failed (server-side).
+ */
+export async function getValidationFailedList(params?: {
+  page?: number;
+  limit?: number;
+  code?: string;
+}): Promise<ValidationFailedListResult> {
+  const defaultMeta = { page: params?.page ?? 1, limit: params?.limit ?? 20, total: 0 };
+  try {
+    const result = await getCoreValidationFailed(params);
+    if (!result.ok || !result.data || typeof result.data !== "object") {
+      return { items: [], meta: defaultMeta };
+    }
+    const envelope = result.data as {
+      success?: boolean;
+      data?: unknown[];
+      meta?: { page?: number; limit?: number; total?: number };
+    };
+    const items = normalizeFailedValidationList(envelope);
+    const meta = envelope.meta ?? { ...defaultMeta, total: items.length };
+    return {
+      items,
+      meta: {
+        page: meta.page ?? defaultMeta.page,
+        limit: meta.limit ?? defaultMeta.limit,
+        total: meta.total ?? items.length,
+      },
+    };
+  } catch {
+    return { items: [], meta: defaultMeta };
+  }
+}
+
+/**
+ * Fetches failed validations report from Core GET /api/validation/failed/report (server-side).
+ */
+export async function getValidationFailedReport(params?: {
+  days?: number;
+}): Promise<FailedValidationReport | null> {
+  try {
+    const result = await getCoreValidationFailedReport({
+      days: params?.days ?? 7,
+    });
+    if (!result.ok || !result.data || typeof result.data !== "object") {
+      return null;
+    }
+    const envelope = result.data as { success?: boolean; data?: unknown };
+    const payload = envelope.success !== false ? envelope.data ?? result.data : result.data;
+    return parseFailedValidationReport(payload);
+  } catch {
+    return null;
+  }
 }
