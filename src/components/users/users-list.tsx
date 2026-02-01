@@ -155,6 +155,11 @@ export function UsersList({
                               </Badge>
                               <span className="text-muted-foreground">
                                 {tx.fromAmount} → {tx.toAmount}
+                                {tx.fee != null && tx.fee !== "" && (
+                                  <span className="tabular-nums text-slate-600 ml-2">
+                                    Fee: {tx.fee}
+                                  </span>
+                                )}
                               </span>
                             </li>
                           ))}

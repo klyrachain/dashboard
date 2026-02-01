@@ -789,11 +789,29 @@ export async function postCoreProviderRotateKey(id: string, body: { apiKey: stri
   return { ok: res.ok, status: res.status, data };
 }
 
+// ——— Platform API (platform-wide dashboard) ———
+
+/** GET /api/platform/overview — platform-wide metrics: all fees and counts (platform key only; 403 for merchant). */
+export async function getCorePlatformOverview() {
+  return fetchCoreGet<unknown>("api/platform/overview");
+}
+
 // ——— Connect (B2B) API ———
 
 /** GET /api/connect/overview — B2B dashboard metrics (platform key only; 403 for merchant). */
 export async function getCoreConnectOverview() {
   return fetchCoreGet<unknown>("api/connect/overview");
+}
+
+/** GET /api/connect/fees/report — accumulated fees by currency; query: days, businessId. */
+export async function getCoreConnectFeesReport(params?: {
+  days?: string | number;
+  businessId?: string;
+}) {
+  return fetchCoreGet<unknown>("api/connect/fees/report", {
+    days: params?.days != null ? String(params.days) : undefined,
+    businessId: params?.businessId,
+  });
 }
 
 /** GET /api/connect/merchants — list merchants; query: page, limit, status, riskLevel. */

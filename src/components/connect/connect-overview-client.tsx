@@ -112,6 +112,31 @@ export function ConnectOverviewClient({ data }: ConnectOverviewClientProps) {
         </Card>
       </div>
 
+      {/* Fees by currency (dashboard fee container) */}
+      {Object.keys(data.feesByCurrency).length > 0 && (
+        <Card className="bg-white">
+          <CardHeader>
+            <p className="text-sm font-medium text-slate-700">Fees by currency</p>
+            <p className="text-xs text-slate-500">Accumulated platform fees per token (from completed transactions)</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Object.entries(data.feesByCurrency)
+                .filter(([, v]) => v != null && String(v).trim() !== "")
+                .map(([currency, amount]) => (
+                  <div
+                    key={currency}
+                    className="flex items-center justify-between rounded-md border border-slate-100 bg-slate-50/50 px-4 py-3"
+                  >
+                    <span className="font-mono text-sm font-medium text-slate-700">{currency}</span>
+                    <span className="tabular-nums text-sm text-slate-900">{amount}</span>
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Row 3: Recent Onboarding */}
       <Card className="bg-white">
         <CardHeader>

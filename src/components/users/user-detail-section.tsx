@@ -80,6 +80,9 @@ function TransactionRow({ tx }: { tx: UserTransactionRow }) {
       </TableCell>
       <TableCell className="tabular-nums">{tx.fromAmount}</TableCell>
       <TableCell className="tabular-nums">{tx.toAmount}</TableCell>
+      <TableCell className="tabular-nums text-muted-foreground text-sm">
+        {tx.fee != null && tx.fee !== "" ? tx.fee : "—"}
+      </TableCell>
       <TableCell className="text-muted-foreground text-sm">
         {tx.createdAt instanceof Date
           ? format(tx.createdAt, "MMM d, yyyy HH:mm")
@@ -249,6 +252,7 @@ export function UserDetailSection({ user, transactions: userTransactions, onAnal
                       <TableHead>Status</TableHead>
                       <TableHead>From amount</TableHead>
                       <TableHead>To amount</TableHead>
+                      <TableHead>Fee</TableHead>
                       <TableHead>Created</TableHead>
                     </TableRow>
                   </TableHeader>

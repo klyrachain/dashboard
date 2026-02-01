@@ -31,8 +31,11 @@ export function RecentActivityListItem({ tx }: { tx: RecentTransaction }) {
         <span className="font-medium">{tx.type}</span>
         <Badge variant={getStatusVariant(tx.status)}>{tx.status}</Badge>
       </div>
-      <div className="text-muted-foreground">
-        {tx.fromAmount} → {tx.toAmount}
+      <div className="flex items-center gap-3 text-muted-foreground">
+        <span>{tx.fromAmount} → {tx.toAmount}</span>
+        {tx.fee != null && tx.fee !== "" && (
+          <span className="tabular-nums text-slate-600">Fee: {tx.fee}</span>
+        )}
       </div>
     </li>
   );

@@ -5,6 +5,7 @@
 
 import {
   getCoreConnectOverview,
+  getCoreConnectFeesReport,
   getCoreConnectMerchants,
   getCoreConnectMerchant,
   getCoreConnectSettlements,
@@ -26,6 +27,9 @@ export type RecentOnboardingItem = {
   createdAt: string;
 };
 
+/** Accumulated fee totals by token/currency. Keys = token symbol (e.g. GHS, USDC); values = sum of Transaction.fee for that f_token. */
+export type FeesByCurrency = Record<string, string>;
+
 export type ConnectOverview = {
   totalPlatformVolume: number;
   netRevenueFees: number;
@@ -33,6 +37,8 @@ export type ConnectOverview = {
   volumeByPartner: VolumeByPartnerItem[];
   takeRate: number;
   recentOnboarding: RecentOnboardingItem[];
+  /** Accumulated fees per currency (from Transaction.fee by f_token). */
+  feesByCurrency: FeesByCurrency;
 };
 
 export type ConnectOverviewResult = { ok: boolean; data: ConnectOverview | null; error?: string };
@@ -65,6 +71,13 @@ function parseOverview(raw: unknown): ConnectOverview | null {
         };
       })
     : [];
+  const feesByCurrency: FeesByCurrency = {};
+  if (o.feesByCurrency && typeof o.feesByCurrency === "object" && !Array.isArray(o.feesByCurrency)) {
+    for (const [key, val] of Object.entries(o.feesByCurrency)) {
+      const k = String(key).trim();
+      if (k) feesByCurrency[k] = val != null ? String(val).trim() : "";
+    }
+  }
   return {
     totalPlatformVolume,
     netRevenueFees,
@@ -72,6 +85,7 @@ function parseOverview(raw: unknown): ConnectOverview | null {
     volumeByPartner,
     takeRate,
     recentOnboarding,
+    feesByCurrency,
   };
 }
 
@@ -91,6 +105,60 @@ export async function getConnectOverview(): Promise<ConnectOverviewResult> {
     const payload = envelope.success !== false ? envelope.data : null;
     const overview = payload ? parseOverview(payload) : null;
     return { ok: !!overview, data: overview, error: overview ? undefined : "Invalid response" };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Network error";
+    return { ok: false, data: null, error: message };
+  }
+}
+
+/** GET /api/connect/fees/report — accumulated fees by currency; optional days, businessId. */
+export type ConnectFeesReport = {
+  byCurrency: FeesByCurrency;
+  totalConverted: number;
+  days: number | null;
+  businessId: string | null;
+};
+
+export type ConnectFeesReportResult = { ok: boolean; data: ConnectFeesReport | null; error?: string };
+
+function parseFeesReport(raw: unknown): ConnectFeesReport | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const byCurrency: FeesByCurrency = {};
+  if (o.byCurrency && typeof o.byCurrency === "object" && !Array.isArray(o.byCurrency)) {
+    for (const [key, val] of Object.entries(o.byCurrency)) {
+      const k = String(key).trim();
+      if (k) byCurrency[k] = val != null ? String(val).trim() : "";
+    }
+  }
+  const totalConverted = typeof o.totalConverted === "number" ? o.totalConverted : 0;
+  const days = o.days != null && typeof o.days === "number" ? o.days : null;
+  const businessId = o.businessId != null ? String(o.businessId).trim() || null : null;
+  return { byCurrency, totalConverted, days, businessId };
+}
+
+export async function getConnectFeesReport(params?: {
+  days?: number | string;
+  businessId?: string;
+}): Promise<ConnectFeesReportResult> {
+  try {
+    const { ok, status, data } = await getCoreConnectFeesReport({
+      days: params?.days,
+      businessId: params?.businessId,
+    });
+    if (!ok || !data || typeof data !== "object") {
+      const err =
+        data && typeof data === "object" && "error" in data
+          ? String((data as { error: string }).error)
+          : status === 403
+            ? "Fees report is for platform keys only."
+            : "Request failed";
+      return { ok: false, data: null, error: err };
+    }
+    const envelope = data as { success?: boolean; data?: unknown };
+    const payload = envelope.success !== false ? envelope.data : null;
+    const report = payload ? parseFeesReport(payload) : null;
+    return { ok: !!report, data: report, error: report ? undefined : "Invalid response" };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Network error";
     return { ok: false, data: null, error: message };

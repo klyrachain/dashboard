@@ -18,6 +18,8 @@ export type UserTransactionRow = {
   status: string;
   fromAmount: string;
   toAmount: string;
+  /** Fee charged (set when status = COMPLETED). */
+  fee: string | null;
   createdAt: Date;
 };
 
@@ -34,6 +36,11 @@ function coreUserToRow(item: unknown): UserWithTransactions | null {
   const email = o.email != null ? String(o.email) : null;
   const address = o.address != null ? String(o.address) : null;
   const createdAt = o.createdAt instanceof Date ? o.createdAt : new Date(String(o.createdAt ?? ""));
+  function feeVal(v: unknown): string | null {
+    if (v == null || v === "") return null;
+    const s = String(v).trim();
+    return s || null;
+  }
   const rawTx = Array.isArray(o.transactions) ? o.transactions : [];
   const transactions: UserTransactionRow[] = rawTx
     .map((t: unknown) => {
@@ -45,6 +52,7 @@ function coreUserToRow(item: unknown): UserWithTransactions | null {
         status: String(tx.status ?? ""),
         fromAmount: String(tx.fromAmount ?? tx.f_amount ?? ""),
         toAmount: String(tx.toAmount ?? tx.t_amount ?? ""),
+        fee: feeVal(tx.fee),
         createdAt: tx.createdAt instanceof Date ? tx.createdAt : new Date(String(tx.createdAt ?? "")),
       };
     })

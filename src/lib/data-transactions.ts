@@ -26,6 +26,8 @@ export type TransactionRow = {
   fromProvider: string;
   toProvider: string;
   requestId: string;
+  /** Fee charged for this transaction (set when status = COMPLETED). */
+  fee: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -48,6 +50,14 @@ function coreItemToRow(item: unknown): TransactionRow | null {
   const o = item as Record<string, unknown>;
   const id = str(o.id);
   if (!id) return null;
+  const feeVal = o.fee;
+  const fee =
+    feeVal == null || feeVal === ""
+      ? null
+      : typeof feeVal === "string"
+        ? feeVal.trim()
+        : String(feeVal).trim();
+
   return {
     id,
     type: str(o.type),
@@ -69,6 +79,7 @@ function coreItemToRow(item: unknown): TransactionRow | null {
     fromProvider: str(o.fromProvider ?? o.f_provider ?? o.provider),
     toProvider: str(o.toProvider ?? o.t_provider ?? o.provider),
     requestId: str(o.requestId),
+    fee: fee || null,
     createdAt: date(o.createdAt),
     updatedAt: date(o.updatedAt),
   };

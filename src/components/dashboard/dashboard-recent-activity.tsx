@@ -159,6 +159,7 @@ export function DashboardRecentActivity({
                 <TableHead className="text-slate-600">Type</TableHead>
                 <TableHead className="text-slate-600">Status</TableHead>
                 <TableHead className="text-slate-600">Amount</TableHead>
+                <TableHead className="text-slate-600">Fee</TableHead>
                 <TableHead className="text-slate-600">Created</TableHead>
               </TableRow>
             </TableHeader>
@@ -181,6 +182,9 @@ export function DashboardRecentActivity({
                   </TableCell>
                   <TableCell className="font-mono text-slate-700">
                     {tx.fromAmount} → {tx.toAmount}
+                  </TableCell>
+                  <TableCell className="tabular-nums text-xs text-slate-600">
+                    {tx.fee != null && tx.fee !== "" ? tx.fee : "—"}
                   </TableCell>
                   <TableCell className="text-xs text-slate-500">
                     {formatCreated(tx.createdAt)}

@@ -14,6 +14,7 @@ function transactionRowToUserTx(tx: TransactionRow): UserTransactionRow {
     status: tx.status,
     fromAmount: tx.fromAmount,
     toAmount: tx.toAmount,
+    fee: tx.fee ?? null,
     createdAt: tx.createdAt,
   };
 }

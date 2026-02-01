@@ -10,8 +10,16 @@ export type RecentTransaction = {
   status: string;
   fromAmount: string;
   toAmount: string;
+  /** Fee charged (set when status = COMPLETED). */
+  fee: string | null;
   createdAt: Date;
 };
+
+function strFee(v: unknown): string | null {
+  if (v == null || v === "") return null;
+  const s = String(v).trim();
+  return s || null;
+}
 
 /** Normalize Core API transaction to RecentTransaction (webhook-sourced data). */
 function coreItemToRecent(item: unknown): RecentTransaction | null {
@@ -26,6 +34,7 @@ function coreItemToRecent(item: unknown): RecentTransaction | null {
     status: String(o.status ?? ""),
     fromAmount: String(o.fromAmount ?? o.f_amount ?? ""),
     toAmount: String(o.toAmount ?? o.t_amount ?? ""),
+    fee: strFee(o.fee),
     createdAt,
   };
 }

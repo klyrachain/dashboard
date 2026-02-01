@@ -59,8 +59,9 @@ function getStatusVariant(
   }
 }
 
-/** Default visible columns: ID, Type, Status, amounts/tokens/chains, providers, Created, Actions. */
+/** Default visible columns: ID, Type, Status, amounts/fee, tokens/chains, providers, Created, Actions. */
 const defaultColumnVisibility: VisibilityState = {
+  fee: true,
   fromChain: true,
   toChain: true,
   fromPrice: false,
@@ -115,6 +116,18 @@ const columns: ColumnDef<TransactionRow>[] = [
     accessorKey: "toAmount",
     header: "To amount",
     meta: { headerLabel: "To amount" },
+  },
+  {
+    accessorKey: "fee",
+    header: "Fee",
+    meta: { headerLabel: "Fee" },
+    cell: ({ row }) => (
+      <span className="tabular-nums text-muted-foreground text-sm">
+        {row.original.fee != null && row.original.fee !== ""
+          ? row.original.fee
+          : "—"}
+      </span>
+    ),
   },
   {
     accessorKey: "fromToken",

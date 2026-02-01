@@ -6,10 +6,8 @@
 
 import { getCoreTransactions } from "@/lib/core-api";
 import { getInventoryAssets } from "@/lib/data-inventory";
-import { getFeeForOrder } from "@/lib/fee.service";
 import { getTokenUsdRate } from "@/lib/token-rates";
 import { TransactionStatus } from "@/types/enums";
-import type { OrderAction } from "@/lib/fee.service";
 
 const MS_24H = 24 * 60 * 60 * 1000;
 const MS_7D = 7 * MS_24H;
@@ -153,7 +151,9 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
 
 /**
  * Volume chart data from Core transactions for a given range and granularity.
- * Gross = fromAmount in USD; net = toAmount in USD (completed only).
+ * - Gross = total transaction value (fromAmount in USD) for completed tx.
+ * - Fees = sum of stored transaction fee in USD (only when fee is set on the transaction; no fallback).
+ * - Net = Gross − Fees (volume after platform fees).
  * Previous period = same length immediately before current window (for % change).
  */
 export async function getVolumeChartDataFromCore(
@@ -218,29 +218,20 @@ export async function getVolumeChartDataFromCore(
           : new Date(String(o.createdAt ?? 0)).getTime();
 
       const fromAmount = parseAmount(o.fromAmount ?? o.f_amount ?? 0);
-      const toAmount = parseAmount(o.toAmount ?? o.t_amount ?? 0);
-      const fromPrice = parseAmount(o.fromPrice ?? o.f_price ?? 0);
-      const toPrice = parseAmount(o.toPrice ?? o.t_price ?? 0);
       const fromSymbol = String(
         o.fromToken ?? o.f_token ?? o.toToken ?? o.t_token ?? "USDC"
       ).trim();
-      const toSymbol = String(
-        o.toToken ?? o.t_token ?? o.fromToken ?? o.f_token ?? "USDC"
-      ).trim();
       const grossUsd = fromAmount * getTokenUsdRate(fromSymbol);
-      const netUsd = toAmount * getTokenUsdRate(toSymbol);
 
-      const action = String(o.type ?? "buy").toLowerCase() as OrderAction;
-      const feeResult = getFeeForOrder({
-        action: action === "request" || action === "claim" || action === "buy" || action === "sell" ? action : "buy",
-        f_amount: fromAmount,
-        t_amount: toAmount,
-        f_price: fromPrice || getTokenUsdRate(fromSymbol),
-        t_price: toPrice || getTokenUsdRate(toSymbol),
-        f_token: fromSymbol,
-        t_token: toSymbol,
-      });
-      const feeUsd = feeResult.profit * getTokenUsdRate(fromSymbol);
+      // Fee: use stored transaction fee from API as-is (backend handles price conversion).
+      const feeRaw = o.fee;
+      const feeUsd =
+        feeRaw != null && String(feeRaw).trim() !== ""
+          ? parseAmount(feeRaw)
+          : 0;
+
+      // Net = Gross − Fees (volume after platform fees)
+      const netUsd = Math.max(0, grossUsd - feeUsd);
 
       if (createdAt >= since && createdAt <= now) {
         const bucketKey = useHourly
