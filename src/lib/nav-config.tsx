@@ -15,6 +15,7 @@ import {
   LineChart,
   BarChart3,
   Store,
+  AlertTriangle,
 } from "lucide-react";
 
 export type NavItem = {
@@ -36,6 +37,7 @@ export const coreNav: NavGroupConfig = {
     { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
     { href: "/users", label: "Customers", icon: Users },
     { href: "/inventory", label: "Inventory", icon: Package },
+    { href: "/validation", label: "Failed validation", icon: AlertTriangle },
   ],
 };
 

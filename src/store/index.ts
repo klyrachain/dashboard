@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { inventoryApi } from "./inventory-api";
 import { providersApi } from "./providers-api";
+import { validationApi } from "./validation-api";
 import { layoutSlice } from "./layout-slice";
 import { statusIndicatorSlice } from "./status-indicator-slice";
 import type { LayoutPreference } from "@/lib/layout-preference-cookie";
@@ -13,13 +14,15 @@ export function makeStore(initialLayout?: LayoutPreference | null) {
     reducer: {
       [inventoryApi.reducerPath]: inventoryApi.reducer,
       [providersApi.reducerPath]: providersApi.reducer,
+      [validationApi.reducerPath]: validationApi.reducer,
       layout: layoutSlice.reducer,
       statusIndicator: statusIndicatorSlice.reducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware().concat(
         inventoryApi.middleware,
-        providersApi.middleware
+        providersApi.middleware,
+        validationApi.middleware
       ),
     preloadedState: initialLayout
       ? { layout: { theme: initialLayout.theme, testMode: initialLayout.testMode } }

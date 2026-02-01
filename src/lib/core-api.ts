@@ -482,6 +482,47 @@ export async function getCoreQueuePoll(params?: { limit?: number }) {
   return fetchCoreGet<unknown>("api/queue/poll", { limit: params?.limit });
 }
 
+// ——— Failed Order Validation API ———
+
+/** GET /api/validation/failed — list failed validations (paginated). Query: page, limit (max 100), code. */
+export async function getCoreValidationFailed(params?: {
+  page?: number;
+  limit?: number;
+  code?: string;
+}) {
+  const limit =
+    params?.limit != null
+      ? Math.min(100, Math.max(1, params.limit))
+      : undefined;
+  return fetchCoreGet<unknown[]>("api/validation/failed", {
+    page: params?.page,
+    limit: limit ?? 20,
+    code: params?.code,
+  });
+}
+
+/** GET /api/validation/failed/recent — last N from Redis. Query: limit (max 200). */
+export async function getCoreValidationFailedRecent(params?: { limit?: number }) {
+  const limit =
+    params?.limit != null
+      ? Math.min(200, Math.max(1, params.limit))
+      : undefined;
+  return fetchCoreGet<unknown[]>("api/validation/failed/recent", {
+    limit: limit ?? 50,
+  });
+}
+
+/** GET /api/validation/failed/report — aggregated report. Query: days (1–90, default 7). */
+export async function getCoreValidationFailedReport(params?: { days?: number }) {
+  const days =
+    params?.days != null
+      ? Math.min(90, Math.max(1, params.days))
+      : undefined;
+  return fetchCoreGet<unknown>("api/validation/failed/report", {
+    days: days ?? 7,
+  });
+}
+
 // ——— Invoices API ———
 
 /** GET /api/invoices — list with ?page, ?limit (default 20, max 100), ?status */
