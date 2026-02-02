@@ -176,8 +176,8 @@ export function InventoryHistoryTable({
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="relative max-w-md">
+        <div className="flex flex-wrap items-center gap-4 justify-between">
+          <div className="relative w-full max-w-lg">
             <Search
               className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden
@@ -191,43 +191,47 @@ export function InventoryHistoryTable({
               aria-label="Search history"
             />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setExportModalOpen(true)}
-            className="gap-2"
-            aria-label="Export history"
-          >
-            <FileDown className="size-4" aria-hidden />
-            Export
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.refresh()}
-            className="gap-2"
-            aria-label="Refresh history"
-          >
-            <Loader2 className="size-4" aria-hidden />
-            Refresh
-          </Button>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Rows per page</span>
-            <Select
-              value={String(currentLimit)}
-              onValueChange={handleLimitChange}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExportModalOpen(true)}
+              className="gap-2"
+              aria-label="Export history"
             >
-              <SelectTrigger className="w-[90px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {HISTORY_PAGE_SIZE_OPTIONS.map((n) => (
-                  <SelectItem key={n} value={String(n)}>
-                    {n}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <FileDown className="size-4" aria-hidden />
+              Export
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.refresh()}
+              className="gap-2"
+              aria-label="Refresh history"
+            >
+              <Loader2 className="size-4" aria-hidden />
+              Refresh
+            </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Rows per page</span>
+              <Select
+                value={String(currentLimit)}
+                onValueChange={handleLimitChange}
+              >
+                <SelectTrigger className="w-[90px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {HISTORY_PAGE_SIZE_OPTIONS.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
           </div>
         </div>
         <div className="overflow-x-auto">

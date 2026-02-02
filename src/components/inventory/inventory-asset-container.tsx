@@ -156,87 +156,87 @@ function AssetFormBody({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-          {formError && (
-            <p className="text-sm text-destructive" role="alert">
-              {formError}
-            </p>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="asset-chain">Chain</Label>
-            <Input
-              id="asset-chain"
-              value={chain}
-              onChange={(e) => setChain(e.target.value)}
-              placeholder="e.g. ethereum, polygon"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="asset-chain-id">Chain ID</Label>
-            <Input
-              id="asset-chain-id"
-              type="number"
-              inputMode="numeric"
-              value={chainId}
-              onChange={(e) => setChainId(e.target.value)}
-              placeholder="e.g. 1 (Ethereum), 137 (Polygon)"
-              required={title === "Add asset"}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="asset-address">Address</Label>
-            <Input
-              id="asset-address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="e.g. 0x… (wallet address)"
-              required={title === "Add asset"}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="asset-token">Token / Symbol</Label>
-            <Input
-              id="asset-token"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="e.g. USDC, ETH"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="asset-token-address">Token address</Label>
-            <Input
-              id="asset-token-address"
-              value={tokenAddress}
-              onChange={(e) => setTokenAddress(e.target.value)}
-              placeholder="e.g. 0x… (contract address)"
-              required={title === "Add asset"}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="asset-balance">Balance</Label>
-            <Input
-              id="asset-balance"
-              type="text"
-              value={balance}
-              onChange={(e) => setBalance(e.target.value)}
-              placeholder="0"
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving…" : submitLabel}
-            </Button>
-          </DialogFooter>
-        </form>
+      {formError && (
+        <p className="text-sm text-destructive" role="alert">
+          {formError}
+        </p>
+      )}
+      <div className="space-y-2">
+        <Label htmlFor="asset-chain">Chain</Label>
+        <Input
+          id="asset-chain"
+          value={chain}
+          onChange={(e) => setChain(e.target.value)}
+          placeholder="e.g. ethereum, polygon"
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="asset-chain-id">Chain ID</Label>
+        <Input
+          id="asset-chain-id"
+          type="number"
+          inputMode="numeric"
+          value={chainId}
+          onChange={(e) => setChainId(e.target.value)}
+          placeholder="e.g. 1 (Ethereum), 137 (Polygon)"
+          required={title === "Add asset"}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="asset-address">Address</Label>
+        <Input
+          id="asset-address"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="e.g. 0x… (wallet address)"
+          required={title === "Add asset"}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="asset-token">Token / Symbol</Label>
+        <Input
+          id="asset-token"
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          placeholder="e.g. USDC, ETH"
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="asset-token-address">Token address</Label>
+        <Input
+          id="asset-token-address"
+          value={tokenAddress}
+          onChange={(e) => setTokenAddress(e.target.value)}
+          placeholder="e.g. 0x… (contract address)"
+          required={title === "Add asset"}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="asset-balance">Balance</Label>
+        <Input
+          id="asset-balance"
+          type="text"
+          value={balance}
+          onChange={(e) => setBalance(e.target.value)}
+          placeholder="0"
+        />
+      </div>
+      <DialogFooter>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving…" : submitLabel}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
 
@@ -495,9 +495,23 @@ export function InventoryAssetContainer() {
   return (
     <section className="space-y-4" aria-labelledby="inventory-assets-heading">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 id="inventory-assets-heading" className="text-lg font-semibold tracking-tight">
-          Inventory assets
-        </h2>
+
+        {assets.length > 0 && (
+          <div className="relative w-full max-w-lg">
+            <Search
+              className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              type="search"
+              placeholder="Search by chain, token, ID, or address…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 border border-slate-200 bg-white w-full max-w-xl"
+              aria-label="Search assets"
+            />
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -527,22 +541,6 @@ export function InventoryAssetContainer() {
         </div>
       </div>
 
-      {assets.length > 0 && (
-        <div className="relative max-w-md">
-          <Search
-            className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
-          />
-          <Input
-            type="search"
-            placeholder="Search by chain, token, ID, or address…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 border border-slate-200 bg-white"
-            aria-label="Search assets"
-          />
-        </div>
-      )}
 
       {assets.length === 0 ? (
         <EmptyState />
