@@ -36,20 +36,18 @@ const INVENTORY_ASSETS_EXPORT_COLUMNS: ExportColumn[] = [
   { id: "tokenAddress", label: "Token address" },
 ];
 
-function EmptyState() {
+function EmptyState({ compact }: { compact?: boolean }) {
   return (
     <Card className="bg-white">
-      <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-slate-100">
-          <span className="text-2xl text-slate-400" aria-hidden>
-            —
-          </span>
+      <CardContent className={`flex flex-col items-center justify-center gap-2 text-center ${compact ? "py-6" : "py-12"}`}>
+        <div className={`flex items-center justify-center rounded-full bg-slate-100 ${compact ? "size-8" : "size-12"}`}>
+          <span className={compact ? "text-lg text-slate-400" : "text-2xl text-slate-400"} aria-hidden>—</span>
         </div>
         <div>
-          <p className="text-sm font-medium text-slate-600">No inventory assets</p>
-          <p className="text-xs text-slate-500">
-            Add an asset to track balances by chain and token.
-          </p>
+          <p className={compact ? "text-xs font-medium text-slate-600" : "text-sm font-medium text-slate-600"}>No inventory assets</p>
+          {!compact && (
+            <p className="text-xs text-slate-500">Add an asset to track balances by chain and token.</p>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -61,44 +59,46 @@ function AssetCard({
   onEdit,
   onDelete,
   isDeleting,
+  compact,
 }: {
   asset: InventoryAssetRow;
   onEdit: () => void;
   onDelete: () => void;
   isDeleting: boolean;
+  compact?: boolean;
 }) {
   return (
     <Card className="bg-white">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">
+      <CardHeader className={`flex flex-row items-center justify-between space-y-0 ${compact ? "px-3 pb-1 pt-3" : "pb-2"}`}>
+        <CardTitle className={compact ? "text-xs font-medium" : "text-sm font-medium"}>
           {asset.token} on {asset.chain}
         </CardTitle>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <Button
             variant="ghost"
             size="icon"
-            className="size-8"
+            className={compact ? "size-6" : "size-8"}
             onClick={onEdit}
             aria-label={`Edit ${asset.token} on ${asset.chain}`}
           >
-            <Pencil className="size-4" aria-hidden />
+            <Pencil className={compact ? "size-3" : "size-4"} aria-hidden />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 text-destructive hover:text-destructive"
+            className={`text-destructive hover:text-destructive ${compact ? "size-6" : "size-8"}`}
             onClick={onDelete}
             disabled={isDeleting}
             aria-label={`Delete ${asset.token} on ${asset.chain}`}
           >
-            <Trash2 className="size-4" aria-hidden />
+            <Trash2 className={compact ? "size-3" : "size-4"} aria-hidden />
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        <p className="text-2xl font-semibold">{asset.balance}</p>
+      <CardContent className={compact ? "px-3 pb-3 pt-0" : undefined}>
+        <p className={compact ? "text-base font-semibold" : "text-2xl font-semibold"}>{asset.balance}</p>
         <p className="text-xs text-muted-foreground">
-          Updated {new Date(asset.updatedAt).toLocaleDateString()}
+          {compact ? new Date(asset.updatedAt).toLocaleDateString() : `Updated ${new Date(asset.updatedAt).toLocaleDateString()}`}
         </p>
       </CardContent>
     </Card>
@@ -309,7 +309,9 @@ function assetToFormState(asset: InventoryAssetRow): AssetFormState {
   };
 }
 
-export function InventoryAssetContainer() {
+type InventoryAssetContainerProps = { compact?: boolean };
+
+export function InventoryAssetContainer({ compact }: InventoryAssetContainerProps = {}) {
   const { data: assets = [], isLoading, error, refetch, isFetching } = useGetInventoryQuery();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -460,17 +462,17 @@ export function InventoryAssetContainer() {
   if (isLoading) {
     return (
       <Card className="bg-white">
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardHeader className={compact ? "pb-2" : undefined}>
+          <CardTitle className={compact ? "text-xs font-medium text-muted-foreground" : "text-sm font-medium text-muted-foreground"}>
             Inventory assets
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className={compact ? "grid gap-2 md:grid-cols-3 lg:grid-cols-4" : "grid gap-4 md:grid-cols-2 lg:grid-cols-3"}>
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-28 animate-pulse rounded-lg bg-slate-100"
+                className={`animate-pulse rounded-lg bg-slate-100 ${compact ? "h-20" : "h-28"}`}
                 aria-hidden
               />
             ))}
@@ -493,66 +495,65 @@ export function InventoryAssetContainer() {
   }
 
   return (
-    <section className="space-y-4" aria-labelledby="inventory-assets-heading">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-
-        {assets.length > 0 && (
-          <div className="relative w-full max-w-lg">
-            <Search
-              className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              type="search"
-              placeholder="Search by chain, token, ID, or address…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 border border-slate-200 bg-white w-full max-w-xl"
-              aria-label="Search assets"
-            />
+    <section className={compact ? "space-y-2" : "space-y-4"} aria-labelledby="inventory-assets-heading">
+      {!compact && (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {assets.length > 0 && (
+            <div className="relative w-full max-w-lg">
+              <Search
+                className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                type="search"
+                placeholder="Search by chain, token, ID, or address…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 border border-slate-200 bg-white w-full max-w-xl"
+                aria-label="Search assets"
+              />
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExportModalOpen(true)}
+              className="gap-2"
+              aria-label="Export assets"
+            >
+              <FileDown className="size-4" aria-hidden />
+              Export
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="gap-2"
+              aria-label="Refresh inventory"
+            >
+              <Loader2 className={`size-4 ${isFetching ? "animate-spin" : ""}`} aria-hidden />
+              Refresh
+            </Button>
+            <Button onClick={() => setCreateOpen(true)} size="sm">
+              <Plus className="size-4 mr-1.5" aria-hidden />
+              Add asset
+            </Button>
           </div>
-        )}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setExportModalOpen(true)}
-            className="gap-2"
-            aria-label="Export assets"
-          >
-            <FileDown className="size-4" aria-hidden />
-            Export
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="gap-2"
-            aria-label="Refresh inventory"
-          >
-            <Loader2 className={`size-4 ${isFetching ? "animate-spin" : ""}`} aria-hidden />
-            Refresh
-          </Button>
-          <Button onClick={() => setCreateOpen(true)} size="sm">
-            <Plus className="size-4 mr-1.5" aria-hidden />
-            Add asset
-          </Button>
         </div>
-      </div>
-
-
+      )}
       {assets.length === 0 ? (
-        <EmptyState />
+        <EmptyState compact={compact} />
       ) : filteredAssets.length === 0 ? (
         <Card className="bg-white">
-          <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-            <p className="text-sm font-medium text-slate-600">No assets match your search</p>
-            <p className="text-xs text-slate-500">Try a different term or clear the search.</p>
+          <CardContent className={`flex flex-col items-center justify-center gap-2 text-center ${compact ? "py-6" : "py-12"}`}>
+            <p className={compact ? "text-xs font-medium text-slate-600" : "text-sm font-medium text-slate-600"}>No assets match your search</p>
+            {!compact && <p className="text-xs text-slate-500">Try a different term or clear the search.</p>}
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className={compact ? "grid gap-2 md:grid-cols-3 lg:grid-cols-4" : "grid gap-4 md:grid-cols-2 lg:grid-cols-3"}>
           {filteredAssets.map((asset) => (
             <AssetCard
               key={asset.id}
@@ -560,6 +561,7 @@ export function InventoryAssetContainer() {
               onEdit={() => setEditAsset(asset)}
               onDelete={() => handleDelete(asset)}
               isDeleting={deletingId === asset.id}
+              compact={compact}
             />
           ))}
         </div>

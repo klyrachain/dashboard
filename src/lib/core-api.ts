@@ -466,6 +466,49 @@ export async function getCoreInventoryHistory(
   );
 }
 
+/** GET /api/inventory/:id/lots — lots for one asset (FIFO). Query: onlyAvailable? */
+export async function getCoreInventoryLots(
+  id: string,
+  params?: { onlyAvailable?: boolean }
+) {
+  const onlyAvailable =
+    params?.onlyAvailable === true ? "true" : params?.onlyAvailable === false ? "false" : undefined;
+  return fetchCoreGet<unknown[]>(`api/inventory/${encodeURIComponent(id)}/lots`, {
+    onlyAvailable,
+  });
+}
+
+/** GET /api/lots — list lots (pagination; filter: assetId?, chain?, onlyAvailable?). */
+export async function getCoreLots(params?: {
+  page?: number;
+  limit?: number;
+  assetId?: string;
+  chain?: string;
+  onlyAvailable?: boolean;
+}) {
+  const onlyAvailable =
+    params?.onlyAvailable === true ? "true" : params?.onlyAvailable === false ? "false" : undefined;
+  return fetchCoreGet<unknown[]>("api/lots", {
+    page: params?.page,
+    limit: params?.limit ?? 20,
+    assetId: params?.assetId,
+    chain: params?.chain,
+    onlyAvailable,
+  });
+}
+
+/** GET /api/chains — list chains (public). chainId, name, icon. */
+export async function getCoreChains() {
+  return fetchCoreGet<unknown[]>("api/chains");
+}
+
+/** GET /api/tokens — list supported tokens (public). Query: chain_id? */
+export async function getCoreTokens(params?: { chain_id?: number }) {
+  return fetchCoreGet<unknown[]>("api/tokens", {
+    chain_id: params?.chain_id,
+  });
+}
+
 export async function getCoreCacheBalances(params?: { limit?: number }) {
   return fetchCoreGet<unknown[]>("api/cache/balances", {
     limit: params?.limit,
