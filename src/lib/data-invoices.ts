@@ -3,6 +3,7 @@
  * All amounts and currency are USD. Dates from API are ISO 8601; we map to Date for app use.
  */
 
+import { getSessionToken } from "@/lib/auth";
 import {
   getCoreInvoices,
   getCoreInvoice,
@@ -199,11 +200,11 @@ export async function getInvoiceList(params?: {
     const envelope =
       data && typeof data === "object"
         ? (data as {
-            success?: boolean;
-            data?: unknown[];
-            meta?: { page: number; limit: number; total: number };
-            error?: string;
-          })
+          success?: boolean;
+          data?: unknown[];
+          meta?: { page: number; limit: number; total: number };
+          error?: string;
+        })
         : null;
 
     const errorMessage =
@@ -253,7 +254,8 @@ export async function getInvoiceList(params?: {
  */
 export async function getInvoiceById(id: string): Promise<Invoice | null> {
   try {
-    const { ok, data } = await getCoreInvoice(id);
+    const token = await getSessionToken();
+    const { ok, data } = await getCoreInvoice(id, token ?? undefined);
 
     if (!ok || !data || typeof data !== "object") return null;
 

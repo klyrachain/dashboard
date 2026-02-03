@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Search,
@@ -13,10 +13,13 @@ import {
   LayoutPanelLeft,
   LayoutDashboard,
   Bot,
+  User,
+  LogOut,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
 import type { RootState } from "@/store";
+import { signOut } from "next-auth/react";
+import { postLogout } from "@/lib/auth-api";
+import { cn } from "@/lib/utils";
 import { setTheme, setTestMode, type LayoutTheme } from "@/store/layout-slice";
 import { navGroups } from "@/lib/nav-config";
 import { Button } from "@/components/ui/button";
@@ -26,6 +29,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState, useRef, useEffect } from "react";
@@ -119,9 +124,21 @@ export function HeaderNoSidebar() {
   const dispatch = useDispatch();
   const theme = useSelector((s: RootState) => s.layout.theme);
   const testMode = useSelector((s: RootState) => s.layout.testMode);
+  const admin = useSelector((s: RootState) => s.auth.admin);
 
   const handleThemeSelect = (t: LayoutTheme) => () => dispatch(setTheme(t));
   const handleRefresh = () => router.refresh();
+
+  const handleLogout = async () => {
+    try {
+      await postLogout();
+    } catch {
+      // continue to clear client session
+    }
+    signOut({ callbackUrl: "/login" });
+  };
+
+  const displayName = admin?.name?.trim() || admin?.email || "Account";
 
   return (
     <header className="flex shrink-0 flex-col border-b border-slate-200 bg-slate-900 text-white">
@@ -207,16 +224,52 @@ export function HeaderNoSidebar() {
           >
             <Bell className="size-4" aria-hidden />
           </Button>
-          <Link href="/settings">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-9 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
-              aria-label="Settings"
-            >
-              <Settings className="size-4" aria-hidden />
-            </Button>
-          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+                aria-label="Account menu"
+              >
+                {displayName}
+                <ChevronDown className="size-3.5" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col gap-0.5">
+                  {admin?.name && (
+                    <span className="font-medium text-foreground">{admin.name}</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {admin?.email ?? "—"}
+                  </span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/settings/account" className="flex items-center gap-2 cursor-pointer">
+                  <User className="size-4" />
+                  Account & security
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings/general" className="flex items-center gap-2 cursor-pointer">
+                  <Settings className="size-4" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive cursor-pointer"
+                onClick={handleLogout}
+              >
+                <LogOut className="size-4" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="flex items-center gap-2 pl-2">
             <span className="text-xs text-white/60">
               {testMode ? "Testnet" : "Live"}

@@ -98,8 +98,10 @@ export async function getProvidersFromCore(): Promise<{
   data: ProviderRow[];
   error?: string;
 }> {
+  const { getSessionToken } = await import("@/lib/auth");
   const { getCoreProviders } = await import("@/lib/core-api");
-  const result = await getCoreProviders();
+  const token = await getSessionToken();
+  const result = await getCoreProviders(token ?? undefined);
   if (!result.ok) {
     const err =
       result.data && typeof result.data === "object" && "error" in result.data

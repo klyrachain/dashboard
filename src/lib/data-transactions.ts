@@ -2,6 +2,7 @@
  * Transactions data — Core API only (GET /api/transactions).
  * No database fallback. Returns [] if Core is unavailable.
  */
+import { getSessionToken } from "@/lib/auth";
 import { getCoreTransactions } from "@/lib/core-api";
 
 /** Row shape for display; maps all fields returned by Core GET /api/transactions. */
@@ -108,7 +109,8 @@ export function filterTransactionsForUser(
 /** Fetches transactions from Core API only. Returns [] if Core is unavailable or returns no data. */
 export async function getTransactions(): Promise<TransactionRow[]> {
   try {
-    const result = await getCoreTransactions({ limit: 100 });
+    const token = await getSessionToken();
+    const result = await getCoreTransactions({ limit: 100 }, token ?? undefined);
     const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
       ? (result.data as { data: unknown[] }).data
       : [];
@@ -124,7 +126,7 @@ export async function getTransactions(): Promise<TransactionRow[]> {
         sessionId: "debug-session",
         hypothesisId: ["B", "D"],
       }),
-    }).catch(() => {});
+    }).catch(() => { });
     // #endregion
     return raw.map((item) => coreItemToRow(item)).filter((r): r is TransactionRow => r !== null);
   } catch {

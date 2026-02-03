@@ -2,6 +2,7 @@
  * Recent transactions — Core API only (GET /api/transactions).
  * No database fallback. Returns [] if Core is unavailable.
  */
+import { getSessionToken } from "@/lib/auth";
 import { getCoreTransactions } from "@/lib/core-api";
 
 export type RecentTransaction = {
@@ -44,7 +45,8 @@ export async function getRecentTransactions(
   limit: number
 ): Promise<RecentTransaction[]> {
   try {
-    const result = await getCoreTransactions({ limit, page: 1 });
+    const token = await getSessionToken();
+    const result = await getCoreTransactions({ limit, page: 1 }, token ?? undefined);
     const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
       ? (result.data as { data: unknown[] }).data
       : [];
@@ -60,7 +62,7 @@ export async function getRecentTransactions(
         sessionId: "debug-session",
         hypothesisId: ["B", "D"],
       }),
-    }).catch(() => {});
+    }).catch(() => { });
     // #endregion
     return raw
       .map((item) => coreItemToRecent(item))

@@ -11,9 +11,11 @@ import {
   Shield,
   Users,
   Webhook,
+  UserCircle,
 } from "lucide-react";
 
 const SETTINGS_TABS = [
+  { href: "/settings/account", label: "Account", icon: UserCircle },
   { href: "/settings/general", label: "General", icon: Settings },
   { href: "/settings/financials", label: "Financials", icon: DollarSign },
   { href: "/settings/providers", label: "Providers & Routing", icon: Route },

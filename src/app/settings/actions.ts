@@ -18,7 +18,7 @@ import {
   getSettingsRisk,
   patchSettingsRisk,
   getSettingsTeamAdmins,
-  postSettingsTeamInvite,
+  postAuthInvite,
   getSettingsApi,
   patchSettingsApi,
   postSettingsApiRotateWebhookSecret,
@@ -27,6 +27,12 @@ import {
 const SETTINGS_PATHS = ["/settings/general", "/settings/financials", "/settings/providers", "/settings/risk", "/settings/team", "/settings/api"];
 
 export type SettingsActionResult = { success: boolean; error?: string };
+
+export type InviteTeamResult = SettingsActionResult & {
+  inviteLink?: string;
+  expiresAt?: string;
+  inviteId?: string;
+};
 
 // General
 export async function getGeneralAction() {
@@ -106,8 +112,10 @@ export async function updateProviderRoutingAction(
     name?: string | null;
   }
 ): Promise<SettingsActionResult> {
+  const { getSessionToken } = await import("@/lib/auth");
   const { patchCoreProvider } = await import("@/lib/core-api");
-  const result = await patchCoreProvider(id, body);
+  const token = await getSessionToken();
+  const result = await patchCoreProvider(id, body, token ?? undefined);
   if (result.ok) {
     revalidatePath("/settings/providers");
     return { success: true };
@@ -123,8 +131,10 @@ export async function rotateProviderKeyRoutingAction(
   id: string,
   apiKey: string
 ): Promise<SettingsActionResult> {
+  const { getSessionToken } = await import("@/lib/auth");
   const { postCoreProviderRotateKey } = await import("@/lib/core-api");
-  const result = await postCoreProviderRotateKey(id, { apiKey: apiKey.trim() });
+  const token = await getSessionToken();
+  const result = await postCoreProviderRotateKey(id, { apiKey: apiKey.trim() }, token ?? undefined);
   if (result.ok) {
     revalidatePath("/settings/providers");
     return { success: true };
@@ -162,11 +172,16 @@ export async function getTeamAdminsAction() {
 export async function inviteTeamAdminAction(body: {
   email: string;
   role?: string;
-}): Promise<SettingsActionResult> {
-  const result = await postSettingsTeamInvite(body);
+}): Promise<InviteTeamResult> {
+  const result = await postAuthInvite(body);
   if (result.ok) {
     revalidatePath("/settings/team");
-    return { success: true };
+    return {
+      success: true,
+      inviteLink: result.inviteLink,
+      expiresAt: result.expiresAt,
+      inviteId: result.inviteId,
+    };
   }
   return { success: false, error: result.error };
 }

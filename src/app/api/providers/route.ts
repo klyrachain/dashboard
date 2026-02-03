@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
 import { getCoreProviders } from "@/lib/core-api";
+import { getSessionToken, UNAUTH_CORE_MESSAGE } from "@/lib/auth";
 
 /**
- * GET /api/providers — proxy to Core Provider Routing API.
- * List all providers (routing table). Platform admin only.
+ * GET /api/providers — proxy to Core. Requires session (Bearer).
  */
 export async function GET() {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   try {
-    const result = await getCoreProviders();
+    const result = await getCoreProviders(token);
     if (!result.ok) {
       return NextResponse.json(
         { success: false, error: "Core API error" },

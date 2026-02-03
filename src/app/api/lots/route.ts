@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import { getCoreLots } from "@/lib/core-api";
+import { getSessionToken, UNAUTH_CORE_MESSAGE } from "@/lib/auth";
 
 /**
- * GET /api/lots — proxy to Core API. Query: page, limit, assetId, chain, onlyAvailable.
+ * GET /api/lots — proxy to Core API. Requires session (Bearer).
  */
 export async function GET(request: Request) {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   const { searchParams } = new URL(request.url);
   const page = searchParams.get("page");
   const limit = searchParams.get("limit");
@@ -21,7 +29,7 @@ export async function GET(request: Request) {
       assetId: assetId?.trim() || undefined,
       chain: chain?.trim() || undefined,
       onlyAvailable: onlyAvailableBool,
-    });
+    }, token);
     if (!result.ok) {
       return NextResponse.json(
         { success: false, error: "Core API error" },

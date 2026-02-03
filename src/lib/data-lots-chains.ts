@@ -6,6 +6,7 @@ import {
   getCoreChains,
   getCoreTokens,
 } from "@/lib/core-api";
+import { getSessionToken } from "@/lib/auth";
 
 function str(v: unknown): string {
   if (v == null) return "";
@@ -74,13 +75,14 @@ export async function getLotsList(params?: {
 }): Promise<LotsListResult> {
   const defaultMeta = { page: params?.page ?? 1, limit: params?.limit ?? 20, total: 0 };
   try {
+    const token = await getSessionToken();
     const result = await getCoreLots({
       page: params?.page,
       limit: params?.limit ?? 20,
       assetId: params?.assetId,
       chain: params?.chain,
       onlyAvailable: params?.onlyAvailable,
-    });
+    }, token ?? undefined);
     if (!result.ok || !result.data || typeof result.data !== "object") {
       return { items: [], meta: defaultMeta };
     }
@@ -142,7 +144,8 @@ function parseChain(item: unknown): ChainRow | null {
 
 export async function getChains(): Promise<ChainRow[]> {
   try {
-    const result = await getCoreChains();
+    const token = await getSessionToken();
+    const result = await getCoreChains(token ?? undefined);
     if (!result.ok || !result.data || typeof result.data !== "object") return [];
     const envelope = result.data as { success?: boolean; data?: unknown[] };
     const raw = Array.isArray(envelope.data) ? envelope.data : Array.isArray(result.data) ? (result.data as unknown[]) : [];
@@ -186,7 +189,8 @@ function parseToken(item: unknown): TokenRow | null {
 
 export async function getTokens(chainId?: number): Promise<TokenRow[]> {
   try {
-    const result = await getCoreTokens({ chain_id: chainId });
+    const token = await getSessionToken();
+    const result = await getCoreTokens({ chain_id: chainId }, token ?? undefined);
     if (!result.ok || !result.data || typeof result.data !== "object") return [];
     const envelope = result.data as { success?: boolean; data?: unknown[] };
     const raw = Array.isArray(envelope.data) ? envelope.data : Array.isArray(result.data) ? (result.data as unknown[]) : [];

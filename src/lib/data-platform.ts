@@ -5,6 +5,7 @@
  */
 
 import { getCorePlatformOverview } from "@/lib/core-api";
+import { getSessionToken } from "@/lib/auth";
 
 /** Accumulated fee totals by token/currency. Keys = token symbol (e.g. GHS, USDC); values = sum of Transaction.fee for that f_token. */
 export type PlatformFeesByCurrency = Record<string, string>;
@@ -47,7 +48,8 @@ function parsePlatformOverview(raw: unknown): PlatformOverview | null {
 
 export async function getPlatformOverview(): Promise<PlatformOverviewResult> {
   try {
-    const { ok, status, data } = await getCorePlatformOverview();
+    const token = await getSessionToken();
+    const { ok, status, data } = await getCorePlatformOverview(token ?? undefined);
     if (!ok || !data || typeof data !== "object") {
       const err =
         data && typeof data === "object" && "error" in data

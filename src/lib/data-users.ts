@@ -2,6 +2,7 @@
  * Users data — Core API only (GET /api/users).
  * No database fallback. Returns [] if Core is unavailable.
  */
+import { getSessionToken } from "@/lib/auth";
 import { getCoreUsers } from "@/lib/core-api";
 
 export type UserRow = {
@@ -63,7 +64,8 @@ function coreUserToRow(item: unknown): UserWithTransactions | null {
 /** Fetches users from Core API only. Returns [] if Core is unavailable or returns no data. */
 export async function getUsers(): Promise<UserWithTransactions[]> {
   try {
-    const result = await getCoreUsers({ limit: 100 });
+    const token = await getSessionToken();
+    const result = await getCoreUsers({ limit: 100 }, token ?? undefined);
     const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
       ? (result.data as { data: unknown[] }).data
       : [];

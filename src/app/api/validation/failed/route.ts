@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import { getCoreValidationFailed } from "@/lib/core-api";
+import { getSessionToken, UNAUTH_CORE_MESSAGE } from "@/lib/auth";
 
 /**
- * GET /api/validation/failed — list failed validations (paginated).
- * Proxy to Core. Query: page, limit (max 100), code.
- * Requires platform admin API key (set in Core; dashboard uses CORE_API_KEY).
+ * GET /api/validation/failed — list failed validations (paginated). Requires session (Bearer).
  */
 export async function GET(request: Request) {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   try {
     const { searchParams } = new URL(request.url);
     const page = searchParams.get("page");
@@ -16,7 +22,7 @@ export async function GET(request: Request) {
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
       code: code || undefined,
-    });
+    }, token);
     if (!result.ok) {
       return NextResponse.json(
         { success: false, error: "Core API error" },

@@ -5,6 +5,7 @@
  * @see md/quotes-integration.md, md/quote-api.md
  */
 
+import { getSessionToken } from "@/lib/auth";
 import {
   getCoreTransactions,
   getCoreInventory,
@@ -109,7 +110,8 @@ export async function getInventoryQuoteContext(): Promise<InventoryQuoteContext>
   let firstWalletAddress: string | null = null;
 
   try {
-    const result = await getCoreInventory({ limit: 200, page: 1 });
+    const token = await getSessionToken();
+    const result = await getCoreInventory({ limit: 200, page: 1 }, token ?? undefined);
     if (!result.ok || !result.data || typeof result.data !== "object") {
       return { tokenByChainAndSymbol, chainNameToId, firstWalletAddress };
     }
@@ -154,12 +156,13 @@ async function getRawPairsFromTransactions(limit: number): Promise<RawPair[]> {
   >();
 
   try {
-    const result = await getCoreTransactions({ limit: 500, page: 1 });
+    const token = await getSessionToken();
+    const result = await getCoreTransactions({ limit: 500, page: 1 }, token ?? undefined);
     const raw =
       result.ok &&
-      result.data &&
-      typeof result.data === "object" &&
-      Array.isArray((result.data as { data?: unknown[] }).data)
+        result.data &&
+        typeof result.data === "object" &&
+        Array.isArray((result.data as { data?: unknown[] }).data)
         ? (result.data as { data: unknown[] }).data
         : [];
 
@@ -207,9 +210,9 @@ async function getRawPairsFromTransactions(limit: number): Promise<RawPair[]> {
     sorted.length >= limit
       ? sorted.map(([, v]) => v)
       : [
-          ...sorted.map(([, v]) => v),
-          ...fallbackPairs.slice(0, limit - sorted.length),
-        ];
+        ...sorted.map(([, v]) => v),
+        ...fallbackPairs.slice(0, limit - sorted.length),
+      ];
 
   return toExpand.map((p) => ({
     ...p,
@@ -300,8 +303,8 @@ export async function getQuoteForPair(
       if (!res.ok || !res.data || typeof res.data !== "object") {
         const err =
           res.data &&
-          typeof res.data === "object" &&
-          "error" in res.data
+            typeof res.data === "object" &&
+            "error" in res.data
             ? String((res.data as { error: string }).error)
             : "Quote failed";
         return { pair, ok: false, error: err };
@@ -325,8 +328,8 @@ export async function getQuoteForPair(
     if (!res.ok || !res.data || typeof res.data !== "object") {
       const err =
         res.data &&
-        typeof res.data === "object" &&
-        "error" in res.data
+          typeof res.data === "object" &&
+          "error" in res.data
           ? String((res.data as { error: string }).error)
           : "Quote failed";
       return { pair, ok: false, error: err };

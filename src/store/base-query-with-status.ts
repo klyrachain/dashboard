@@ -12,6 +12,7 @@ type RequestArgs = {
 
 const defaultBaseQuery = fetchBaseQuery({
   baseUrl: "",
+  credentials: "include",
   prepareHeaders: (headers) => {
     headers.set("Content-Type", "application/json");
     return headers;

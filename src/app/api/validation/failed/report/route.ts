@@ -1,17 +1,24 @@
 import { NextResponse } from "next/server";
 import { getCoreValidationFailedReport } from "@/lib/core-api";
+import { getSessionToken, UNAUTH_CORE_MESSAGE } from "@/lib/auth";
 
 /**
- * GET /api/validation/failed/report — aggregated report for dashboard.
- * Proxy to Core. Query: days (1–90, default 7).
+ * GET /api/validation/failed/report — aggregated report. Requires session (Bearer).
  */
 export async function GET(request: Request) {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   try {
     const { searchParams } = new URL(request.url);
     const days = searchParams.get("days");
     const result = await getCoreValidationFailedReport({
       days: days ? parseInt(days, 10) : undefined,
-    });
+    }, token);
     if (!result.ok) {
       return NextResponse.json(
         { success: false, error: "Core API error" },

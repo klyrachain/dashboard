@@ -4,6 +4,7 @@
  * No database fallback.
  */
 
+import { getSessionToken } from "@/lib/auth";
 import {
   getCoreInventory,
   getCoreTransactions,
@@ -193,7 +194,8 @@ async function getInventoryRows(): Promise<
   Array<{ chain: string; token: string; balance: number }>
 > {
   try {
-    const result = await getCoreInventory({ limit: 100 });
+    const token = await getSessionToken();
+    const result = await getCoreInventory({ limit: 100 }, token ?? undefined);
     const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
       ? (result.data as { data: unknown[] }).data
       : [];
@@ -209,7 +211,7 @@ async function getInventoryRows(): Promise<
         sessionId: "debug-session",
         hypothesisId: ["B", "D"],
       }),
-    }).catch(() => {});
+    }).catch(() => { });
     // #endregion
     return raw
       .map(parseInventoryItem)
@@ -276,9 +278,10 @@ function parseClaimItem(
 /** Fetches pending/active state from Core API only. Returns EMPTY_PENDING if Core is unavailable. */
 export async function getPendingState(): Promise<PendingState> {
   try {
+    const token = await getSessionToken();
     const [pendingRes, activeRes] = await Promise.all([
-      getCoreTransactions({ status: "PENDING", limit: 100 }),
-      getCoreTransactions({ status: "ACTIVE", limit: 100 }),
+      getCoreTransactions({ status: "PENDING", limit: 100 }, token ?? undefined),
+      getCoreTransactions({ status: "ACTIVE", limit: 100 }, token ?? undefined),
     ]);
 
     const envelopeToRows = (
@@ -309,7 +312,7 @@ export async function getPendingState(): Promise<PendingState> {
         sessionId: "debug-session",
         hypothesisId: ["B", "D"],
       }),
-    }).catch(() => {});
+    }).catch(() => { });
     // #endregion
     const activeOrdersCount = allRows.length;
     const floatingAmountUsd = allRows.reduce<number>(
@@ -331,7 +334,8 @@ export async function getPendingState(): Promise<PendingState> {
 
 export async function getClaimableState(): Promise<ClaimableState> {
   try {
-    const result = await getCoreClaims({ status: "ACTIVE", limit: 100 });
+    const token = await getSessionToken();
+    const result = await getCoreClaims({ status: "ACTIVE", limit: 100 }, token ?? undefined);
     if (!result.ok || !result.data || typeof result.data !== "object") {
       return EMPTY_CLAIMABLE;
     }

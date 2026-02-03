@@ -4,6 +4,7 @@
  * Gross/net volume are aggregated in USD via token rates.
  */
 
+import { getSessionToken } from "@/lib/auth";
 import { getCoreTransactions } from "@/lib/core-api";
 import { getInventoryAssets } from "@/lib/data-inventory";
 import { getTokenUsdRate } from "@/lib/token-rates";
@@ -86,7 +87,7 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
         sessionId: "debug-session",
         hypothesisId: ["B", "D"],
       }),
-    }).catch(() => {});
+    }).catch(() => { });
     // #endregion
     if (raw.length > 0) {
       const items = raw as Array<Record<string, unknown>>;
@@ -198,12 +199,13 @@ export async function getVolumeChartDataFromCore(
   let feePreviousTotal = 0;
 
   try {
-    const result = await getCoreTransactions({ limit: 1000, page: 1 });
+    const token = await getSessionToken();
+    const result = await getCoreTransactions({ limit: 1000, page: 1 }, token ?? undefined);
     const raw =
       result.ok &&
-      result.data &&
-      typeof result.data === "object" &&
-      Array.isArray((result.data as { data?: unknown[] }).data)
+        result.data &&
+        typeof result.data === "object" &&
+        Array.isArray((result.data as { data?: unknown[] }).data)
         ? (result.data as { data: unknown[] }).data
         : [];
 

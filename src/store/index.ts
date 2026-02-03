@@ -3,6 +3,7 @@ import { inventoryApi } from "./inventory-api";
 import { providersApi } from "./providers-api";
 import { validationApi } from "./validation-api";
 import { layoutSlice } from "./layout-slice";
+import { authSlice } from "./auth-slice";
 import { statusIndicatorSlice } from "./status-indicator-slice";
 import type { LayoutPreference } from "@/lib/layout-preference-cookie";
 
@@ -16,6 +17,7 @@ export function makeStore(initialLayout?: LayoutPreference | null) {
       [providersApi.reducerPath]: providersApi.reducer,
       [validationApi.reducerPath]: validationApi.reducer,
       layout: layoutSlice.reducer,
+      auth: authSlice.reducer,
       statusIndicator: statusIndicatorSlice.reducer,
     },
     middleware: (getDefaultMiddleware) =>
