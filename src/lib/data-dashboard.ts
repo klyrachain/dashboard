@@ -75,20 +75,7 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
     const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
       ? (result.data as { data: unknown[] }).data
       : [];
-    // #region agent log
-    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "data-dashboard.ts:getDashboardKpis",
-        message: "getDashboardKpis transactions",
-        data: { ok: result.ok, rawLength: raw.length },
-        timestamp: Date.now(),
-        sessionId: "debug-session",
-        hypothesisId: ["B", "D"],
-      }),
-    }).catch(() => { });
-    // #endregion
+
     if (raw.length > 0) {
       const items = raw as Array<Record<string, unknown>>;
       for (const o of items) {

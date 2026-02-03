@@ -199,20 +199,6 @@ async function getInventoryRows(): Promise<
     const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
       ? (result.data as { data: unknown[] }).data
       : [];
-    // #region agent log
-    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "data-balances.ts:getInventoryRows",
-        message: "getInventoryRows result",
-        data: { ok: result.ok, rawLength: raw.length },
-        timestamp: Date.now(),
-        sessionId: "debug-session",
-        hypothesisId: ["B", "D"],
-      }),
-    }).catch(() => { });
-    // #endregion
     return raw
       .map(parseInventoryItem)
       .filter((r): r is NonNullable<ReturnType<typeof parseInventoryItem>> => r !== null);
@@ -295,25 +281,6 @@ export async function getPendingState(): Promise<PendingState> {
     const pendingRows = envelopeToRows(pendingRes);
     const activeRows = envelopeToRows(activeRes);
     const allRows = [...pendingRows, ...activeRows];
-    // #region agent log
-    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "data-balances.ts:getPendingState",
-        message: "getPendingState result",
-        data: {
-          pendingOk: pendingRes.ok,
-          activeOk: activeRes.ok,
-          pendingRowsLength: pendingRows.length,
-          activeRowsLength: activeRows.length,
-        },
-        timestamp: Date.now(),
-        sessionId: "debug-session",
-        hypothesisId: ["B", "D"],
-      }),
-    }).catch(() => { });
-    // #endregion
     const activeOrdersCount = allRows.length;
     const floatingAmountUsd = allRows.reduce<number>(
       (sum, item) => sum + parseTransactionAmount(item),

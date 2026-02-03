@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { useSession, signOut } from "next-auth/react";
-import { setSession, clearSession } from "@/store/auth-slice";
+import { setSession, clearSession, setAdmin } from "@/store/auth-slice";
 import { getMe } from "@/lib/auth-api";
 import { isAuthSuccess } from "@/types/auth";
 import type { SessionUser } from "@/lib/auth";
@@ -30,32 +30,83 @@ function isExpired(expiresAt: string | number | null | undefined): boolean {
  * When session has a valid token but user id/email are missing (e.g. JWT shape), fetches
  * /api/auth/me and populates Redux so header and settings show account details.
  */
+/** Call from logout handlers so next load will try getMe() again when status is unauthenticated. */
+let unauthenticatedMeDidTry = false;
+export function resetAuthSessionSyncRef(): void {
+  unauthenticatedMeDidTry = false;
+}
+
 export function AuthSessionSync({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch();
   const { data: session, status, update } = useSession();
   const meFetchRef = useRef(false);
+  const unauthenticatedMeRef = useRef(false);
 
   useEffect(() => {
     update();
   }, [update]);
 
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading") {
+      return;
+    }
+    if (status === "unauthenticated") {
+      if (!unauthenticatedMeRef.current && !unauthenticatedMeDidTry) {
+        unauthenticatedMeRef.current = true;
+        unauthenticatedMeDidTry = true;
+
+        getMe().then((res) => {
+          const ok = isAuthSuccess(res) && !!res.data;
+
+          if (ok && res.data) {
+            const raw = res.data as Record<string, unknown>;
+            const inner =
+              raw?.data != null && typeof raw.data === "object"
+                ? (raw.data as Record<string, unknown>)
+                : raw;
+            const meData = inner as Record<string, unknown> & { expiresAt?: string };
+            const { expiresAt: _e, ...admin } = meData;
+            const id = (admin?.id ?? admin?.adminId) != null ? String(admin.id ?? admin.adminId) : "";
+            const email = admin?.email != null ? String(admin.email) : "";
+            if (id && email) {
+              const payload = {
+                id,
+                email,
+                name: (admin?.name as string | null) ?? null,
+                role: (admin?.role as "super_admin" | "support" | "developer" | "viewer") ?? "viewer",
+              };
+              dispatch(setAdmin(payload));
+            } else {
+              unauthenticatedMeDidTry = false;
+              dispatch(clearSession());
+            }
+          } else {
+            unauthenticatedMeDidTry = false;
+            dispatch(clearSession());
+          }
+        });
+      }
+      return;
+    }
     const expired = (session as { expired?: boolean } | null)?.expired === true;
     const expiresAt = session?.expiresAt ?? (session?.user as SessionUser | undefined)?.expiresAt;
-    if (!session?.token || expired || isExpired(expiresAt ?? null)) {
+    const hasToken = !!session?.token;
+    const tokenExpired = isExpired(expiresAt ?? null);
+    if (!hasToken || expired || tokenExpired) {
+      unauthenticatedMeDidTry = false;
       dispatch(clearSession());
-      if (session && (expired || isExpired(expiresAt ?? null))) {
+      if (session && (expired || tokenExpired)) {
         signOut({ callbackUrl: "/login", redirect: true });
       }
       meFetchRef.current = false;
       return;
     }
     const user = session.user as SessionUser | undefined;
-    if (user?.id && user?.email) {
+    const userHasIdEmail = !!(user?.id && user?.email);
+    if (userHasIdEmail) {
       dispatch(
         setSession({
-          token: session.token,
+          token: session.token ?? "",
           admin: {
             id: user.id,
             email: user.email,
@@ -72,21 +123,36 @@ export function AuthSessionSync({ children }: { children: React.ReactNode }) {
     if (!meFetchRef.current) {
       meFetchRef.current = true;
       getMe().then((res) => {
-        if (isAuthSuccess(res) && res.data) {
-          const { expiresAt: meExpiresAt, ...admin } = res.data;
-          dispatch(
-            setSession({
-              token: session.token,
-              admin: {
-                id: admin.id,
-                email: admin.email,
-                name: admin.name ?? null,
-                role: admin.role,
-              },
-              expiresAt: meExpiresAt ?? session.expiresAt ?? "",
-            })
-          );
+        const ok = isAuthSuccess(res) && !!res.data;
+        if (ok && res.data) {
+          const raw = res.data as Record<string, unknown>;
+          const inner =
+            raw?.data != null && typeof raw.data === "object"
+              ? (raw.data as Record<string, unknown>)
+              : raw;
+          const meData = inner as Record<string, unknown> & { expiresAt?: string };
+          const { expiresAt: meExpiresAt, ...admin } = meData;
+          const id = (admin?.id ?? admin?.adminId) != null ? String(admin.id ?? admin.adminId) : "";
+          const email = admin?.email != null ? String(admin.email) : "";
+          if (id && email) {
+            dispatch(
+              setSession({
+                token: session.token ?? "",
+                admin: {
+                  id,
+                  email,
+                  name: (admin.name as string | null) ?? null,
+                  role: (admin.role as "super_admin" | "support" | "developer" | "viewer") ?? "viewer",
+                },
+                expiresAt: (meExpiresAt as string) ?? session.expiresAt ?? "",
+              })
+            );
+          } else {
+            unauthenticatedMeDidTry = false;
+            dispatch(clearSession());
+          }
         } else {
+          unauthenticatedMeDidTry = false;
           dispatch(clearSession());
         }
         meFetchRef.current = false;

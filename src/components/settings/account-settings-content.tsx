@@ -1,16 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { signOut } from "next-auth/react";
+import { useDispatch } from "react-redux";
 import { useAdmin } from "@/hooks/use-admin";
 import { clearSession } from "@/store/auth-slice";
+import { resetAuthSessionSyncRef } from "@/components/auth/auth-session-sync";
 import { LogOut, KeyRound, Lock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { RootState } from "@/store";
 import { postLogout, postChangePassword, getPasskeyOptions, postPasskeyVerify } from "@/lib/auth-api";
 import { normalizeCreateOptions } from "@/lib/webauthn-options";
 import { isAuthSuccess } from "@/types/auth";
@@ -26,7 +25,7 @@ const ROLE_LABELS: Record<Role, string> = {
 export function AccountSettingsContent() {
   const dispatch = useDispatch();
   const admin = useAdmin();
-  const token = useSelector((s: RootState) => s.auth.token);
+  console.log("admin", admin);
 
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyError, setPasskeyError] = useState<string | null>(null);
@@ -39,17 +38,19 @@ export function AccountSettingsContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const handleLogout = async () => {
+    resetAuthSessionSyncRef();
     dispatch(clearSession());
     try {
       await postLogout();
     } catch {
       // continue
     }
-    await signOut({ callbackUrl: "/login", redirect: true });
+    // Navigate to NextAuth signout so the session cookie is cleared, then redirect to /login
+    window.location.href = "/api/auth/signout?callbackUrl=" + encodeURIComponent("/login");
   };
 
   const handleSetupPasskey = async () => {
-    if (!token) return;
+    if (!admin) return;
     setPasskeyError(null);
     setPasskeyLoading(true);
     const optionsRes = await getPasskeyOptions();
@@ -85,7 +86,7 @@ export function AccountSettingsContent() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
+    if (!admin) return;
     if (newPassword.length < 12) {
       setPasswordError("New password must be at least 12 characters");
       return;

@@ -103,8 +103,8 @@ export const authOptions: NextAuthOptions = {
       }
       if (session?.user) {
         (session.user as SessionUser).token = (token.token as string) ?? "";
-        (session.user as SessionUser).id = (token.id as string) ?? "";
-        (session.user as SessionUser).email = (token.email as string) ?? null;
+        (session.user as SessionUser).id = (token.id != null ? String(token.id) : "") ?? "";
+        (session.user as SessionUser).email = (token.email != null ? String(token.email) : "") ?? "";
         (session.user as SessionUser).name = (token.name as string | null) ?? null;
         (session.user as SessionUser).role = (token.role as AuthAdmin["role"]) ?? "viewer";
         (session.user as SessionUser).expiresAt = (token.expiresAt != null ? String(token.expiresAt) : "") ?? "";

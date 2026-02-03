@@ -114,20 +114,6 @@ export async function getTransactions(): Promise<TransactionRow[]> {
     const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
       ? (result.data as { data: unknown[] }).data
       : [];
-    // #region agent log
-    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "data-transactions.ts:getTransactions",
-        message: "getTransactions result",
-        data: { ok: result.ok, rawLength: raw.length },
-        timestamp: Date.now(),
-        sessionId: "debug-session",
-        hypothesisId: ["B", "D"],
-      }),
-    }).catch(() => { });
-    // #endregion
     return raw.map((item) => coreItemToRow(item)).filter((r): r is TransactionRow => r !== null);
   } catch {
     // Core unavailable

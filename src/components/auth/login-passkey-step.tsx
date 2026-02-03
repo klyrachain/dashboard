@@ -66,7 +66,7 @@ export function LoginPasskeyStep({ email: initialEmail }: { email: string }) {
           redirect: false,
         });
         if (result?.ok) {
-          router.replace("/");
+          window.location.href = "/";
         } else {
           setError(result?.error ?? "Session sign-in failed");
         }

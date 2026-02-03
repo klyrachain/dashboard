@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useDispatch } from "react-redux";
-import { signOut } from "next-auth/react";
 import { Search, Bell, ChevronDown, User, LogOut, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,19 +17,21 @@ import {
 import { useAdmin } from "@/hooks/use-admin";
 import { postLogout } from "@/lib/auth-api";
 import { clearSession } from "@/store/auth-slice";
+import { resetAuthSessionSyncRef } from "@/components/auth/auth-session-sync";
 
 export function Topbar({ className }: { className?: string }) {
   const dispatch = useDispatch();
   const admin = useAdmin();
 
   const handleLogout = async () => {
+    resetAuthSessionSyncRef();
     dispatch(clearSession());
     try {
       await postLogout();
     } catch {
       // continue to clear client session
     }
-    await signOut({ callbackUrl: "/login", redirect: true });
+    window.location.href = "/api/auth/signout?callbackUrl=" + encodeURIComponent("/login");
   };
 
   const displayName = admin?.name?.trim() || admin?.email || "Account";

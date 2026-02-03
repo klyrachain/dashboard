@@ -18,9 +18,9 @@ import {
 } from "lucide-react";
 import type { RootState } from "@/store";
 import { useAdmin } from "@/hooks/use-admin";
-import { signOut } from "next-auth/react";
 import { postLogout } from "@/lib/auth-api";
 import { clearSession } from "@/store/auth-slice";
+import { resetAuthSessionSyncRef } from "@/components/auth/auth-session-sync";
 import { cn } from "@/lib/utils";
 import { setTheme, setTestMode, type LayoutTheme } from "@/store/layout-slice";
 import { navGroups } from "@/lib/nav-config";
@@ -132,13 +132,14 @@ export function HeaderNoSidebar() {
   const handleRefresh = () => router.refresh();
 
   const handleLogout = async () => {
+    resetAuthSessionSyncRef();
     dispatch(clearSession());
     try {
       await postLogout();
     } catch {
       // continue to clear client session
     }
-    await signOut({ callbackUrl: "/login", redirect: true });
+    window.location.href = "/api/auth/signout?callbackUrl=" + encodeURIComponent("/login");
   };
 
   const displayName = admin?.name?.trim() || admin?.email || "Account";

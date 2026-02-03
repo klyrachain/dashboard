@@ -29,10 +29,15 @@ function isSessionExpired(token: { expiresAt?: unknown } | null): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
+  let token: { expiresAt?: unknown } | null = null;
+  try {
+    token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+  } catch {
+    // getToken can throw if NEXTAUTH_SECRET is missing or invalid; treat as no session
+  }
 
   const expired = isSessionExpired(token);
 
@@ -54,6 +59,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)",
+    // Exclude NextAuth API routes so /api/auth/session always returns JSON (middleware must not run for auth)
+    "/((?!_next/static|_next/image|favicon.ico|api/auth|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)",
   ],
 };

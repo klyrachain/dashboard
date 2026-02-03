@@ -61,11 +61,8 @@ export function LoginCodeStep({ email }: { email: string }) {
         redirect: false,
       });
       if (result?.ok) {
-        if (signup) {
-          router.replace("/setup-passkey");
-        } else {
-          router.replace("/");
-        }
+        const target = signup ? "/setup-passkey" : "/";
+        window.location.href = target;
       } else {
         setError(result?.error ?? "Session sign-in failed");
       }
