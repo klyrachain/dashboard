@@ -26,6 +26,7 @@ async function fetchAuth<T>(
   try {
     const res = await fetch(path, {
       ...rest,
+      credentials: rest.credentials ?? "include",
       headers,
       signal: AbortSignal.timeout(timeout),
     });

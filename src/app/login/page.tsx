@@ -7,8 +7,8 @@ export const metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-8 py-16">
-      <div className="w-full max-w-sm">
+    <div className="flex min-h-screen h-full flex-col items-center justify-center px-8 py-16 bg-background">
+      <div className="w-full max-w-sm h-full">
         <LoginEmailStep />
       </div>
     </div>

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { signOut } from "next-auth/react";
+import { useAdmin } from "@/hooks/use-admin";
+import { clearSession } from "@/store/auth-slice";
 import { LogOut, KeyRound, Lock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +24,8 @@ const ROLE_LABELS: Record<Role, string> = {
 };
 
 export function AccountSettingsContent() {
-  const admin = useSelector((s: RootState) => s.auth.admin);
+  const dispatch = useDispatch();
+  const admin = useAdmin();
   const token = useSelector((s: RootState) => s.auth.token);
 
   const [passkeyLoading, setPasskeyLoading] = useState(false);
@@ -36,12 +39,13 @@ export function AccountSettingsContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const handleLogout = async () => {
+    dispatch(clearSession());
     try {
       await postLogout();
     } catch {
       // continue
     }
-    signOut({ callbackUrl: "/login" });
+    await signOut({ callbackUrl: "/login", redirect: true });
   };
 
   const handleSetupPasskey = async () => {

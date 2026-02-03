@@ -17,8 +17,10 @@ import {
   LogOut,
 } from "lucide-react";
 import type { RootState } from "@/store";
+import { useAdmin } from "@/hooks/use-admin";
 import { signOut } from "next-auth/react";
 import { postLogout } from "@/lib/auth-api";
+import { clearSession } from "@/store/auth-slice";
 import { cn } from "@/lib/utils";
 import { setTheme, setTestMode, type LayoutTheme } from "@/store/layout-slice";
 import { navGroups } from "@/lib/nav-config";
@@ -124,18 +126,19 @@ export function HeaderNoSidebar() {
   const dispatch = useDispatch();
   const theme = useSelector((s: RootState) => s.layout.theme);
   const testMode = useSelector((s: RootState) => s.layout.testMode);
-  const admin = useSelector((s: RootState) => s.auth.admin);
+  const admin = useAdmin();
 
   const handleThemeSelect = (t: LayoutTheme) => () => dispatch(setTheme(t));
   const handleRefresh = () => router.refresh();
 
   const handleLogout = async () => {
+    dispatch(clearSession());
     try {
       await postLogout();
     } catch {
       // continue to clear client session
     }
-    signOut({ callbackUrl: "/login" });
+    await signOut({ callbackUrl: "/login", redirect: true });
   };
 
   const displayName = admin?.name?.trim() || admin?.email || "Account";

@@ -19,11 +19,32 @@ declare module "next-auth" {
     user: SessionUser;
     token?: string;
     expiresAt?: string;
+    /** Set when session has passed expiresAt (Core session expired). */
+    expired?: boolean;
   }
 }
 
 declare module "next-auth/jwt" {
-  interface JWT extends SessionUser { }
+  interface JWT extends SessionUser {
+    exp?: number;
+  }
+}
+
+/** Parse Core expiresAt (ISO string or Unix seconds) to ms. Only treat as absolute time if result is in the future or recent past. */
+function parseExpiresAtMs(raw: string | number | null | undefined): number {
+  if (raw === null || raw === undefined) return 0;
+  if (typeof raw === "number") {
+    if (Number.isNaN(raw)) return 0;
+    return raw < 1e12 ? raw * 1000 : raw;
+  }
+  const s = String(raw).trim();
+  if (!s) return 0;
+  const asNum = Number(s);
+  if (!Number.isNaN(asNum) && s === String(asNum)) {
+    return asNum < 1e12 ? asNum * 1000 : asNum;
+  }
+  const ms = new Date(s).getTime();
+  return Number.isNaN(ms) ? 0 : ms;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -59,23 +80,38 @@ export const authOptions: NextAuthOptions = {
         token.token = u.token;
         token.id = u.admin.id;
         token.email = u.admin.email;
-        token.name = u.admin.name;
+        token.name = u.admin.name ?? null;
         token.role = u.admin.role;
         token.expiresAt = u.expiresAt;
+        const expiresAtMs = parseExpiresAtMs(u.expiresAt);
+        if (expiresAtMs > 0) {
+          token.exp = Math.floor(expiresAtMs / 1000);
+        }
       }
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
-        (session.user as SessionUser).token = token.token as string;
-        (session.user as SessionUser).id = token.id as string;
-        (session.user as SessionUser).email = token.email as string;
-        (session.user as SessionUser).name = token.name as string | null;
-        (session.user as SessionUser).role = token.role as AuthAdmin["role"];
-        (session.user as SessionUser).expiresAt = token.expiresAt as string;
+      const expiresAtMs = parseExpiresAtMs(token.expiresAt as string | number | undefined);
+      if (expiresAtMs > 0 && Date.now() > expiresAtMs) {
+        return {
+          ...session,
+          user: { id: "", email: null, name: null, role: "viewer", token: "", expiresAt: "" },
+          token: "",
+          expiresAt: "",
+          expired: true,
+        };
       }
-      session.token = token.token as string;
-      session.expiresAt = token.expiresAt as string;
+      if (session?.user) {
+        (session.user as SessionUser).token = (token.token as string) ?? "";
+        (session.user as SessionUser).id = (token.id as string) ?? "";
+        (session.user as SessionUser).email = (token.email as string) ?? null;
+        (session.user as SessionUser).name = (token.name as string | null) ?? null;
+        (session.user as SessionUser).role = (token.role as AuthAdmin["role"]) ?? "viewer";
+        (session.user as SessionUser).expiresAt = (token.expiresAt != null ? String(token.expiresAt) : "") ?? "";
+      }
+      session.token = (token.token as string) ?? "";
+      session.expiresAt = (token.expiresAt != null ? String(token.expiresAt) : "") ?? "";
+      session.expired = false;
       return session;
     },
   },
@@ -91,10 +127,16 @@ export const UNAUTH_CORE_MESSAGE =
 
 /**
  * Get the session key (Bearer token) for the current request.
- * Use in API routes: call from a Route Handler (cookies sent automatically).
+ * Returns null if no session or if Core session has expired (expiresAt in the past).
  */
 export async function getSessionToken(): Promise<string | null> {
   const session = await getServerSession(authOptions);
+  if (!session || (session as { expired?: boolean }).expired) return null;
+  const expiresAt = session.expiresAt ?? (session?.user as SessionUser | undefined)?.expiresAt;
+  if (expiresAt) {
+    const ms = parseExpiresAtMs(expiresAt);
+    if (ms > 0 && Date.now() > ms) return null;
+  }
   const token = session?.token ?? (session?.user as SessionUser | undefined)?.token ?? null;
   return token ?? null;
 }

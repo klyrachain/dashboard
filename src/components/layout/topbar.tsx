@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { signOut } from "next-auth/react";
 import { Search, Bell, ChevronDown, User, LogOut, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,19 +15,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { RootState } from "@/store";
+import { useAdmin } from "@/hooks/use-admin";
 import { postLogout } from "@/lib/auth-api";
+import { clearSession } from "@/store/auth-slice";
 
 export function Topbar({ className }: { className?: string }) {
-  const admin = useSelector((s: RootState) => s.auth.admin);
+  const dispatch = useDispatch();
+  const admin = useAdmin();
 
   const handleLogout = async () => {
+    dispatch(clearSession());
     try {
       await postLogout();
     } catch {
       // continue to clear client session
     }
-    signOut({ callbackUrl: "/login" });
+    await signOut({ callbackUrl: "/login", redirect: true });
   };
 
   const displayName = admin?.name?.trim() || admin?.email || "Account";
@@ -37,7 +40,7 @@ export function Topbar({ className }: { className?: string }) {
       {/* Sandbox banner */}
       <div className="flex shrink-0 items-center justify-between gap-4 bg-slate-900 px-6 py-3 text-sm text-white">
         <p className="text-slate-300">
-          You're testing in a sandbox—your place to experiment with Klyra
+          You&apos;re testing in a sandbox—your place to experiment with Klyra
           functionality.
         </p>
         <Button
