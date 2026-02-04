@@ -190,15 +190,10 @@ export function DashboardInventoryAndGlance({
             </SelectContent>
           </Select>
         </div>
-        {ratesLoading && assets.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-32 rounded-lg" />
-            ))}
-          </div>
-        ) : (
-          <AtAGlanceCards cards={atAGlanceCards} />
-        )}
+        <AtAGlanceCards
+          cards={atAGlanceCards}
+          isUpdatingRates={ratesLoading && assets.length > 0}
+        />
         <br />
         <DashboardPlatformOverview
           data={platformOverview}
@@ -210,6 +205,7 @@ export function DashboardInventoryAndGlance({
       <DashboardInventoryCharts
         initialAssets={assets}
         historyPoints={[]}
+        ratesMap={ratesMap}
       />
     </div>
   );

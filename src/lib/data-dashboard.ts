@@ -8,7 +8,11 @@ import { getSessionToken } from "@/lib/auth";
 import { getCoreTransactions } from "@/lib/core-api";
 import { getInventoryAssets } from "@/lib/data-inventory";
 import { getPlatformOverview } from "@/lib/data-platform";
-import { getTokenUsdRate } from "@/lib/token-rates";
+import {
+  assetKey,
+  getTokenUsdRate,
+  type RatesMap,
+} from "@/lib/token-rates";
 import { TransactionStatus } from "@/types/enums";
 
 const MS_24H = 24 * 60 * 60 * 1000;
@@ -471,12 +475,14 @@ export type InventoryChartSeries = {
  * - by-chain: aggregate balance by chain
  * - by-token-per-chain: each series = token on chain (e.g. "USDC on BASE")
  * - all-chains: one row per chain with total
- * When useUsd is true, values are converted to USD via getTokenUsdRate(token).
+ * When useUsd is true, values are converted to USD: use ratesMap if provided,
+ * otherwise getTokenUsdRate(token) (which may be 0).
  */
 export function buildInventoryChartData(
   assets: Array<{ chain: string; token: string; balance: string }>,
   view: ChartFilterView,
-  useUsd = false
+  useUsd = false,
+  ratesMap?: RatesMap | null
 ): InventoryChartSeries[] {
   const parse = (s: string) => {
     const n = Number.parseFloat(s.replace(/,/g, ""));
@@ -485,7 +491,10 @@ export function buildInventoryChartData(
 
   const toValue = (a: { chain: string; token: string; balance: string }) => {
     const amount = parse(a.balance);
-    return useUsd ? amount * getTokenUsdRate(a.token) : amount;
+    if (!useUsd) return amount;
+    const rate =
+      ratesMap?.[assetKey(a.chain, a.token)]?.usd ?? getTokenUsdRate(a.token);
+    return amount * rate;
   };
 
   if (view === "all-tokens") {

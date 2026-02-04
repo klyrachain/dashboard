@@ -41,18 +41,18 @@ export async function proxy(request: NextRequest) {
 
   const expired = isSessionExpired(token);
 
-  if (isPublicPath(pathname)) {
-    if (token && !expired) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-    return NextResponse.next();
-  }
+  // if (isPublicPath(pathname)) {
+  //   if (token && !expired) {
+  //     return NextResponse.redirect(new URL("/", request.url));
+  //   }
+  //   return NextResponse.next();
+  // }
 
-  if (!token || expired) {
-    const signIn = new URL("/login", request.url);
-    signIn.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(signIn);
-  }
+  // if (!token || expired) {
+  //   const signIn = new URL("/login", request.url);
+  //   signIn.searchParams.set("callbackUrl", pathname);
+  //   return NextResponse.redirect(signIn);
+  // }
 
   return NextResponse.next();
 }

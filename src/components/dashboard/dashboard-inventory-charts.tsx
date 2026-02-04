@@ -29,6 +29,8 @@ import type {
   InventoryAssetRow,
   InventoryHistoryPoint,
 } from "@/lib/data-inventory";
+import type { RatesMap } from "@/lib/token-rates";
+import { useGetInventoryQuery } from "@/store/inventory-api";
 
 type ChartMode = "current" | "over-time";
 
@@ -54,13 +56,26 @@ function formatLastUpdated(d: Date): string {
   }).format(d);
 }
 
-export function DashboardInventoryCharts({
-  initialAssets,
-  historyPoints = [],
-}: {
-  initialAssets: InventoryAssetRow[];
+type DashboardInventoryChartsProps = {
+  /** Optional initial data (e.g. from server); when not provided or empty, uses RTK Query for live updates. */
+  initialAssets?: InventoryAssetRow[];
   historyPoints?: InventoryHistoryPoint[];
-}) {
+  /** When provided, used to convert balances to USD for the chart. */
+  ratesMap?: RatesMap | null;
+};
+
+export function DashboardInventoryCharts({
+  initialAssets: initialAssetsProp,
+  historyPoints = [],
+  ratesMap = null,
+}: DashboardInventoryChartsProps) {
+  const { data: queryAssets = [], isFetching } = useGetInventoryQuery();
+  const initialAssets = React.useMemo(
+    () =>
+      queryAssets.length > 0 ? queryAssets : (initialAssetsProp ?? []),
+    [queryAssets, initialAssetsProp]
+  );
+
   const [chartMode, setChartMode] = React.useState<ChartMode>("current");
   const [view, setView] = React.useState<ChartFilterView>("all-tokens");
 
@@ -70,8 +85,8 @@ export function DashboardInventoryCharts({
       token: a.token,
       balance: a.balance,
     }));
-    return buildInventoryChartData(rows, view, true);
-  }, [initialAssets, view]);
+    return buildInventoryChartData(rows, view, true, ratesMap);
+  }, [initialAssets, view, ratesMap]);
 
   const lastUpdated = React.useMemo(() => {
     if (initialAssets.length === 0) return null;
@@ -114,6 +129,9 @@ export function DashboardInventoryCharts({
           {lastUpdated && chartMode === "current" && (
             <p className="text-xs text-slate-500">
               From inventory · Last updated {lastUpdated}
+              {isFetching && (
+                <span className="ml-1.5 text-slate-400">· Updating…</span>
+              )}
             </p>
           )}
         </div>

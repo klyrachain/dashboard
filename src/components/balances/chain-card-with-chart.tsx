@@ -10,7 +10,11 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { formatCurrency, type ChainBalance } from "@/lib/data-balances";
+import { Badge } from "@/components/ui/badge";
+import {
+  formatCurrency,
+  type ChainBalance,
+} from "@/lib/data-balances";
 import { formatTokenAmount } from "@/lib/format-token";
 import { getTokenUsdRate } from "@/lib/token-rates";
 
@@ -20,16 +24,27 @@ type ChainChartPoint = {
   amountUsd: number;
 };
 
-function ChainIcon({ chainId }: { chainId: string }) {
+function ChainIcon({
+  chainId,
+  isOffchain,
+}: {
+  chainId: string;
+  isOffchain?: boolean;
+}) {
   const labels: Record<string, string> = {
     ethereum: "ETH",
     base: "BASE",
     arbitrum: "ARB",
     bnb: "BNB",
+    momo: "MOMO",
+    bank: "BANK",
   };
   return (
     <span
-      className="flex size-8 items-center justify-center rounded-md bg-slate-100 text-xs font-medium text-slate-600"
+      className={`flex size-8 items-center justify-center rounded-md text-xs font-medium ${isOffchain
+          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+          : "bg-slate-100 text-slate-600"
+        }`}
       aria-hidden
     >
       {labels[chainId] ?? chainId.slice(0, 2).toUpperCase()}
@@ -51,17 +66,28 @@ export function ChainCardWithChart({ chain }: { chain: ChainBalance }) {
   const chartData: ChainChartPoint[] = chain.tokens.map((t) => ({
     symbol: t.symbol,
     amount: t.amount,
-    amountUsd: t.amount * getTokenUsdRate(t.symbol),
+    amountUsd:
+      t.amountUsd ?? t.amount * getTokenUsdRate(t.symbol),
   }));
 
   return (
     <Card className="bg-white">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <div className="flex items-center gap-3">
-          <ChainIcon chainId={chain.chainId} />
-          <span className="text-sm font-medium text-slate-900">
-            {chain.chainName}
-          </span>
+          <ChainIcon chainId={chain.chainId} isOffchain={chain.isOffchain} />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-slate-900">
+              {chain.chainName}
+            </span>
+            {chain.isOffchain && (
+              <Badge
+                variant="secondary"
+                className="w-fit text-[10px] font-normal text-amber-700 dark:text-amber-300"
+              >
+                Offchain
+              </Badge>
+            )}
+          </div>
         </div>
         <span
           className={`size-2 shrink-0 rounded-full ${chain.healthy ? "bg-green-500" : "bg-red-500"
@@ -145,7 +171,9 @@ export function ChainCardWithChart({ chain }: { chain: ChainBalance }) {
         )}
       </CardContent>
       <CardFooter className="flex items-center justify-between mb-4 pt-4 text-sm text-slate-500">
-        <span>Total Value</span>
+        <span>
+          {chain.isOffchain ? "Total value (USD)" : "Total value"}
+        </span>
         <span className="font-mono font-medium text-slate-700">
           {hasData ? formatCurrency(chain.totalUsd) : "—"}
         </span>

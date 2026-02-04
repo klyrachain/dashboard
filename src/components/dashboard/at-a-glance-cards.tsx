@@ -23,8 +23,11 @@ function EmptyGlanceState() {
 
 export function AtAGlanceCards({
   cards,
+  isUpdatingRates = false,
 }: {
   cards: AtAGlanceCard[];
+  /** When true, show a subtle "Updating…" under values; values stay visible and update in place. */
+  isUpdatingRates?: boolean;
 }) {
   const hasData = cards.length > 0;
 
@@ -59,6 +62,9 @@ export function AtAGlanceCards({
             <p className="text-2xl font-semibold text-slate-900">
               {card.value}
             </p>
+            {/* {isUpdatingRates && card.title === "Total balance" && (
+              <p className="text-xs text-slate-400">Updating…</p>
+            )} */}
             {card.sub && (
               <p className="text-xs text-slate-500">{card.sub}</p>
             )}

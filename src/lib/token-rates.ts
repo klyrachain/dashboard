@@ -83,7 +83,8 @@ const FIAT_RATES_URL = "https://open.er-api.com/v6/latest/USD";
 
 export type AssetKey = { chain: string; token: string };
 
-function assetKey(chain: string, token: string): string {
+/** Key for rates map: "chain:token" (lowercase chain, uppercase token). */
+export function assetKey(chain: string, token: string): string {
   const c = (chain ?? "").trim().toLowerCase();
   const t = (token ?? "").trim().toUpperCase();
   return `${c}:${t}`;
@@ -208,7 +209,12 @@ export async function fetchRates(
     }
   }
 
-  const usdToGhsPromise = vs.includes("ghs") ? fetchFiatRates() : Promise.resolve({} as Record<string, number>);
+  /* Fetch fiat rates when we need GHS↔USD (e.g. for MOMO/BANK GHS) or when vs includes "ghs". */
+  const needFiatRates =
+    fiatAssets.length > 0 || vs.includes("ghs");
+  const usdToGhsPromise = needFiatRates
+    ? fetchFiatRates()
+    : Promise.resolve({} as Record<string, number>);
   const fiatRates = await usdToGhsPromise;
   const ghsPerUsd = fiatRates.GHS ?? 0;
 

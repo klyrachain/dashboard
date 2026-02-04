@@ -10,18 +10,40 @@ import {
   getCoreTransactions,
   getCoreClaims,
 } from "@/lib/core-api";
-import { getTokenUsdRate } from "@/lib/token-rates";
+import {
+  assetKey,
+  fetchRates,
+  getTokenUsdRate,
+  type RatesMap,
+} from "@/lib/token-rates";
 
-export type ChainId = "ethereum" | "base" | "arbitrum" | "bnb";
+export type ChainId =
+  | "ethereum"
+  | "base"
+  | "arbitrum"
+  | "bnb"
+  | "momo"
+  | "bank";
+
+/** Offchain (fiat/mobile money) chains have chainId 0. */
+export const OFFCHAIN_CHAIN_IDS = new Set<ChainId>(["momo", "bank"]);
+
+export function isOffchainChain(chainId: ChainId): boolean {
+  return OFFCHAIN_CHAIN_IDS.has(chainId);
+}
 
 export interface TokenBalance {
   symbol: string;
   amount: number;
+  /** USD value when rates are available (e.g. from fetchRates). */
+  amountUsd?: number;
 }
 
 export interface ChainBalance {
   chainId: ChainId;
   chainName: string;
+  /** True for MOMO, BANK (fiat/offchain); chainId 0 in Core. */
+  isOffchain: boolean;
   healthy: boolean;
   tokens: TokenBalance[];
   totalUsd: number;
@@ -109,11 +131,14 @@ const CHAIN_DISPLAY_NAMES: Record<string, string> = {
   base: "Base",
   arbitrum: "Arbitrum",
   bnb: "BNB",
+  momo: "MOMO",
+  bank: "Bank",
 };
 
 /** Build ChainBalance[] and AggregatedAsset[] from raw inventory rows. */
 export function buildBalancesFromInventory(
-  rows: Array<{ chain: string; token: string; balance: number }>
+  rows: Array<{ chain: string; token: string; balance: number }>,
+  ratesMap?: RatesMap | null
 ): { chains: ChainBalance[]; aggregated: AggregatedAsset[] } {
   const byChain = new Map<
     string,
@@ -124,8 +149,14 @@ export function buildBalancesFromInventory(
     { total: number; byChain: Map<string, number> }
   >();
 
+  const getRate = (chain: string, token: string) =>
+    ratesMap?.[assetKey(chain, token)]?.usd ?? getTokenUsdRate(token);
+
   for (const r of rows) {
     const chainKey = r.chain.toLowerCase();
+    const rate = getRate(r.chain, r.token);
+    const usd = r.balance * rate;
+
     if (!byChain.has(chainKey)) {
       byChain.set(chainKey, { tokens: [], totalUsd: 0 });
     }
@@ -133,10 +164,15 @@ export function buildBalancesFromInventory(
     const existing = chainData.tokens.find((t) => t.symbol === r.token);
     if (existing) {
       existing.amount += r.balance;
+      existing.amountUsd = (existing.amountUsd ?? 0) + usd;
     } else {
-      chainData.tokens.push({ symbol: r.token, amount: r.balance });
+      chainData.tokens.push({
+        symbol: r.token,
+        amount: r.balance,
+        amountUsd: usd,
+      });
     }
-    chainData.totalUsd += r.balance * getTokenUsdRate(r.token);
+    chainData.totalUsd += usd;
 
     if (!byToken.has(r.token)) {
       byToken.set(r.token, { total: 0, byChain: new Map() });
@@ -150,9 +186,10 @@ export function buildBalancesFromInventory(
   }
 
   const chains: ChainBalance[] = Array.from(byChain.entries()).map(
-    ([chainId, data]) => ({
-      chainId: chainId as ChainId,
-      chainName: CHAIN_DISPLAY_NAMES[chainId] ?? chainId,
+    ([chainKey, data]) => ({
+      chainId: chainKey as ChainId,
+      chainName: CHAIN_DISPLAY_NAMES[chainKey] ?? chainKey,
+      isOffchain: isOffchainChain(chainKey as ChainId),
       healthy: true,
       tokens: data.tokens,
       totalUsd: data.totalUsd,
@@ -179,14 +216,15 @@ export function buildBalancesFromInventory(
 
 /** Build chains and aggregated from InventoryAssetRow[] (e.g. from RTK Query). */
 export function buildBalancesFromAssets(
-  assets: Array<{ chain: string; token: string; balance: string }>
+  assets: Array<{ chain: string; token: string; balance: string }>,
+  ratesMap?: RatesMap | null
 ): { chains: ChainBalance[]; aggregated: AggregatedAsset[] } {
   const rows = assets.map((a) => ({
     chain: a.chain.toLowerCase(),
     token: a.token,
     balance: Number.parseFloat(String(a.balance).replace(/,/g, "")) || 0,
   }));
-  return buildBalancesFromInventory(rows);
+  return buildBalancesFromInventory(rows, ratesMap);
 }
 
 /** Fetches inventory rows from Core API only. Returns [] if Core is unavailable or returns no data. */
@@ -212,7 +250,11 @@ export async function getChainBalances(): Promise<ChainBalance[]> {
   try {
     const rows = await getInventoryRows();
     if (rows.length === 0) return [];
-    const { chains } = buildBalancesFromInventory(rows);
+    const ratesMap = await fetchRates(
+      rows.map((r) => ({ chain: r.chain, token: r.token })),
+      ["usd"]
+    );
+    const { chains } = buildBalancesFromInventory(rows, ratesMap);
     return chains;
   } catch {
     return [];
