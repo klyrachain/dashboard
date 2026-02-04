@@ -24,6 +24,7 @@ import {
 import {
   buildInventoryChartData,
   type ChartFilterView,
+  type InventoryChartSeries,
 } from "@/lib/data-dashboard";
 import type {
   InventoryAssetRow,
@@ -54,6 +55,38 @@ function formatLastUpdated(d: Date): string {
     dateStyle: "short",
     timeStyle: "short",
   }).format(d);
+}
+
+function ChartLegend({
+  data,
+  colors,
+}: {
+  data: InventoryChartSeries[];
+  colors: string[];
+}) {
+  if (data.length === 0) return null;
+  return (
+    <div
+      className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t border-slate-100 pt-3"
+      role="list"
+      aria-label="Chart series"
+    >
+      {data.map((item, i) => (
+        <div
+          key={item.name}
+          className="flex items-center gap-1.5 text-xs text-slate-600"
+          role="listitem"
+        >
+          <span
+            className="size-3 shrink-0 rounded-sm"
+            style={{ backgroundColor: colors[i % colors.length] }}
+            aria-hidden
+          />
+          <span className="capitalize">{item.name}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 type DashboardInventoryChartsProps = {
@@ -238,94 +271,97 @@ export function DashboardInventoryCharts({
               </AreaChart>
             </ResponsiveContainer>
           ) : initialAssets.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData}
-                margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
-                layout={chartData.length > 8 ? "vertical" : "horizontal"}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  className="stroke-slate-200"
-                />
-                {chartData.length > 8 ? (
-                  <>
-                    <XAxis
-                      type="number"
-                      className="text-xs"
-                      tick={{ fill: "var(--muted-foreground)" }}
-                      tickFormatter={(v) =>
-                        v.toLocaleString("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        })
-                      }
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      width={140}
-                      className="text-xs"
-                      tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <XAxis
-                      dataKey="name"
-                      className="text-xs"
-                      tick={{ fill: "var(--muted-foreground)" }}
-                      angle={
-                        chartData.some((d) => d.name.length > 12) ? -45 : 0
-                      }
-                      textAnchor={
-                        chartData.some((d) => d.name.length > 12)
-                          ? "end"
-                          : "middle"
-                      }
-                    />
-                    <YAxis
-                      className="text-xs"
-                      tick={{ fill: "var(--muted-foreground)" }}
-                      tickFormatter={(v) =>
-                        v.toLocaleString("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
-                        })
-                      }
-                    />
-                  </>
-                )}
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "var(--background)",
-                    borderRadius: "var(--radius)",
-                  }}
-                  formatter={(value: number) => [
-                    value.toLocaleString("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }),
-                    "USD",
-                  ]}
-                  labelFormatter={(label) => ` ${label}`}
-                />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={48}>
-                  {chartData.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={CHART_COLORS[i % CHART_COLORS.length]}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={chartData}
+                  margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
+                  layout={chartData.length > 8 ? "vertical" : "horizontal"}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-slate-200"
+                  />
+                  {chartData.length > 8 ? (
+                    <>
+                      <XAxis
+                        type="number"
+                        className="text-xs"
+                        tick={{ fill: "var(--muted-foreground)" }}
+                        tickFormatter={(v) =>
+                          v.toLocaleString("en-US", {
+                            style: "currency",
+                            currency: "USD",
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          })
+                        }
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        width={140}
+                        className="text-xs"
+                        tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <XAxis
+                        dataKey="name"
+                        className="text-xs"
+                        tick={{ fill: "var(--muted-foreground)" }}
+                        angle={
+                          chartData.some((d) => d.name.length > 12) ? -45 : 0
+                        }
+                        textAnchor={
+                          chartData.some((d) => d.name.length > 12)
+                            ? "end"
+                            : "middle"
+                        }
+                      />
+                      <YAxis
+                        className="text-xs"
+                        tick={{ fill: "var(--muted-foreground)" }}
+                        tickFormatter={(v) =>
+                          v.toLocaleString("en-US", {
+                            style: "currency",
+                            currency: "USD",
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          })
+                        }
+                      />
+                    </>
+                  )}
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--background)",
+                      borderRadius: "var(--radius)",
+                    }}
+                    formatter={(value: number) => [
+                      value.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }),
+                      "USD",
+                    ]}
+                    labelFormatter={(label) => ` ${label}`}
+                  />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                    {chartData.map((_, i) => (
+                      <Cell
+                        key={i}
+                        fill={CHART_COLORS[i % CHART_COLORS.length]}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <ChartLegend data={chartData} colors={CHART_COLORS} />
+            </>
           ) : null}
         </div>
       </CardContent>
