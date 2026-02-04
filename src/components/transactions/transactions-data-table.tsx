@@ -71,10 +71,12 @@ const COLUMN_VISIBILITY_STORAGE_KEY = "klyra-transactions-column-visibility";
 /** Default visible columns: ID, Type, Status, amounts/fee, tokens/chains, providers, Created, Actions. */
 const defaultColumnVisibility: VisibilityState = {
   fee: true,
+  feeInUsd: true,
   fromChain: true,
   toChain: true,
-  fromPrice: false,
-  toPrice: false,
+  exchangeRate: false,
+  fTokenPriceUsd: false,
+  tTokenPriceUsd: false,
   fromIdentifier: false,
   toIdentifier: false,
   fromType: false,
@@ -130,13 +132,36 @@ const columns: ColumnDef<TransactionRow>[] = [
     accessorKey: "fee",
     header: "Fee",
     meta: { headerLabel: "Fee" },
-    cell: ({ row }) => (
-      <span className="tabular-nums text-muted-foreground text-sm">
-        {row.original.fee != null && row.original.fee !== ""
-          ? row.original.fee
-          : "—"}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const feeInUsd = row.original.feeInUsd;
+      const fee = row.original.fee;
+      if (feeInUsd != null && feeInUsd !== "") {
+        return (
+          <span className="tabular-nums text-muted-foreground text-sm">
+            ${Number(feeInUsd).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        );
+      }
+      return (
+        <span className="tabular-nums text-muted-foreground text-sm">
+          {fee != null && fee !== "" ? fee : "—"}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "feeInUsd",
+    header: "Fee (USD)",
+    meta: { headerLabel: "Fee (USD)" },
+    cell: ({ row }) => {
+      const v = row.original.feeInUsd;
+      if (v == null || v === "") return <span className="text-muted-foreground">—</span>;
+      return (
+        <span className="tabular-nums text-muted-foreground text-sm">
+          ${Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      );
+    },
   },
   {
     accessorKey: "fromToken",
@@ -169,14 +194,45 @@ const columns: ColumnDef<TransactionRow>[] = [
     ),
   },
   {
-    accessorKey: "fromPrice",
-    header: "From price",
-    meta: { headerLabel: "From price" },
+    accessorKey: "exchangeRate",
+    header: "Exchange rate",
+    meta: { headerLabel: "Exchange rate" },
+    cell: ({ row }) => {
+      const v = row.original.exchangeRate;
+      return (
+        <span className="tabular-nums text-muted-foreground text-sm">
+          {v != null && v !== "" ? v : "—"}
+        </span>
+      );
+    },
   },
   {
-    accessorKey: "toPrice",
-    header: "To price",
-    meta: { headerLabel: "To price" },
+    accessorKey: "fTokenPriceUsd",
+    header: "From price (USD)",
+    meta: { headerLabel: "From price (USD)" },
+    cell: ({ row }) => {
+      const v = row.original.fTokenPriceUsd;
+      if (v == null || v === "") return <span className="text-muted-foreground">—</span>;
+      return (
+        <span className="tabular-nums text-muted-foreground text-sm">
+          ${Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "tTokenPriceUsd",
+    header: "To price (USD)",
+    meta: { headerLabel: "To price (USD)" },
+    cell: ({ row }) => {
+      const v = row.original.tTokenPriceUsd;
+      if (v == null || v === "") return <span className="text-muted-foreground">—</span>;
+      return (
+        <span className="tabular-nums text-muted-foreground text-sm">
+          ${Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+        </span>
+      );
+    },
   },
   {
     accessorKey: "fromIdentifier",

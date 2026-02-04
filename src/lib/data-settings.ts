@@ -21,6 +21,7 @@ import {
 } from "@/lib/core-api";
 import { getSessionToken } from "@/lib/auth";
 import { postCoreAuthInviteCreate } from "@/lib/auth-api-server";
+import type { QuoteCurrency } from "@/lib/token-rates";
 import type { InviteCreateData } from "@/types/auth";
 
 type Envelope<T> = { success?: boolean; data?: T; error?: string };
@@ -104,12 +105,16 @@ export async function patchSettingsGeneral(
 
 // ——— Financials ———
 
+const DEFAULT_BASE_CURRENCY: QuoteCurrency = "usdc";
+
 export type SettingsFinancials = {
   baseFeePercent: number;
   fixedFee: number;
   minTransactionSize: number;
   maxTransactionSize: number;
   lowBalanceAlert: number;
+  /** Platform display/conversion base currency (USDC, USD, GHS). Used for totals and rate requests. */
+  baseCurrency: QuoteCurrency;
 };
 
 const defaultFinancials: SettingsFinancials = {
@@ -118,17 +123,24 @@ const defaultFinancials: SettingsFinancials = {
   minTransactionSize: 5,
   maxTransactionSize: 10000,
   lowBalanceAlert: 500,
+  baseCurrency: DEFAULT_BASE_CURRENCY,
 };
 
 function parseFinancials(raw: unknown): SettingsFinancials {
   if (!raw || typeof raw !== "object") return defaultFinancials;
   const o = raw as Record<string, unknown>;
+  const baseCurrencyRaw = o.baseCurrency;
+  const baseCurrency =
+    baseCurrencyRaw === "usd" || baseCurrencyRaw === "usdc" || baseCurrencyRaw === "ghs"
+      ? baseCurrencyRaw
+      : DEFAULT_BASE_CURRENCY;
   return {
     baseFeePercent: typeof o.baseFeePercent === "number" ? o.baseFeePercent : defaultFinancials.baseFeePercent,
     fixedFee: typeof o.fixedFee === "number" ? o.fixedFee : defaultFinancials.fixedFee,
     minTransactionSize: typeof o.minTransactionSize === "number" ? o.minTransactionSize : defaultFinancials.minTransactionSize,
     maxTransactionSize: typeof o.maxTransactionSize === "number" ? o.maxTransactionSize : defaultFinancials.maxTransactionSize,
     lowBalanceAlert: typeof o.lowBalanceAlert === "number" ? o.lowBalanceAlert : defaultFinancials.lowBalanceAlert,
+    baseCurrency,
   };
 }
 

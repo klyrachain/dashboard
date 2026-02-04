@@ -102,6 +102,7 @@ function NavParentDropdown({
               <Link
                 key={item.href + item.label}
                 href={item.href}
+                prefetch={false}
                 className={resolvedClass}
               // style={
               //   itemActive
@@ -151,6 +152,7 @@ export function HeaderNoSidebar() {
         <div className="flex items-center gap-4">
           <Link
             href="/"
+            prefetch={false}
             className="flex items-center gap-2 text-lg font-semibold text-white"
           >
             {/* <span className="flex size-8 items-center justify-center rounded-md bg-indigo-500 font-bold">
@@ -253,13 +255,13 @@ export function HeaderNoSidebar() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/settings/account" className="flex items-center gap-2 cursor-pointer">
+                <Link href="/settings/account" prefetch={false} className="flex items-center gap-2 cursor-pointer">
                   <User className="size-4" />
                   Account & security
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/settings/general" className="flex items-center gap-2 cursor-pointer">
+                <Link href="/settings/general" prefetch={false} className="flex items-center gap-2 cursor-pointer">
                   <Settings className="size-4" />
                   Settings
                 </Link>
@@ -304,6 +306,7 @@ export function HeaderNoSidebar() {
           ))}
           <Link
             href="/settings"
+            prefetch={false}
             className={cn(
               "rounded-md px-3 py-2 text-sm font-medium transition-colors",
               pathname === "/settings"

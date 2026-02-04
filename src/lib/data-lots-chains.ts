@@ -30,10 +30,13 @@ export type LotAssetSummary = {
 export type LotRow = {
   id: string;
   assetId: string;
-  quantity: string;
-  costPerToken: string;
+  originalQuantity: string;
+  remainingQuantity: string;
+  costPerTokenUsd: string;
+  totalCostUsd: string;
+  status: "OPEN" | "DEPLETED";
   acquiredAt: string;
-  sourceType: string;
+  sourceType: string | null;
   sourceTransactionId: string | null;
   asset: LotAssetSummary;
 };
@@ -49,13 +52,19 @@ function parseLot(item: unknown): LotRow | null {
     chain: asset ? str(asset.chain) : undefined,
     symbol: asset ? str(asset.symbol ?? asset.token) : undefined,
   };
+  const statusRaw = str(o.status ?? "").toUpperCase();
+  const status: LotRow["status"] =
+    statusRaw === "OPEN" || statusRaw === "DEPLETED" ? statusRaw : "OPEN";
   return {
     id,
     assetId: str(o.assetId),
-    quantity: str(o.quantity ?? ""),
-    costPerToken: str(o.costPerToken ?? ""),
+    originalQuantity: str(o.originalQuantity ?? ""),
+    remainingQuantity: str(o.remainingQuantity ?? ""),
+    costPerTokenUsd: str(o.costPerTokenUsd ?? ""),
+    totalCostUsd: str(o.totalCostUsd ?? ""),
+    status,
     acquiredAt: str(o.acquiredAt ?? ""),
-    sourceType: str(o.sourceType ?? ""),
+    sourceType: o.sourceType != null ? str(o.sourceType) : null,
     sourceTransactionId: o.sourceTransactionId != null ? str(o.sourceTransactionId) : null,
     asset: assetSummary,
   };
@@ -107,13 +116,13 @@ export async function getLotsList(params?: {
   }
 }
 
-/** Summary: total quantity and total cost across lots (for display). */
+/** Summary: total remaining quantity and total cost (USD) of remaining across lots. */
 export function lotsSummary(lots: LotRow[]): { totalQuantity: number; totalCost: number } {
   let totalQuantity = 0;
   let totalCost = 0;
   for (const lot of lots) {
-    const q = num(lot.quantity) ?? 0;
-    const c = num(lot.costPerToken) ?? 0;
+    const q = num(lot.remainingQuantity) ?? 0;
+    const c = num(lot.costPerTokenUsd) ?? 0;
     totalQuantity += q;
     totalCost += q * c;
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { InventoryAssetRow } from "@/lib/data-inventory";
 import {
   useGetInventoryQuery,
@@ -22,9 +29,36 @@ import {
   type CreateInventoryBody,
   type UpdateInventoryBody,
 } from "@/store/inventory-api";
+import {
+  QUOTE_CURRENCIES,
+  type QuoteCurrency,
+  type RatesMap,
+} from "@/lib/token-rates";
+import { useSelector } from "react-redux";
+import { selectBaseCurrency } from "@/store/preferences-slice";
 import { ExportDataModal } from "@/components/export-data-modal";
 import type { ExportColumn } from "@/lib/export-data";
 import { FileDown, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+
+function assetKey(chain: string, token: string): string {
+  return `${(chain ?? "").trim().toLowerCase()}:${(token ?? "").trim().toUpperCase()}`;
+}
+
+const CURRENCY_LABEL: Record<QuoteCurrency, string> = {
+  usd: "USD",
+  usdc: "USDC",
+  ghs: "GHS",
+};
+
+function formatInQuote(value: number, quote: QuoteCurrency): string {
+  const code = CURRENCY_LABEL[quote];
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: code === "USDC" ? "USD" : code,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
 
 const INVENTORY_ASSETS_EXPORT_COLUMNS: ExportColumn[] = [
   { id: "id", label: "ID" },
@@ -60,13 +94,25 @@ function AssetCard({
   onDelete,
   isDeleting,
   compact,
+  ratesMap = null,
+  quote = "usdc",
 }: {
   asset: InventoryAssetRow;
   onEdit: () => void;
   onDelete: () => void;
   isDeleting: boolean;
   compact?: boolean;
+  ratesMap?: RatesMap | null;
+  quote?: QuoteCurrency;
 }) {
+  const amount = (() => {
+    const n = Number.parseFloat(asset.balance.replace(/,/g, ""));
+    return Number.isNaN(n) ? 0 : n;
+  })();
+  const key = assetKey(asset.chain, asset.token);
+  const rate = ratesMap?.[key]?.[quote] ?? 0;
+  const converted = rate > 0 ? amount * rate : null;
+
   return (
     <Card className="bg-white">
       <CardHeader className={`flex flex-row items-center justify-between space-y-0 ${compact ? "px-3 pb-1 pt-3" : "pb-2"}`}>
@@ -97,6 +143,16 @@ function AssetCard({
       </CardHeader>
       <CardContent className={compact ? "px-3 pb-3 pt-0" : undefined}>
         <p className={compact ? "text-base font-semibold" : "text-2xl font-semibold"}>{asset.balance}</p>
+        {converted != null && converted > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            ≈ {formatInQuote(converted, quote)}
+            {quote === "usdc" && " USDC"}
+          </p>
+        ) : ratesMap != null && amount > 0 ? (
+          <p className="text-xs text-amber-600 dark:text-amber-500" title="Price feed not available for this token/chain.">
+            Conversion unavailable
+          </p>
+        ) : null}
         <p className="text-xs text-muted-foreground">
           {compact ? new Date(asset.updatedAt).toLocaleDateString() : `Updated ${new Date(asset.updatedAt).toLocaleDateString()}`}
         </p>
@@ -313,7 +369,46 @@ type InventoryAssetContainerProps = { compact?: boolean };
 
 export function InventoryAssetContainer({ compact }: InventoryAssetContainerProps = {}) {
   const { data: assets = [], isLoading, error, refetch, isFetching } = useGetInventoryQuery();
+  const platformBase = useSelector(selectBaseCurrency);
   const [searchQuery, setSearchQuery] = useState("");
+  const [quote, setQuote] = useState<QuoteCurrency>(platformBase);
+  const [ratesMap, setRatesMap] = useState<RatesMap | null>(null);
+  const [ratesLoading, setRatesLoading] = useState(false);
+
+  useEffect(() => {
+    setQuote(platformBase);
+  }, [platformBase]);
+
+  const fetchRatesForAssets = useCallback(async () => {
+    if (assets.length === 0) {
+      setRatesMap(null);
+      setRatesLoading(false);
+      return;
+    }
+    try {
+      const assetsParam = encodeURIComponent(
+        JSON.stringify(assets.map((a) => ({ chain: a.chain, token: a.token })))
+      );
+      const res = await fetch(
+        `/api/rates?assets=${assetsParam}&vs=usd,usdc,ghs`
+      );
+      const json = (await res.json()) as {
+        success?: boolean;
+        data?: RatesMap;
+      };
+      if (json.success && json.data) setRatesMap(json.data);
+      else setRatesMap(null);
+    } catch {
+      setRatesMap(null);
+    } finally {
+      setRatesLoading(false);
+    }
+  }, [assets]);
+
+  useEffect(() => {
+    setRatesLoading(true);
+    fetchRatesForAssets();
+  }, [fetchRatesForAssets]);
 
   const filteredAssets = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -494,8 +589,29 @@ export function InventoryAssetContainer({ compact }: InventoryAssetContainerProp
     );
   }
 
+  const currencySelect = (
+    <Select value={quote} onValueChange={(v) => setQuote(v as QuoteCurrency)}>
+      <SelectTrigger className="h-9 w-34" aria-label="Convert balances to">
+        <SelectValue placeholder="Currency" />
+      </SelectTrigger>
+      <SelectContent>
+        {QUOTE_CURRENCIES.map(({ value, label }) => (
+          <SelectItem key={value} value={value}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
   return (
     <section className={compact ? "space-y-2" : "space-y-4"} aria-labelledby="inventory-assets-heading">
+      {compact && assets.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">Convert to</span>
+          {currencySelect}
+        </div>
+      ) : null}
       {!compact && (
         <div className="flex flex-wrap items-center justify-between gap-4">
           {assets.length > 0 && (
@@ -515,6 +631,8 @@ export function InventoryAssetContainer({ compact }: InventoryAssetContainerProp
             </div>
           )}
           <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Convert to</span>
+            {currencySelect}
             <Button
               variant="outline"
               size="sm"
@@ -562,6 +680,8 @@ export function InventoryAssetContainer({ compact }: InventoryAssetContainerProp
               onDelete={() => handleDelete(asset)}
               isDeleting={deletingId === asset.id}
               compact={compact}
+              ratesMap={ratesLoading ? null : ratesMap}
+              quote={quote}
             />
           ))}
         </div>

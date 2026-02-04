@@ -23,8 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type {
-  InventoryHistoryRow,
-  InventoryHistoryListResult,
+  InventoryLedgerEntry,
+  InventoryLedgerListResult,
 } from "@/lib/data-inventory";
 import { ExportDataModal } from "@/components/export-data-modal";
 import type { ExportColumn } from "@/lib/export-data";
@@ -34,16 +34,17 @@ const INVENTORY_HISTORY_EXPORT_COLUMNS: ExportColumn[] = [
   { id: "createdAt", label: "Date" },
   { id: "type", label: "Type" },
   { id: "assetDisplay", label: "Asset" },
-  { id: "amount", label: "Amount" },
   { id: "quantity", label: "Quantity" },
-  { id: "initialPurchasePrice", label: "Initial price" },
-  { id: "providerQuotePrice", label: "Quote price" },
+  { id: "pricePerTokenUsd", label: "Price (USD)" },
+  { id: "totalValueUsd", label: "Total value (USD)" },
+  { id: "referenceId", label: "Reference" },
+  { id: "counterparty", label: "Counterparty" },
 ];
 
 const HISTORY_PAGE_SIZE_OPTIONS = [15, 20, 50, 100] as const;
 
 type InventoryHistoryTableProps = {
-  result: InventoryHistoryListResult;
+  result: InventoryLedgerListResult;
   /** Current page (1-based) for pagination links. */
   currentPage: number;
   /** Current limit (rows per page). */
@@ -106,6 +107,7 @@ export function InventoryHistoryTable({
         (row.id && row.id.toLowerCase().includes(q)) ||
         (row.assetId && row.assetId.toLowerCase().includes(q)) ||
         (row.type && row.type.toLowerCase().includes(q)) ||
+        (row.referenceId && row.referenceId.toLowerCase().includes(q)) ||
         (row.asset?.symbol && row.asset.symbol.toLowerCase().includes(q)) ||
         (row.asset?.chain && row.asset.chain.toLowerCase().includes(q))
     );
@@ -131,11 +133,12 @@ export function InventoryHistoryTable({
       type: row.type ?? "",
       assetDisplay: row.asset
         ? `${row.asset.symbol} on ${row.asset.chain}`
-        : "",
-      amount: row.amount ?? "",
+        : row.assetId,
       quantity: row.quantity ?? "",
-      initialPurchasePrice: row.initialPurchasePrice ?? "",
-      providerQuotePrice: row.providerQuotePrice ?? "",
+      pricePerTokenUsd: row.pricePerTokenUsd ?? "",
+      totalValueUsd: row.totalValueUsd ?? "",
+      referenceId: row.referenceId ?? "",
+      counterparty: row.counterparty ?? "",
     }));
   }, [filteredItems]);
 
@@ -241,33 +244,39 @@ export function InventoryHistoryTable({
                 <TableHead className="w-[100px]">Date</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Asset</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Quantity</TableHead>
-                <TableHead className="text-right">Initial price</TableHead>
-                <TableHead className="text-right">Quote price</TableHead>
+                <TableHead className="text-right">Price (USD)</TableHead>
+                <TableHead className="text-right">Total value (USD)</TableHead>
+                <TableHead>Reference</TableHead>
+                <TableHead>Counterparty</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredItems.map((row: InventoryHistoryRow) => (
+              {filteredItems.map((row: InventoryLedgerEntry) => (
                 <TableRow key={row.id}>
                   <TableCell className="text-muted-foreground text-xs">
                     {format(row.createdAt, "yyyy-MM-dd HH:mm")}
                   </TableCell>
                   <TableCell className="font-medium">{row.type}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {row.asset.symbol} on {row.asset.chain}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {row.amount}
+                    {row.asset
+                      ? `${row.asset.symbol} on ${row.asset.chain}`
+                      : row.assetId}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {row.quantity}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {row.initialPurchasePrice}
+                  <TableCell className="text-right tabular-nums">
+                    {row.pricePerTokenUsd}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {row.providerQuotePrice}
+                  <TableCell className="text-right tabular-nums">
+                    {row.totalValueUsd}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs font-mono">
+                    {row.referenceId || "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    {row.counterparty ?? "—"}
                   </TableCell>
                 </TableRow>
               ))}

@@ -5,6 +5,7 @@ import { validationApi } from "./validation-api";
 import { layoutSlice } from "./layout-slice";
 import { authSlice } from "./auth-slice";
 import { statusIndicatorSlice } from "./status-indicator-slice";
+import { preferencesSlice } from "./preferences-slice";
 import type { LayoutPreference } from "@/lib/layout-preference-cookie";
 
 export type RootState = ReturnType<ReturnType<typeof makeStore>["getState"]>;
@@ -19,6 +20,7 @@ export function makeStore(initialLayout?: LayoutPreference | null) {
       layout: layoutSlice.reducer,
       auth: authSlice.reducer,
       statusIndicator: statusIndicatorSlice.reducer,
+      preferences: preferencesSlice.reducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware().concat(

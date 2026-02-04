@@ -1,7 +1,7 @@
 "use server";
 
 import {
-  getVolumeChartDataFromCore,
+  getVolumeChartDataFromPlatformOverview,
   type VolumeDateRange,
   type VolumeGranularity,
   type VolumeChartResult,
@@ -11,5 +11,5 @@ export async function getDashboardVolumeAction(
   range: VolumeDateRange,
   granularity: VolumeGranularity
 ): Promise<VolumeChartResult> {
-  return getVolumeChartDataFromCore(range, granularity);
+  return getVolumeChartDataFromPlatformOverview(range, granularity);
 }

@@ -41,8 +41,12 @@ export function AuthSessionSync({ children }: { children: React.ReactNode }) {
   const { data: session, status, update } = useSession();
   const meFetchRef = useRef(false);
   const unauthenticatedMeRef = useRef(false);
+  const updateCalledRef = useRef(false);
+  const signOutOnExpiredRef = useRef(false);
 
   useEffect(() => {
+    if (updateCalledRef.current) return;
+    updateCalledRef.current = true;
     update();
   }, [update]);
 
@@ -95,7 +99,8 @@ export function AuthSessionSync({ children }: { children: React.ReactNode }) {
     if (!hasToken || expired || tokenExpired) {
       unauthenticatedMeDidTry = false;
       dispatch(clearSession());
-      if (session && (expired || tokenExpired)) {
+      if (session && (expired || tokenExpired) && !signOutOnExpiredRef.current) {
+        signOutOnExpiredRef.current = true;
         signOut({ callbackUrl: "/login", redirect: true });
       }
       meFetchRef.current = false;

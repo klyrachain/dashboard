@@ -26,7 +26,7 @@ function isSessionExpired(token: { expiresAt?: unknown } | null): boolean {
   return ms > 0 && Date.now() > ms;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   let token: { expiresAt?: unknown } | null = null;

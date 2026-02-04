@@ -79,21 +79,23 @@ export type InventoryHistoryPoint = {
   label: string;
 };
 
-/** One row from GET /api/inventory/history (Decimal fields as strings). */
-export type InventoryHistoryRow = {
+/** Ledger entry from GET /api/inventory/history or GET /api/inventory/:id/history (USD-only). */
+export type InventoryLedgerEntry = {
   id: string;
   createdAt: Date;
   assetId: string;
-  type: string;
-  amount: string;
+  type: "ACQUIRED" | "DISPOSED" | "REBALANCE";
   quantity: string;
-  initialPurchasePrice: string;
-  providerQuotePrice: string;
-  asset: { id: string; chain: string; symbol: string };
+  pricePerTokenUsd: string;
+  totalValueUsd: string;
+  referenceId: string;
+  counterparty: string | null;
+  /** Optional when API includes asset in response. */
+  asset?: { id: string; chain: string; symbol: string };
 };
 
-export type InventoryHistoryListResult = {
-  items: InventoryHistoryRow[];
+export type InventoryLedgerListResult = {
+  items: InventoryLedgerEntry[];
   meta: { page: number; limit: number; total: number };
 };
 
@@ -109,32 +111,44 @@ function parseDate(v: unknown): Date {
   return Number.isNaN(t) ? new Date(0) : new Date(t);
 }
 
-/** Normalize Core API inventory/history item to InventoryHistoryRow. */
-function coreHistoryItemToRow(item: unknown): InventoryHistoryRow | null {
+function mapLedgerType(raw: string): InventoryLedgerEntry["type"] {
+  const t = raw.toUpperCase();
+  if (t === "ACQUIRED" || t === "DISPOSED" || t === "REBALANCE") return t;
+  if (t === "PURCHASE" || t === "ACQUIRE") return "ACQUIRED";
+  if (t === "SALE" || t === "SELL") return "DISPOSED";
+  return "REBALANCE";
+}
+
+/** Normalize Core API inventory/history item to InventoryLedgerEntry. */
+function coreLedgerItemToRow(item: unknown): InventoryLedgerEntry | null {
   if (!item || typeof item !== "object") return null;
   const o = item as Record<string, unknown>;
   const id = str(o.id);
   if (!id) return null;
   const asset = o.asset as Record<string, unknown> | undefined;
-  return {
+  const entry: InventoryLedgerEntry = {
     id,
     createdAt: parseDate(o.createdAt),
     assetId: str(o.assetId),
-    type: str(o.type),
-    amount: str(o.amount ?? ""),
+    type: mapLedgerType(str(o.type)),
     quantity: str(o.quantity ?? ""),
-    initialPurchasePrice: str(o.initialPurchasePrice ?? ""),
-    providerQuotePrice: str(o.providerQuotePrice ?? ""),
-    asset: {
+    pricePerTokenUsd: str(o.pricePerTokenUsd ?? ""),
+    totalValueUsd: str(o.totalValueUsd ?? ""),
+    referenceId: str(o.referenceId ?? ""),
+    counterparty: o.counterparty != null ? str(o.counterparty) : null,
+  };
+  if (asset && (asset.id || asset.chain || asset.symbol)) {
+    entry.asset = {
       id: asset ? str(asset.id) : "",
       chain: asset ? str(asset.chain) : "",
-      symbol: asset ? str(asset.symbol) : "",
-    },
-  };
+      symbol: asset ? str(asset.symbol ?? asset.token) : "",
+    };
+  }
+  return entry;
 }
 
 /**
- * Fetches inventory history list from Core GET /api/inventory/history.
+ * Fetches inventory ledger list from Core GET /api/inventory/history.
  * Optional filters: assetId, chain. Pagination: page, limit (default 20, max 100).
  */
 export async function getInventoryHistoryList(params?: {
@@ -142,19 +156,23 @@ export async function getInventoryHistoryList(params?: {
   limit?: number;
   assetId?: string;
   chain?: string;
-}): Promise<InventoryHistoryListResult> {
+}): Promise<InventoryLedgerListResult> {
   const defaultMeta = {
     page: params?.page ?? 1,
     limit: params?.limit ?? 20,
     total: 0,
   };
   try {
-    const result = await getCoreInventoryHistoryList({
-      page: params?.page,
-      limit: params?.limit,
-      assetId: params?.assetId,
-      chain: params?.chain,
-    });
+    const token = await getSessionToken();
+    const result = await getCoreInventoryHistoryList(
+      {
+        page: params?.page,
+        limit: params?.limit,
+        assetId: params?.assetId,
+        chain: params?.chain,
+      },
+      token ?? undefined
+    );
     if (!result.ok || !result.data || typeof result.data !== "object") {
       return { items: [], meta: defaultMeta };
     }
@@ -167,8 +185,8 @@ export async function getInventoryHistoryList(params?: {
       return { items: [], meta: defaultMeta };
     }
     const items = envelope.data
-      .map(coreHistoryItemToRow)
-      .filter((r): r is InventoryHistoryRow => r !== null);
+      .map(coreLedgerItemToRow)
+      .filter((r): r is InventoryLedgerEntry => r !== null);
     const meta = envelope.meta ?? {
       page: defaultMeta.page,
       limit: defaultMeta.limit,
@@ -195,39 +213,44 @@ export async function getInventoryAssets(): Promise<InventoryAssetRow[]> {
   return [];
 }
 
-/** Normalize Core inventory history item to InventoryHistoryPoint. */
-function coreHistoryToPoint(
-  item: unknown,
+/** Build balance-over-time points from ledger entries (running sum of quantity). */
+function ledgerEntriesToPoints(
+  entries: InventoryLedgerEntry[],
   label: string
-): InventoryHistoryPoint | null {
-  if (!item || typeof item !== "object") return null;
-  const o = item as Record<string, unknown>;
-  const balance = Number(o.balance ?? 0);
-  const date =
-    o.recordedAt instanceof Date
-      ? o.recordedAt.toISOString().slice(0, 10)
-      : o.recordedAt != null
-        ? String(o.recordedAt).slice(0, 10)
-        : "";
-  if (!date) return null;
-  return { date, balance, label };
+): InventoryHistoryPoint[] {
+  const sorted = [...entries].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+  let running = 0;
+  const points: InventoryHistoryPoint[] = [];
+  for (const e of sorted) {
+    const q = Number.parseFloat(e.quantity);
+    const n = Number.isFinite(q) ? q : 0;
+    running += n;
+    const date = e.createdAt instanceof Date
+      ? e.createdAt.toISOString().slice(0, 10)
+      : String(e.createdAt).slice(0, 10);
+    if (date) points.push({ date, balance: running, label });
+  }
+  return points;
 }
 
-/** Fetches inventory history for a specific asset from Core API only. Returns [] if Core is unavailable or returns no data. */
+/** Fetches inventory ledger for a specific asset and returns balance-over-time points for charts. */
 export async function getInventoryHistoryForAsset(
   assetId: string,
   label: string
 ): Promise<InventoryHistoryPoint[]> {
   try {
     const token = await getSessionToken();
-    const result = await getCoreInventoryHistory(assetId, { limit: 30 }, token ?? undefined);
-    const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
-      ? (result.data as { data: unknown[] }).data
-      : [];
-    return raw
-      .map((item) => coreHistoryToPoint(item, label))
-      .filter((p): p is InventoryHistoryPoint => p !== null)
-      .sort((a, b) => a.date.localeCompare(b.date));
+    const result = await getCoreInventoryHistory(assetId, { limit: 100 }, token ?? undefined);
+    const envelope = result.ok && result.data && typeof result.data === "object"
+      ? (result.data as { success?: boolean; data?: unknown[] })
+      : null;
+    const raw = envelope?.success && Array.isArray(envelope.data) ? envelope.data : [];
+    const entries = raw
+      .map(coreLedgerItemToRow)
+      .filter((e): e is InventoryLedgerEntry => e !== null);
+    return ledgerEntriesToPoints(entries, label);
   } catch {
     // Core unavailable
   }

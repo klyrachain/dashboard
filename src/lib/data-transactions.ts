@@ -16,8 +16,14 @@ export type TransactionRow = {
   toToken: string;
   fromChain: string;
   toChain: string;
-  fromPrice: string;
-  toPrice: string;
+  /** Effective trade rate: toAmount/fromAmount (to-token per from-token). */
+  exchangeRate: string | null;
+  /** Price of 1 unit of from token in USD. */
+  fTokenPriceUsd: string | null;
+  /** Price of 1 unit of to token in USD. */
+  tTokenPriceUsd: string | null;
+  /** Fee value in USD (set when status = COMPLETED). Use this for fee display. */
+  feeInUsd: string | null;
   fromIdentifier: string;
   toIdentifier: string;
   fromType: string;
@@ -27,7 +33,7 @@ export type TransactionRow = {
   fromProvider: string;
   toProvider: string;
   requestId: string;
-  /** Fee charged for this transaction (set when status = COMPLETED). */
+  /** Fee in token units (legacy). Prefer feeInUsd for USD display. */
   fee: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -69,8 +75,10 @@ function coreItemToRow(item: unknown): TransactionRow | null {
     toToken: str(o.toToken ?? o.t_token),
     fromChain: str(o.fromChain ?? o.f_chain ?? "ETHEREUM"),
     toChain: str(o.toChain ?? o.t_chain ?? "ETHEREUM"),
-    fromPrice: str(o.fromPrice ?? o.f_price),
-    toPrice: str(o.toPrice ?? o.t_price),
+    exchangeRate: o.exchangeRate != null ? str(o.exchangeRate) : null,
+    fTokenPriceUsd: o.f_tokenPriceUsd != null ? str(o.f_tokenPriceUsd) : null,
+    tTokenPriceUsd: o.t_tokenPriceUsd != null ? str(o.t_tokenPriceUsd) : null,
+    feeInUsd: o.feeInUsd != null ? str(o.feeInUsd) : null,
     fromIdentifier: str(o.fromIdentifier ?? o.f_identifier),
     toIdentifier: str(o.toIdentifier ?? o.t_identifier),
     fromType: str(o.fromType),

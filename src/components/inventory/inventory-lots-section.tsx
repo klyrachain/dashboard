@@ -58,11 +58,11 @@ export function InventoryLotsSummary({ result }: { result: LotsListResult }) {
       </Card>
       <Card className="bg-white">
         <CardHeader className="pb-1 pt-3 px-3">
-          <CardTitle className="text-xs font-medium text-muted-foreground">Total cost</CardTitle>
+          <CardTitle className="text-xs font-medium text-muted-foreground">Total cost (USD)</CardTitle>
         </CardHeader>
         <CardContent className="px-3 pb-3 pt-0">
           <p className="text-lg font-semibold tabular-nums">
-            {summary.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+            {summary.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </CardContent>
       </Card>
@@ -101,36 +101,53 @@ function LotTable({ items }: { items: LotRow[] }) {
         <TableRow className="border-b border-slate-200 text-left text-muted-foreground">
           <TableHead className="w-[140px]">Token</TableHead>
           <TableHead className="w-[100px]">Chain</TableHead>
-          <TableHead className="text-right">Quantity</TableHead>
-          <TableHead className="text-right">Cost per token</TableHead>
-          <TableHead className="text-right">Total cost</TableHead>
+          <TableHead className="text-right">Original</TableHead>
+          <TableHead className="text-right">Remaining</TableHead>
+          <TableHead className="text-right">Cost (USD)</TableHead>
+          <TableHead className="text-right">Total cost (USD)</TableHead>
+          <TableHead>Status</TableHead>
           <TableHead>Acquired</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {items.map((lot) => {
-          const q = Number(lot.quantity) || 0;
-          const c = Number(lot.costPerToken) || 0;
-          const totalCost = q * c;
-          return (
-            <TableRow key={lot.id} className="border-b border-slate-100">
-              <TableCell className="font-medium">
-                {lot.asset?.symbol ?? lot.assetId}
-              </TableCell>
-              <TableCell className="text-muted-foreground text-sm">
-                {lot.asset?.chain ?? "—"}
-              </TableCell>
-              <TableCell className="tabular-nums text-right">{lot.quantity}</TableCell>
-              <TableCell className="tabular-nums text-right">{lot.costPerToken}</TableCell>
-              <TableCell className="tabular-nums text-right">{totalCost.toFixed(4)}</TableCell>
-              <TableCell className="text-muted-foreground text-sm">
-                {lot.acquiredAt
-                  ? format(new Date(lot.acquiredAt), "MMM d, yyyy HH:mm")
-                  : "—"}
-              </TableCell>
-            </TableRow>
-          );
-        })}
+        {items.map((lot) => (
+          <TableRow key={lot.id} className="border-b border-slate-100">
+            <TableCell className="font-medium">
+              {lot.asset?.symbol ?? lot.assetId}
+            </TableCell>
+            <TableCell className="text-muted-foreground text-sm">
+              {lot.asset?.chain ?? "—"}
+            </TableCell>
+            <TableCell className="tabular-nums text-right">
+              {lot.originalQuantity}
+            </TableCell>
+            <TableCell className="tabular-nums text-right">
+              {lot.remainingQuantity}
+            </TableCell>
+            <TableCell className="tabular-nums text-right">
+              {lot.costPerTokenUsd}
+            </TableCell>
+            <TableCell className="tabular-nums text-right">
+              {lot.totalCostUsd}
+            </TableCell>
+            <TableCell>
+              <span
+                className={
+                  lot.status === "OPEN"
+                    ? "text-green-600 text-xs font-medium"
+                    : "text-muted-foreground text-xs"
+                }
+              >
+                {lot.status}
+              </span>
+            </TableCell>
+            <TableCell className="text-muted-foreground text-sm">
+              {lot.acquiredAt
+                ? format(new Date(lot.acquiredAt), "MMM d, yyyy HH:mm")
+                : "—"}
+            </TableCell>
+          </TableRow>
+        ))}
       </TableBody>
     </Table>
   );

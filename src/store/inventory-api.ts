@@ -30,10 +30,15 @@ export type UpdateInventoryBody = {
   balance?: string | number;
 };
 
+/** No polling or timed refetch; data updates only via manual refetch or tag invalidation (e.g. webhook). */
 export const inventoryApi = createApi({
   reducerPath: "inventoryApi",
   tagTypes: ["Inventory"],
   baseQuery: baseQueryWithStatus,
+  keepUnusedDataFor: 300,
+  refetchOnFocus: false,
+  refetchOnReconnect: false,
+  refetchOnMountOrArgChange: false,
   endpoints: (builder) => ({
     getInventory: builder.query<InventoryAssetRow[], void | { limit?: number }>({
       query: (params) => ({

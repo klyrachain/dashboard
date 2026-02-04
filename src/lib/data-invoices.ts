@@ -191,11 +191,15 @@ export async function getInvoiceList(params?: {
   };
 
   try {
-    const { ok, status, data } = await getCoreInvoices({
-      page: params?.page ?? 1,
-      limit: params?.limit ?? 20,
-      status: params?.status,
-    });
+    const token = await getSessionToken();
+    const { ok, status, data } = await getCoreInvoices(
+      {
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 20,
+        status: params?.status,
+      },
+      token ?? undefined
+    );
 
     const envelope =
       data && typeof data === "object"

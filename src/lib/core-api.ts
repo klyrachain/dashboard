@@ -406,10 +406,10 @@ export async function deleteCoreInventory(id: string, bearerToken?: string | nul
 }
 
 /**
- * GET /api/inventory/history — list all inventory history (paginated).
+ * GET /api/inventory/history — list all inventory ledger (paginated).
  * Query: page, limit (default 20, max 100), assetId, chain.
  * Response: { success, data: [...], meta: { page, limit, total } }.
- * Each item includes InventoryHistory fields + asset: { id, chain, symbol }.
+ * Each item: InventoryLedger (type ACQUIRED|DISPOSED|REBALANCE, quantity, pricePerTokenUsd, totalValueUsd, referenceId, counterparty).
  */
 export async function getCoreInventoryHistoryList(params?: {
   page?: number;
@@ -442,7 +442,7 @@ export async function getCoreInventoryHistory(
   );
 }
 
-/** GET /api/inventory/:id/lots — lots for one asset (FIFO). Query: onlyAvailable? */
+/** GET /api/inventory/:id/lots — lots for one asset (FIFO). Query: onlyAvailable? (OPEN + remainingQuantity > 0). Fields: originalQuantity, remainingQuantity, costPerTokenUsd, totalCostUsd, status (OPEN|DEPLETED). */
 export async function getCoreInventoryLots(
   id: string,
   params?: { onlyAvailable?: boolean },
@@ -588,7 +588,7 @@ export type CreateCoreInvoiceBody = {
 };
 
 /** POST /api/invoices — create; required: billedTo, subject, dueDate, lineItems; optional sendNow. Normalizes line item amount to qty×unitPrice when missing. */
-export async function createCoreInvoice(body: CreateCoreInvoiceBody) {
+export async function createCoreInvoice(body: CreateCoreInvoiceBody, bearerToken?: string | null) {
   const lineItems = body.lineItems.map((li) => ({
     productName: li.productName,
     qty: li.qty,
@@ -621,7 +621,7 @@ export async function createCoreInvoice(body: CreateCoreInvoiceBody) {
   const base = getCoreBaseUrl().replace(/\/$/, "");
   const res = await fetch(`${base}/api/invoices`, {
     method: "POST",
-    headers: coreHeaders("api/invoices"),
+    headers: coreHeaders("api/invoices", bearerToken),
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
@@ -649,12 +649,13 @@ export async function updateCoreInvoice(
       unitPrice: number;
       amount?: number;
     }>;
-  }
+  },
+  bearerToken?: string | null
 ) {
   const base = getCoreBaseUrl().replace(/\/$/, "");
   const res = await fetch(`${base}/api/invoices/${encodeURIComponent(id)}`, {
     method: "PATCH",
-    headers: coreHeaders("api/invoices"),
+    headers: coreHeaders("api/invoices", bearerToken),
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
@@ -665,13 +666,13 @@ export async function updateCoreInvoice(
 }
 
 /** POST /api/invoices/:id/send — send/resend; optional toEmail */
-export async function sendCoreInvoice(id: string, toEmail?: string) {
+export async function sendCoreInvoice(id: string, toEmail?: string, bearerToken?: string | null) {
   const base = getCoreBaseUrl().replace(/\/$/, "");
   const res = await fetch(
     `${base}/api/invoices/${encodeURIComponent(id)}/send`,
     {
       method: "POST",
-      headers: coreHeaders("api/invoices"),
+      headers: coreHeaders("api/invoices", bearerToken),
       body: JSON.stringify(toEmail != null ? { toEmail } : {}),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     }
@@ -683,13 +684,13 @@ export async function sendCoreInvoice(id: string, toEmail?: string) {
 }
 
 /** POST /api/invoices/:id/duplicate — new draft copy; returns new invoice in data */
-export async function duplicateCoreInvoice(id: string) {
+export async function duplicateCoreInvoice(id: string, bearerToken?: string | null) {
   const base = getCoreBaseUrl().replace(/\/$/, "");
   const res = await fetch(
     `${base}/api/invoices/${encodeURIComponent(id)}/duplicate`,
     {
       method: "POST",
-      headers: coreHeaders("api/invoices"),
+      headers: coreHeaders("api/invoices", bearerToken),
       body: JSON.stringify({}),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     }
@@ -701,13 +702,13 @@ export async function duplicateCoreInvoice(id: string) {
 }
 
 /** POST /api/invoices/:id/mark-paid — set status Paid, set paidAt */
-export async function markCoreInvoicePaid(id: string) {
+export async function markCoreInvoicePaid(id: string, bearerToken?: string | null) {
   const base = getCoreBaseUrl().replace(/\/$/, "");
   const res = await fetch(
     `${base}/api/invoices/${encodeURIComponent(id)}/mark-paid`,
     {
       method: "POST",
-      headers: coreHeaders("api/invoices"),
+      headers: coreHeaders("api/invoices", bearerToken),
       body: JSON.stringify({}),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     }
@@ -719,13 +720,13 @@ export async function markCoreInvoicePaid(id: string) {
 }
 
 /** POST /api/invoices/:id/cancel — set status Cancelled */
-export async function cancelCoreInvoice(id: string) {
+export async function cancelCoreInvoice(id: string, bearerToken?: string | null) {
   const base = getCoreBaseUrl().replace(/\/$/, "");
   const res = await fetch(
     `${base}/api/invoices/${encodeURIComponent(id)}/cancel`,
     {
       method: "POST",
-      headers: coreHeaders("api/invoices"),
+      headers: coreHeaders("api/invoices", bearerToken),
       body: JSON.stringify({}),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     }
@@ -739,13 +740,14 @@ export async function cancelCoreInvoice(id: string) {
 /** GET /api/invoices/:id/export — ?format=csv (default) or pdf; PDF returns 501 */
 export async function getCoreInvoiceExport(
   id: string,
-  format: "csv" | "pdf" = "csv"
+  format: "csv" | "pdf" = "csv",
+  bearerToken?: string | null
 ): Promise<{ ok: boolean; status: number; blob: Blob; filename?: string }> {
   const base = getCoreBaseUrl().replace(/\/$/, "");
   const url = `${base}/api/invoices/${encodeURIComponent(id)}/export?format=${format}`;
   const res = await fetch(url, {
     method: "GET",
-    headers: coreHeaders(`api/invoices/${id}/export`),
+    headers: coreHeaders(`api/invoices/${id}/export`, bearerToken),
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   const contentType = res.headers.get("content-type") ?? "";
@@ -813,9 +815,15 @@ export async function postCoreProviderRotateKey(id: string, body: { apiKey: stri
 
 // ——— Platform API (platform-wide dashboard) ———
 
-/** GET /api/platform/overview — platform-wide metrics: all fees and counts. */
-export async function getCorePlatformOverview(bearerToken?: string | null) {
-  return fetchCoreGet<unknown>("api/platform/overview", undefined, bearerToken);
+/** GET /api/platform/overview — platform-wide analytics. Query: startDate, endDate (YYYY-MM-DD, inclusive UTC). */
+export async function getCorePlatformOverview(
+  params?: { startDate?: string; endDate?: string },
+  bearerToken?: string | null
+) {
+  return fetchCoreGet<unknown>("api/platform/overview", {
+    startDate: params?.startDate,
+    endDate: params?.endDate,
+  }, bearerToken);
 }
 
 // ——— Connect (B2B) API ———

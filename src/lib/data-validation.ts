@@ -155,7 +155,8 @@ export async function getValidationFailedList(params?: {
 }): Promise<ValidationFailedListResult> {
   const defaultMeta = { page: params?.page ?? 1, limit: params?.limit ?? 20, total: 0 };
   try {
-    const result = await getCoreValidationFailed(params);
+    const token = await getSessionToken();
+    const result = await getCoreValidationFailed(params, token ?? undefined);
     if (!result.ok || !result.data || typeof result.data !== "object") {
       return { items: [], meta: defaultMeta };
     }

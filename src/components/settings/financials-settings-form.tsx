@@ -1,11 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { setBaseCurrency } from "@/store/preferences-slice";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { SettingsFinancials } from "@/lib/data-settings";
+import { QUOTE_CURRENCIES } from "@/lib/token-rates";
+import type { QuoteCurrency } from "@/lib/token-rates";
 import { saveFinancialsAction } from "@/app/settings/actions";
 
 type FinancialsSettingsFormProps = {
@@ -22,11 +33,13 @@ function toNum(s: string): number {
 }
 
 export function FinancialsSettingsForm({ initialData }: FinancialsSettingsFormProps) {
+  const dispatch = useDispatch();
   const [baseFeePercent, setBaseFeePercent] = useState("1.00");
   const [fixedFee, setFixedFee] = useState("0.50");
   const [minTxSize, setMinTxSize] = useState("5.00");
   const [maxTxSize, setMaxTxSize] = useState("10000.00");
   const [lowBalanceAlert, setLowBalanceAlert] = useState("500.00");
+  const [baseCurrency, setBaseCurrency] = useState<QuoteCurrency>("usdc");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -37,11 +50,41 @@ export function FinancialsSettingsForm({ initialData }: FinancialsSettingsFormPr
       setMinTxSize(toStr(initialData.minTransactionSize));
       setMaxTxSize(toStr(initialData.maxTransactionSize));
       setLowBalanceAlert(toStr(initialData.lowBalanceAlert));
+      setBaseCurrency(initialData.baseCurrency ?? "usdc");
     }
   }, [initialData]);
 
   return (
     <div className="space-y-6">
+      <Card className="bg-white">
+        <CardHeader>
+          <CardTitle>Base currency</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="baseCurrency">Platform display currency</Label>
+            <Select
+              value={baseCurrency}
+              onValueChange={(v) => setBaseCurrency(v as QuoteCurrency)}
+            >
+              <SelectTrigger id="baseCurrency" className="w-34">
+                <SelectValue placeholder="Currency" />
+              </SelectTrigger>
+              <SelectContent>
+                {QUOTE_CURRENCIES.map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Totals and conversions (dashboard, inventory) use this currency by default.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="bg-white">
         <CardHeader>
           <CardTitle>Global fee schedule (defaults)</CardTitle>
@@ -139,9 +182,13 @@ export function FinancialsSettingsForm({ initialData }: FinancialsSettingsFormPr
             minTransactionSize: Math.max(0, toNum(minTxSize)),
             maxTransactionSize: Math.max(0, toNum(maxTxSize)),
             lowBalanceAlert: Math.max(0, toNum(lowBalanceAlert)),
+            baseCurrency,
           });
           setSaving(false);
-          if (result.success) return;
+          if (result.success) {
+            dispatch(setBaseCurrency(baseCurrency));
+            return;
+          }
           setSaveError(result.error ?? "Save failed");
         }}
       >

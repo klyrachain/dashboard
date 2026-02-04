@@ -5,6 +5,7 @@ import "./globals.css";
 import { ReduxProvider } from "@/components/providers/redux-provider";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { LayoutPreferenceSync } from "@/components/providers/layout-preference-sync";
+import { BaseCurrencySync } from "@/components/providers/base-currency-sync";
 import { WebhookRefreshProvider } from "@/components/providers/webhook-refresh-provider";
 import { LayoutSwitcher } from "@/components/auth/layout-switcher";
 import { AuthSessionSync } from "@/components/auth/auth-session-sync";
@@ -58,6 +59,7 @@ export default async function RootLayout({
           <SessionProvider>
             <AuthSessionSync>
               <LayoutPreferenceSync />
+              <BaseCurrencySync />
               <WebhookRefreshProvider>
                 <LayoutSwitcher>{children}</LayoutSwitcher>
               </WebhookRefreshProvider>

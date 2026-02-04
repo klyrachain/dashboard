@@ -11,8 +11,10 @@ export type RecentTransaction = {
   status: string;
   fromAmount: string;
   toAmount: string;
-  /** Fee charged (set when status = COMPLETED). */
+  /** Fee in token units (legacy). Prefer feeInUsd for USD display. */
   fee: string | null;
+  /** Fee value in USD (set when status = COMPLETED). */
+  feeInUsd: string | null;
   createdAt: Date;
 };
 
@@ -36,6 +38,7 @@ function coreItemToRecent(item: unknown): RecentTransaction | null {
     fromAmount: String(o.fromAmount ?? o.f_amount ?? ""),
     toAmount: String(o.toAmount ?? o.t_amount ?? ""),
     fee: strFee(o.fee),
+    feeInUsd: o.feeInUsd != null ? String(o.feeInUsd).trim() || null : null,
     createdAt,
   };
 }

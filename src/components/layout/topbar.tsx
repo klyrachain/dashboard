@@ -104,13 +104,13 @@ export function Topbar({ className }: { className?: string }) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/settings/account" className="flex items-center gap-2 cursor-pointer">
+                <Link href="/settings/account" prefetch={false} className="flex items-center gap-2 cursor-pointer">
                   <User className="size-4" />
                   Account & security
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/settings/general" className="flex items-center gap-2 cursor-pointer">
+                <Link href="/settings/general" prefetch={false} className="flex items-center gap-2 cursor-pointer">
                   <Settings className="size-4" />
                   Settings
                 </Link>

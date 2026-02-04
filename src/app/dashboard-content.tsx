@@ -1,5 +1,4 @@
 import { DashboardVolumeSection } from "@/components/dashboard/dashboard-volume-section";
-import { DashboardPlatformOverview } from "@/components/dashboard/dashboard-platform-overview";
 import { DashboardInventoryAndGlance } from "@/components/dashboard/dashboard-inventory-and-glance";
 import { DashboardRecentActivity } from "@/components/dashboard/dashboard-recent-activity";
 import { ApiKeysCard } from "@/components/dashboard/api-keys-card";
@@ -23,11 +22,12 @@ export async function DashboardContent() {
     <div className="space-y-8">
       <DashboardVolumeSection />
 
-      <DashboardPlatformOverview data={platformData} error={platformError} />
-
       <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
         <div className="space-y-8">
-          <DashboardInventoryAndGlance />
+          <DashboardInventoryAndGlance
+            platformOverview={platformData}
+            platformOverviewError={platformError}
+          />
           <DashboardRecentActivity transactions={recentTransactions} />
         </div>
 

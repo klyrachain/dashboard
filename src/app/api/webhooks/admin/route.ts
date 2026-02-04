@@ -13,6 +13,7 @@ const ORDER_LIFECYCLE_EVENTS = ["order.created", "order.completed", "order.faile
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as unknown;
+    console.log("body", body);
     if (!body || typeof body !== "object") {
       return NextResponse.json(
         { success: false, error: "Body must be a JSON object" },
