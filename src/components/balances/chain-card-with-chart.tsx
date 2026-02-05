@@ -41,10 +41,8 @@ function ChainIcon({
   };
   return (
     <span
-      className={`flex size-8 items-center justify-center rounded-md text-xs font-medium ${isOffchain
-          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
-          : "bg-slate-100 text-slate-600"
-        }`}
+      className={`flex size-8 items-center justify-center rounded-md text-xs font-medium w-full px-2 bg-slate-100 text-slate-600
+} `}
       aria-hidden
     >
       {labels[chainId] ?? chainId.slice(0, 2).toUpperCase()}
@@ -82,7 +80,7 @@ export function ChainCardWithChart({ chain }: { chain: ChainBalance }) {
             {chain.isOffchain && (
               <Badge
                 variant="secondary"
-                className="w-fit text-[10px] font-normal text-amber-700 dark:text-amber-300"
+                className="w-fit text-[10px] font-normal text-gray-600 dark:text-gray-600"
               >
                 Offchain
               </Badge>
@@ -90,8 +88,8 @@ export function ChainCardWithChart({ chain }: { chain: ChainBalance }) {
           </div>
         </div>
         <span
-          className={`size-2 shrink-0 rounded-full ${chain.healthy ? "bg-green-500" : "bg-red-500"
-            }`}
+          className={`size - 2 shrink - 0 rounded - full ${chain.healthy ? "bg-green-500" : "bg-red-500"
+            } `}
           title={chain.healthy ? "Operational" : "Downtime"}
           aria-hidden
         />
