@@ -128,7 +128,7 @@ export function ManageApiContent({
         </CardContent>
       </Card>
 
-      <div className="flex flex-row gap-4 w-full bg-red-400">
+      <div className="flex flex-row gap-4 w-full">
         {/* Rate Limits */}
         <Card className="bg-white w-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">

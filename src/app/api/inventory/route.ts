@@ -4,12 +4,19 @@ import {
   postCoreInventory,
   type CreateCoreInventoryBody,
 } from "@/lib/core-api";
+import { getSessionToken, UNAUTH_CORE_MESSAGE } from "@/lib/auth";
 
 /**
- * GET /api/inventory — proxy to Core API.
- * Used by client (RTK Query) to avoid CORS and to cache inventory in Redux.
+ * GET /api/inventory — proxy to Core API. Requires session (Bearer).
  */
 export async function GET(request: Request) {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   const { searchParams } = new URL(request.url);
   const limit = searchParams.get("limit");
   const page = searchParams.get("page");
@@ -20,7 +27,7 @@ export async function GET(request: Request) {
       limit: limit ? Number(limit) : 100,
       page: page ? Number(page) : undefined,
       chain: chain ?? undefined,
-    });
+    }, token);
 
     if (!result.ok) {
       return NextResponse.json(
@@ -44,6 +51,13 @@ export async function GET(request: Request) {
  * Body: { chain, chainId (required number), address (required), tokenAddress (required), token?, symbol?, balance?, walletAddress? }.
  */
 export async function POST(request: Request) {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   try {
     if (!process.env.NEXT_PUBLIC_CORE_URL?.trim()) {
       return NextResponse.json(
@@ -87,7 +101,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const result = await postCoreInventory({ ...body, chainId, address, tokenAddress });
+    const result = await postCoreInventory({ ...body, chainId, address, tokenAddress }, token);
     if (!result.ok) {
       const err =
         result.data && typeof result.data === "object" && "error" in result.data

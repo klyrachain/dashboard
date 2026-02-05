@@ -19,6 +19,10 @@ import {
   patchCoreSettingsApi,
   postCoreSettingsApiRotateWebhookSecret,
 } from "@/lib/core-api";
+import { getSessionToken } from "@/lib/auth";
+import { postCoreAuthInviteCreate } from "@/lib/auth-api-server";
+import type { QuoteCurrency } from "@/lib/token-rates";
+import type { InviteCreateData } from "@/types/auth";
 
 type Envelope<T> = { success?: boolean; data?: T; error?: string };
 
@@ -76,7 +80,8 @@ export async function getSettingsGeneral(): Promise<{
   data: SettingsGeneral;
   error?: string;
 }> {
-  const res = await getCoreSettingsGeneral();
+  const token = await getSessionToken();
+  const res = await getCoreSettingsGeneral(token ?? undefined);
   const out = extract<unknown>(res);
   return {
     ok: out.ok,
@@ -88,7 +93,8 @@ export async function getSettingsGeneral(): Promise<{
 export async function patchSettingsGeneral(
   body: Partial<SettingsGeneral>
 ): Promise<{ ok: boolean; data: SettingsGeneral | null; error?: string }> {
-  const res = await patchCoreSettingsGeneral(body as Record<string, unknown>);
+  const token = await getSessionToken();
+  const res = await patchCoreSettingsGeneral(body as Record<string, unknown>, token ?? undefined);
   const out = extract<unknown>(res);
   return {
     ok: out.ok,
@@ -99,12 +105,16 @@ export async function patchSettingsGeneral(
 
 // ——— Financials ———
 
+const DEFAULT_BASE_CURRENCY: QuoteCurrency = "usdc";
+
 export type SettingsFinancials = {
   baseFeePercent: number;
   fixedFee: number;
   minTransactionSize: number;
   maxTransactionSize: number;
   lowBalanceAlert: number;
+  /** Platform display/conversion base currency (USDC, USD, GHS). Used for totals and rate requests. */
+  baseCurrency: QuoteCurrency;
 };
 
 const defaultFinancials: SettingsFinancials = {
@@ -113,17 +123,24 @@ const defaultFinancials: SettingsFinancials = {
   minTransactionSize: 5,
   maxTransactionSize: 10000,
   lowBalanceAlert: 500,
+  baseCurrency: DEFAULT_BASE_CURRENCY,
 };
 
 function parseFinancials(raw: unknown): SettingsFinancials {
   if (!raw || typeof raw !== "object") return defaultFinancials;
   const o = raw as Record<string, unknown>;
+  const baseCurrencyRaw = o.baseCurrency;
+  const baseCurrency =
+    baseCurrencyRaw === "usd" || baseCurrencyRaw === "usdc" || baseCurrencyRaw === "ghs"
+      ? baseCurrencyRaw
+      : DEFAULT_BASE_CURRENCY;
   return {
     baseFeePercent: typeof o.baseFeePercent === "number" ? o.baseFeePercent : defaultFinancials.baseFeePercent,
     fixedFee: typeof o.fixedFee === "number" ? o.fixedFee : defaultFinancials.fixedFee,
     minTransactionSize: typeof o.minTransactionSize === "number" ? o.minTransactionSize : defaultFinancials.minTransactionSize,
     maxTransactionSize: typeof o.maxTransactionSize === "number" ? o.maxTransactionSize : defaultFinancials.maxTransactionSize,
     lowBalanceAlert: typeof o.lowBalanceAlert === "number" ? o.lowBalanceAlert : defaultFinancials.lowBalanceAlert,
+    baseCurrency,
   };
 }
 
@@ -132,7 +149,8 @@ export async function getSettingsFinancials(): Promise<{
   data: SettingsFinancials;
   error?: string;
 }> {
-  const res = await getCoreSettingsFinancials();
+  const token = await getSessionToken();
+  const res = await getCoreSettingsFinancials(token ?? undefined);
   const out = extract<unknown>(res);
   return {
     ok: out.ok,
@@ -144,7 +162,8 @@ export async function getSettingsFinancials(): Promise<{
 export async function patchSettingsFinancials(
   body: Partial<SettingsFinancials>
 ): Promise<{ ok: boolean; data: SettingsFinancials | null; error?: string }> {
-  const res = await patchCoreSettingsFinancials(body as Record<string, unknown>);
+  const token = await getSessionToken();
+  const res = await patchCoreSettingsFinancials(body as Record<string, unknown>, token ?? undefined);
   const out = extract<unknown>(res);
   return {
     ok: out.ok,
@@ -194,7 +213,8 @@ export async function getSettingsProviders(): Promise<{
   data: SettingsProviders;
   error?: string;
 }> {
-  const res = await getCoreSettingsProviders();
+  const token = await getSessionToken();
+  const res = await getCoreSettingsProviders(token ?? undefined);
   const out = extract<unknown>(res);
   if (!out.ok || !out.data || typeof out.data !== "object") {
     return { ok: false, data: defaultProviders, error: out.error };
@@ -214,7 +234,8 @@ export async function patchSettingsProviders(body: {
   maxSlippagePercent?: number;
   providers?: Array<{ id: string; enabled?: boolean; priority?: number }>;
 }): Promise<{ ok: boolean; data: SettingsProviders | null; error?: string }> {
-  const res = await patchCoreSettingsProviders(body as Record<string, unknown>);
+  const token = await getSessionToken();
+  const res = await patchCoreSettingsProviders(body as Record<string, unknown>, token ?? undefined);
   const out = extract<unknown>(res);
   if (!out.ok) return { ok: false, data: null, error: out.error };
   if (!out.data || typeof out.data !== "object") return { ok: true, data: null };
@@ -229,7 +250,8 @@ export async function patchSettingsProviderById(
   id: string,
   body: { apiKey?: string; enabled?: boolean; priority?: number }
 ): Promise<{ ok: boolean; data: SettingsProvider | null; error?: string }> {
-  const res = await patchCoreSettingsProviderById(id, body as Record<string, unknown>);
+  const token = await getSessionToken();
+  const res = await patchCoreSettingsProviderById(id, body as Record<string, unknown>, token ?? undefined);
   const out = extract<unknown>(res);
   if (!out.ok) return { ok: false, data: null, error: out.error };
   const p = out.data ? parseProvider(out.data) : null;
@@ -255,7 +277,8 @@ export async function getSettingsRisk(): Promise<{
   data: SettingsRisk;
   error?: string;
 }> {
-  const res = await getCoreSettingsRisk();
+  const token = await getSessionToken();
+  const res = await getCoreSettingsRisk(token ?? undefined);
   const out = extract<unknown>(res);
   if (!out.ok || !out.data || typeof out.data !== "object") {
     return { ok: false, data: defaultRisk, error: out.error };
@@ -279,7 +302,8 @@ export async function patchSettingsRisk(body: {
   blockHighRiskIp?: boolean;
   blacklist?: string[];
 }): Promise<{ ok: boolean; data: SettingsRisk | null; error?: string }> {
-  const res = await patchCoreSettingsRisk(body as Record<string, unknown>);
+  const token = await getSessionToken();
+  const res = await patchCoreSettingsRisk(body as Record<string, unknown>, token ?? undefined);
   const out = extract<unknown>(res);
   if (!out.ok) return { ok: false, data: null, error: out.error };
   if (!out.data || typeof out.data !== "object") return { ok: true, data: null };
@@ -312,40 +336,109 @@ export async function getSettingsTeamAdmins(): Promise<{
   data: SettingsAdmin[];
   error?: string;
 }> {
-  const res = await getCoreSettingsTeamAdmins();
-  const out = extract<unknown[]>(res);
-  if (!out.ok || !Array.isArray(out.data)) {
-    return { ok: false, data: [], error: out.error };
+  try {
+    const token = await getSessionToken();
+    const res = await getCoreSettingsTeamAdmins(token ?? undefined);
+    const out = extract<unknown[]>(res);
+    if (!out.ok || !Array.isArray(out.data)) {
+      return { ok: false, data: [], error: out.error };
+    }
+    const data = out.data
+      .map((row) => {
+        if (!row || typeof row !== "object") return null;
+        const o = row as Record<string, unknown>;
+        const id = String(o.id ?? "");
+        if (!id) return null;
+        return {
+          id,
+          name: String(o.name ?? ""),
+          email: String(o.email ?? ""),
+          role: String(o.role ?? "viewer"),
+          twoFaEnabled: o.twoFaEnabled === true,
+        };
+      })
+      .filter((r): r is SettingsAdmin => r != null);
+    return { ok: true, data };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Request failed";
+    const cause = e instanceof Error ? (e as Error & { cause?: { code?: string } }).cause : undefined;
+    const isNetwork =
+      cause?.code === "ECONNREFUSED" ||
+      (typeof message === "string" && (message.includes("fetch failed") || message.includes("ECONNREFUSED")));
+    return {
+      ok: false,
+      data: [],
+      error: isNetwork ? "Core API unreachable. Check that the Core server is running." : message,
+    };
   }
-  const data = out.data
-    .map((row) => {
-      if (!row || typeof row !== "object") return null;
-      const o = row as Record<string, unknown>;
-      const id = String(o.id ?? "");
-      if (!id) return null;
-      return {
-        id,
-        name: String(o.name ?? ""),
-        email: String(o.email ?? ""),
-        role: String(o.role ?? "viewer"),
-        twoFaEnabled: o.twoFaEnabled === true,
-      };
-    })
-    .filter((r): r is SettingsAdmin => r != null);
-  return { ok: true, data };
 }
 
 export async function postSettingsTeamInvite(body: {
   email: string;
   role?: string;
 }): Promise<{ ok: boolean; error?: string }> {
-  const res = await postCoreSettingsTeamInvite(body);
+  const token = await getSessionToken();
+  const res = await postCoreSettingsTeamInvite(body, token ?? undefined);
   if (res.ok) return { ok: true };
   const err =
     res.data && typeof res.data === "object" && "error" in res.data
       ? String((res.data as { error: string }).error)
       : "Invite failed";
   return { ok: false, error: err };
+}
+
+/**
+ * Create invite via Auth API (POST /api/auth/invite).
+ * Returns invite link and expiresAt for the UI. Uses x-api-key server-side.
+ */
+export async function postAuthInvite(body: {
+  email: string;
+  role?: string;
+}): Promise<{
+  ok: boolean;
+  inviteLink?: string;
+  expiresAt?: string;
+  inviteId?: string;
+  error?: string;
+  code?: string;
+}> {
+  const res = await postCoreAuthInviteCreate(
+    { email: body.email.trim(), role: (body.role ?? "viewer").trim() },
+    undefined
+  );
+  if (!res.ok || !res.data || typeof res.data !== "object") {
+    const err =
+      res.data && typeof res.data === "object" && "error" in res.data
+        ? String((res.data as { error: string }).error)
+        : "Invite failed";
+    const code =
+      res.data && typeof res.data === "object" && "code" in res.data
+        ? String((res.data as { code: string }).code)
+        : undefined;
+    return { ok: false, error: err, code };
+  }
+  const raw = res.data as
+    | { success?: boolean; data?: InviteCreateData; error?: string; code?: string }
+    | InviteCreateData;
+  const data: InviteCreateData | null =
+    raw && typeof raw === "object" && "success" in raw && raw.success === true && raw.data
+      ? raw.data
+      : raw && typeof raw === "object" && "inviteLink" in raw
+        ? (raw as InviteCreateData)
+        : null;
+  if (!data || !data.inviteLink) {
+    return {
+      ok: false,
+      error: (raw && typeof raw === "object" && "error" in raw ? (raw as { error: string }).error : null) ?? "Invite failed",
+      code: raw && typeof raw === "object" && "code" in raw ? String((raw as { code: string }).code) : undefined,
+    };
+  }
+  return {
+    ok: true,
+    inviteLink: data.inviteLink,
+    expiresAt: data.expiresAt,
+    inviteId: data.inviteId,
+  };
 }
 
 // ——— API & Webhooks ———
@@ -367,7 +460,8 @@ export async function getSettingsApi(): Promise<{
   data: SettingsApi;
   error?: string;
 }> {
-  const res = await getCoreSettingsApi();
+  const token = await getSessionToken();
+  const res = await getCoreSettingsApi(token ?? undefined);
   const out = extract<unknown>(res);
   if (!out.ok || !out.data || typeof out.data !== "object") {
     return { ok: false, data: defaultApi, error: out.error };
@@ -390,7 +484,8 @@ export async function patchSettingsApi(body: {
   slackWebhookUrl?: string;
   alertEmails?: string;
 }): Promise<{ ok: boolean; data: SettingsApi | null; error?: string }> {
-  const res = await patchCoreSettingsApi(body as Record<string, unknown>);
+  const token = await getSessionToken();
+  const res = await patchCoreSettingsApi(body as Record<string, unknown>, token ?? undefined);
   const out = extract<unknown>(res);
   if (!out.ok) return { ok: false, data: null, error: out.error };
   if (!out.data || typeof out.data !== "object") return { ok: true, data: null };
@@ -413,7 +508,8 @@ export async function postSettingsApiRotateWebhookSecret(): Promise<{
   webhookSigningSecretMasked?: string;
   error?: string;
 }> {
-  const res = await postCoreSettingsApiRotateWebhookSecret();
+  const token = await getSessionToken();
+  const res = await postCoreSettingsApiRotateWebhookSecret(token ?? undefined);
   if (!res.ok) {
     const err =
       res.data && typeof res.data === "object" && "error" in res.data

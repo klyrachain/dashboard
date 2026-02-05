@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import localFont from "next/font/local";
 import "./globals.css";
-import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { ReduxProvider } from "@/components/providers/redux-provider";
+import { SessionProvider } from "@/components/providers/session-provider";
 import { LayoutPreferenceSync } from "@/components/providers/layout-preference-sync";
+import { BaseCurrencySync } from "@/components/providers/base-currency-sync";
 import { WebhookRefreshProvider } from "@/components/providers/webhook-refresh-provider";
+import { LayoutSwitcher } from "@/components/auth/layout-switcher";
+import { AuthSessionSync } from "@/components/auth/auth-session-sync";
 import { parseLayoutPreference } from "@/lib/layout-preference-cookie";
 
 /** Primary: headings and main UI (Alpino). */
@@ -53,10 +56,15 @@ export default async function RootLayout({
         className={`${alpino.variable} ${ranade.variable} font-primary antialiased`}
       >
         <ReduxProvider initialLayoutPreference={layoutPref ?? undefined}>
-          <LayoutPreferenceSync />
-          <WebhookRefreshProvider>
-            <DashboardShell>{children}</DashboardShell>
-          </WebhookRefreshProvider>
+          <SessionProvider>
+            <AuthSessionSync>
+              <LayoutPreferenceSync />
+              <BaseCurrencySync />
+              <WebhookRefreshProvider>
+                <LayoutSwitcher>{children}</LayoutSwitcher>
+              </WebhookRefreshProvider>
+            </AuthSessionSync>
+          </SessionProvider>
         </ReduxProvider>
       </body>
     </html>

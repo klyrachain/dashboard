@@ -81,7 +81,11 @@ function TransactionRow({ tx }: { tx: UserTransactionRow }) {
       <TableCell className="tabular-nums">{tx.fromAmount}</TableCell>
       <TableCell className="tabular-nums">{tx.toAmount}</TableCell>
       <TableCell className="tabular-nums text-muted-foreground text-sm">
-        {tx.fee != null && tx.fee !== "" ? tx.fee : "—"}
+        {tx.feeInUsd != null && tx.feeInUsd !== ""
+          ? `$${Number(tx.feeInUsd).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : tx.fee != null && tx.fee !== ""
+            ? tx.fee
+            : "—"}
       </TableCell>
       <TableCell className="text-muted-foreground text-sm">
         {tx.createdAt instanceof Date

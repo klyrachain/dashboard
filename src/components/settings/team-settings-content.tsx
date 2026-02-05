@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CopyButton } from "@/components/ui/copy-button";
 import type { SettingsAdmin } from "@/lib/data-settings";
 import { inviteTeamAdminAction } from "@/app/settings/actions";
 
@@ -36,12 +37,22 @@ type TeamSettingsContentProps = {
   initialAdmins?: SettingsAdmin[] | null;
 };
 
+function fullInviteUrl(inviteLink: string): string {
+  if (typeof window === "undefined") return inviteLink;
+  if (inviteLink.startsWith("http")) return inviteLink;
+  const base = window.location.origin.replace(/\/$/, "");
+  const path = inviteLink.startsWith("/") ? inviteLink : `/${inviteLink}`;
+  return `${base}${path}`;
+}
+
 export function TeamSettingsContent({ initialAdmins }: TeamSettingsContentProps) {
   const router = useRouter();
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<string>("viewer");
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [lastInviteLink, setLastInviteLink] = useState<string | null>(null);
+  const [lastInviteExpiresAt, setLastInviteExpiresAt] = useState<string | null>(null);
 
   const admins = initialAdmins ?? [];
 
@@ -100,59 +111,86 @@ export function TeamSettingsContent({ initialAdmins }: TeamSettingsContentProps)
         <CardHeader>
           <CardTitle>Invite new admin</CardTitle>
           <CardDescription>
-            Send an email invite. Role determines what they can do.
+            Create an invite and send the link to the user. Role determines what they can do.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-end gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="inviteEmail">Email</Label>
-            <Input
-              id="inviteEmail"
-              type="email"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="admin@example.com"
-              className="w-64"
-            />
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="inviteEmail">Email</Label>
+              <Input
+                id="inviteEmail"
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="admin@example.com"
+                className="w-64"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={inviteRole} onValueChange={setInviteRole}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {inviteError && (
+              <p className="text-sm text-destructive w-full" role="alert">{inviteError}</p>
+            )}
+            <Button
+              disabled={inviting || !inviteEmail.trim()}
+              onClick={async () => {
+                setInviting(true);
+                setInviteError(null);
+                setLastInviteLink(null);
+                setLastInviteExpiresAt(null);
+                const result = await inviteTeamAdminAction({
+                  email: inviteEmail.trim(),
+                  role: inviteRole,
+                });
+                setInviting(false);
+                if (result.success) {
+                  setInviteEmail("");
+                  if (result.inviteLink) setLastInviteLink(result.inviteLink);
+                  if (result.expiresAt) setLastInviteExpiresAt(result.expiresAt);
+                  router.refresh();
+                } else {
+                  setInviteError(result.error ?? "Invite failed");
+                }
+              }}
+            >
+              {inviting ? "Creating…" : "Create invite"}
+            </Button>
           </div>
-          <div className="space-y-2">
-            <Label>Role</Label>
-            <Select value={inviteRole} onValueChange={setInviteRole}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ROLES.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>
-                    {r.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {inviteError && (
-            <p className="text-sm text-destructive w-full" role="alert">{inviteError}</p>
+          {lastInviteLink && (
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-4 space-y-2">
+              <p className="text-sm font-medium text-slate-700">Invite created. Share this link:</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <code className="flex-1 min-w-0 text-xs font-mono break-all bg-white px-2 py-1.5 rounded border border-slate-200">
+                  {fullInviteUrl(lastInviteLink)}
+                </code>
+                <CopyButton
+                  value={fullInviteUrl(lastInviteLink)}
+                  label="Copy invite link"
+                  size="sm"
+                  variant="outline"
+                />
+              </div>
+              {lastInviteExpiresAt && (
+                <p className="text-xs text-muted-foreground">
+                  Expires: {new Date(lastInviteExpiresAt).toLocaleString()}
+                </p>
+              )}
+            </div>
           )}
-          <Button
-            disabled={inviting || !inviteEmail.trim()}
-            onClick={async () => {
-              setInviting(true);
-              setInviteError(null);
-              const result = await inviteTeamAdminAction({
-                email: inviteEmail.trim(),
-                role: inviteRole,
-              });
-              setInviting(false);
-              if (result.success) {
-                setInviteEmail("");
-                router.refresh();
-              } else {
-                setInviteError(result.error ?? "Invite failed");
-              }
-            }}
-          >
-            {inviting ? "Sending…" : "Send invite"}
-          </Button>
         </CardContent>
       </Card>
     </div>

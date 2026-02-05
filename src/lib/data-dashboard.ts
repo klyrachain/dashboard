@@ -4,9 +4,15 @@
  * Gross/net volume are aggregated in USD via token rates.
  */
 
+import { getSessionToken } from "@/lib/auth";
 import { getCoreTransactions } from "@/lib/core-api";
 import { getInventoryAssets } from "@/lib/data-inventory";
-import { getTokenUsdRate } from "@/lib/token-rates";
+import { getPlatformOverview } from "@/lib/data-platform";
+import {
+  assetKey,
+  getTokenUsdRate,
+  type RatesMap,
+} from "@/lib/token-rates";
 import { TransactionStatus } from "@/types/enums";
 
 const MS_24H = 24 * 60 * 60 * 1000;
@@ -70,24 +76,12 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
   let volumeUpdatedAt: Date | null = null;
 
   try {
-    const result = await getCoreTransactions({ limit: 200, page: 1 });
+    const token = await getSessionToken();
+    const result = await getCoreTransactions({ limit: 200, page: 1 }, token ?? undefined);
     const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
       ? (result.data as { data: unknown[] }).data
       : [];
-    // #region agent log
-    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "data-dashboard.ts:getDashboardKpis",
-        message: "getDashboardKpis transactions",
-        data: { ok: result.ok, rawLength: raw.length },
-        timestamp: Date.now(),
-        sessionId: "debug-session",
-        hypothesisId: ["B", "D"],
-      }),
-    }).catch(() => {});
-    // #endregion
+
     if (raw.length > 0) {
       const items = raw as Array<Record<string, unknown>>;
       for (const o of items) {
@@ -198,12 +192,13 @@ export async function getVolumeChartDataFromCore(
   let feePreviousTotal = 0;
 
   try {
-    const result = await getCoreTransactions({ limit: 1000, page: 1 });
+    const token = await getSessionToken();
+    const result = await getCoreTransactions({ limit: 1000, page: 1 }, token ?? undefined);
     const raw =
       result.ok &&
-      result.data &&
-      typeof result.data === "object" &&
-      Array.isArray((result.data as { data?: unknown[] }).data)
+        result.data &&
+        typeof result.data === "object" &&
+        Array.isArray((result.data as { data?: unknown[] }).data)
         ? (result.data as { data: unknown[] }).data
         : [];
 
@@ -218,16 +213,20 @@ export async function getVolumeChartDataFromCore(
           : new Date(String(o.createdAt ?? 0)).getTime();
 
       const fromAmount = parseAmount(o.fromAmount ?? o.f_amount ?? 0);
+      const fTokenPriceUsd = o.f_tokenPriceUsd != null ? parseAmount(String(o.f_tokenPriceUsd)) : null;
       const fromSymbol = String(
         o.fromToken ?? o.f_token ?? o.toToken ?? o.t_token ?? "USDC"
       ).trim();
-      const grossUsd = fromAmount * getTokenUsdRate(fromSymbol);
+      const grossUsd =
+        fTokenPriceUsd != null && Number.isFinite(fTokenPriceUsd)
+          ? fromAmount * fTokenPriceUsd
+          : fromAmount * getTokenUsdRate(fromSymbol);
 
-      // Fee: use stored transaction fee from API as-is (backend handles price conversion).
-      const feeRaw = o.fee;
+      // Fee in USD: use feeInUsd when present (completed transactions); do not derive from fee * price.
+      const feeInUsdRaw = o.feeInUsd;
       const feeUsd =
-        feeRaw != null && String(feeRaw).trim() !== ""
-          ? parseAmount(feeRaw)
+        feeInUsdRaw != null && String(feeInUsdRaw).trim() !== ""
+          ? parseAmount(String(feeInUsdRaw))
           : 0;
 
       // Net = Gross − Fees (volume after platform fees)
@@ -338,6 +337,129 @@ export async function getVolumeChartDataFromCore(
   };
 }
 
+function parseUsd(s: string): number {
+  const n = Number.parseFloat(String(s).replace(/,/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Volume chart data from GET /api/platform/overview with per-day (or single-day) queries.
+ * - Gross = grossVolumeUsd from overview.
+ * - Realized revenue = realizedRevenueUsd (exposed as feeSeries/feeTotal for existing UI).
+ * - Net volume = gross − realized revenue.
+ * Previous period = same length immediately before current window.
+ */
+export async function getVolumeChartDataFromPlatformOverview(
+  range: VolumeDateRange,
+  _granularity: VolumeGranularity
+): Promise<VolumeChartResult> {
+  const now = Date.now();
+  const todayUtc = new Date(now);
+  todayUtc.setUTCHours(0, 0, 0, 0);
+  const endTime = todayUtc.getTime();
+
+  const dayCount =
+    range === "24h" ? 1 : range === "7d" ? 7 : 30;
+  const dates: string[] = [];
+  for (let i = dayCount - 1; i >= 0; i--) {
+    const d = new Date(endTime - i * MS_24H);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+
+  const formatDay = (dateStr: string) => {
+    const d = new Date(dateStr + "T00:00:00Z");
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const grossSeries: VolumeChartPoint[] = [];
+  const netSeries: VolumeChartPoint[] = [];
+  const feeSeries: VolumeChartPoint[] = [];
+  let grossTotal = 0;
+  let netTotal = 0;
+  let feeTotal = 0;
+
+  for (const dateStr of dates) {
+    const res = await getPlatformOverview({
+      startDate: dateStr,
+      endDate: dateStr,
+    });
+    const gross = res.ok && res.data?.overview
+      ? parseUsd(res.data.overview.grossVolumeUsd)
+      : 0;
+    const realized = res.ok && res.data?.overview
+      ? parseUsd(res.data.overview.realizedRevenueUsd)
+      : 0;
+    const net = Math.max(0, gross - realized);
+
+    grossTotal += gross;
+    feeTotal += realized;
+    netTotal += net;
+
+    const label = `${formatDay(dateStr)}: $${gross.toFixed(2)} gross, $${realized.toFixed(2)} realized, $${net.toFixed(2)} net`;
+    grossSeries.push({
+      date: formatDay(dateStr),
+      value: gross,
+      label: `${formatDay(dateStr)}: $${gross.toFixed(2)}`,
+    });
+    feeSeries.push({
+      date: formatDay(dateStr),
+      value: realized,
+      label: `${formatDay(dateStr)}: $${realized.toFixed(2)} realized`,
+    });
+    netSeries.push({
+      date: formatDay(dateStr),
+      value: net,
+      label: `${formatDay(dateStr)}: $${net.toFixed(2)} net`,
+    });
+  }
+
+  const updatedAt = new Date(now);
+  const previousStart = new Date(endTime - dayCount * MS_24H);
+  const previousStartStr = previousStart.toISOString().slice(0, 10);
+  const previousEnd = new Date(endTime - MS_24H);
+  const previousEndStr = previousEnd.toISOString().slice(0, 10);
+
+  let grossPreviousTotal = 0;
+  let feePreviousTotal = 0;
+  const prevRes = await getPlatformOverview({
+    startDate: previousStartStr,
+    endDate: previousEndStr,
+  });
+  if (prevRes.ok && prevRes.data?.overview) {
+    grossPreviousTotal = parseUsd(prevRes.data.overview.grossVolumeUsd);
+    feePreviousTotal = parseUsd(prevRes.data.overview.realizedRevenueUsd);
+  }
+  const netPreviousTotal = Math.max(
+    0,
+    grossPreviousTotal - feePreviousTotal
+  );
+
+  const prevChange = (current: number, previous: number) =>
+    previous === 0 ? (current === 0 ? 0 : 100) : ((current - previous) / previous) * 100;
+
+  return {
+    grossSeries,
+    netSeries,
+    feeSeries,
+    grossTotal,
+    netTotal,
+    feeTotal,
+    updatedAt,
+    grossPrevious: {
+      value: grossPreviousTotal,
+      changePercent: prevChange(grossTotal, grossPreviousTotal),
+    },
+    netPrevious: {
+      value: netPreviousTotal,
+      changePercent: prevChange(netTotal, netPreviousTotal),
+    },
+    feePrevious: {
+      value: feePreviousTotal,
+      changePercent: prevChange(feeTotal, feePreviousTotal),
+    },
+  };
+}
+
 export type ChartFilterView = "all-tokens" | "by-chain" | "by-token-per-chain" | "all-chains";
 
 export type InventoryChartSeries = {
@@ -353,12 +475,14 @@ export type InventoryChartSeries = {
  * - by-chain: aggregate balance by chain
  * - by-token-per-chain: each series = token on chain (e.g. "USDC on BASE")
  * - all-chains: one row per chain with total
- * When useUsd is true, values are converted to USD via getTokenUsdRate(token).
+ * When useUsd is true, values are converted to USD: use ratesMap if provided,
+ * otherwise getTokenUsdRate(token) (which may be 0).
  */
 export function buildInventoryChartData(
   assets: Array<{ chain: string; token: string; balance: string }>,
   view: ChartFilterView,
-  useUsd = false
+  useUsd = false,
+  ratesMap?: RatesMap | null
 ): InventoryChartSeries[] {
   const parse = (s: string) => {
     const n = Number.parseFloat(s.replace(/,/g, ""));
@@ -367,7 +491,10 @@ export function buildInventoryChartData(
 
   const toValue = (a: { chain: string; token: string; balance: string }) => {
     const amount = parse(a.balance);
-    return useUsd ? amount * getTokenUsdRate(a.token) : amount;
+    if (!useUsd) return amount;
+    const rate =
+      ratesMap?.[assetKey(a.chain, a.token)]?.usd ?? getTokenUsdRate(a.token);
+    return amount * rate;
   };
 
   if (view === "all-tokens") {

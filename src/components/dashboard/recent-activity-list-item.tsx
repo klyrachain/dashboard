@@ -33,9 +33,13 @@ export function RecentActivityListItem({ tx }: { tx: RecentTransaction }) {
       </div>
       <div className="flex items-center gap-3 text-muted-foreground">
         <span>{tx.fromAmount} → {tx.toAmount}</span>
-        {tx.fee != null && tx.fee !== "" && (
-          <span className="tabular-nums text-slate-600">Fee: {tx.fee}</span>
-        )}
+        {(tx.feeInUsd != null && tx.feeInUsd !== "") || (tx.fee != null && tx.fee !== "") ? (
+          <span className="tabular-nums text-slate-600">
+            Fee: {tx.feeInUsd != null && tx.feeInUsd !== ""
+              ? `$${Number(tx.feeInUsd).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : tx.fee}
+          </span>
+        ) : null}
       </div>
     </li>
   );

@@ -2,6 +2,7 @@
  * Transactions data — Core API only (GET /api/transactions).
  * No database fallback. Returns [] if Core is unavailable.
  */
+import { getSessionToken } from "@/lib/auth";
 import { getCoreTransactions } from "@/lib/core-api";
 
 /** Row shape for display; maps all fields returned by Core GET /api/transactions. */
@@ -15,8 +16,14 @@ export type TransactionRow = {
   toToken: string;
   fromChain: string;
   toChain: string;
-  fromPrice: string;
-  toPrice: string;
+  /** Effective trade rate: toAmount/fromAmount (to-token per from-token). */
+  exchangeRate: string | null;
+  /** Price of 1 unit of from token in USD. */
+  fTokenPriceUsd: string | null;
+  /** Price of 1 unit of to token in USD. */
+  tTokenPriceUsd: string | null;
+  /** Fee value in USD (set when status = COMPLETED). Use this for fee display. */
+  feeInUsd: string | null;
   fromIdentifier: string;
   toIdentifier: string;
   fromType: string;
@@ -26,7 +33,7 @@ export type TransactionRow = {
   fromProvider: string;
   toProvider: string;
   requestId: string;
-  /** Fee charged for this transaction (set when status = COMPLETED). */
+  /** Fee in token units (legacy). Prefer feeInUsd for USD display. */
   fee: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -68,8 +75,10 @@ function coreItemToRow(item: unknown): TransactionRow | null {
     toToken: str(o.toToken ?? o.t_token),
     fromChain: str(o.fromChain ?? o.f_chain ?? "ETHEREUM"),
     toChain: str(o.toChain ?? o.t_chain ?? "ETHEREUM"),
-    fromPrice: str(o.fromPrice ?? o.f_price),
-    toPrice: str(o.toPrice ?? o.t_price),
+    exchangeRate: o.exchangeRate != null ? str(o.exchangeRate) : null,
+    fTokenPriceUsd: o.f_tokenPriceUsd != null ? str(o.f_tokenPriceUsd) : null,
+    tTokenPriceUsd: o.t_tokenPriceUsd != null ? str(o.t_tokenPriceUsd) : null,
+    feeInUsd: o.feeInUsd != null ? str(o.feeInUsd) : null,
     fromIdentifier: str(o.fromIdentifier ?? o.f_identifier),
     toIdentifier: str(o.toIdentifier ?? o.t_identifier),
     fromType: str(o.fromType),
@@ -108,24 +117,11 @@ export function filterTransactionsForUser(
 /** Fetches transactions from Core API only. Returns [] if Core is unavailable or returns no data. */
 export async function getTransactions(): Promise<TransactionRow[]> {
   try {
-    const result = await getCoreTransactions({ limit: 100 });
+    const token = await getSessionToken();
+    const result = await getCoreTransactions({ limit: 100 }, token ?? undefined);
     const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
       ? (result.data as { data: unknown[] }).data
       : [];
-    // #region agent log
-    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "data-transactions.ts:getTransactions",
-        message: "getTransactions result",
-        data: { ok: result.ok, rawLength: raw.length },
-        timestamp: Date.now(),
-        sessionId: "debug-session",
-        hypothesisId: ["B", "D"],
-      }),
-    }).catch(() => {});
-    // #endregion
     return raw.map((item) => coreItemToRow(item)).filter((r): r is TransactionRow => r !== null);
   } catch {
     // Core unavailable

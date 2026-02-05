@@ -99,6 +99,14 @@ export interface CoreAdminWebhookBody {
   data?: Record<string, unknown>;
 }
 
+/** Transaction price fields (API responses). Replaces legacy f_price / t_price. */
+export interface TransactionPriceFields {
+  exchangeRate: string | null;
+  f_tokenPriceUsd: string | null;
+  t_tokenPriceUsd: string | null;
+  feeInUsd: string | null;
+}
+
 /** Order lifecycle events from Core (ADMIN_WEBHOOK_URL + Pusher admin-dashboard). */
 
 /** order.created — after Core creates transaction and enqueues poll job. */
@@ -111,8 +119,6 @@ export interface OrderCreatedPayload {
   toIdentifier?: string;
   f_amount: number;
   t_amount: number;
-  f_price: number;
-  t_price: number;
   f_token: string;
   t_token: string;
   /** Source chain (e.g. BASE). */
@@ -123,6 +129,11 @@ export interface OrderCreatedPayload {
   feePercent?: number;
   totalCost?: number;
   profit?: number;
+  /** Transaction price fields (use instead of legacy f_price/t_price). */
+  exchangeRate?: string | null;
+  f_tokenPriceUsd?: string | null;
+  t_tokenPriceUsd?: string | null;
+  feeInUsd?: string | null;
 }
 
 /** order.completed — poll worker on COMPLETED. */

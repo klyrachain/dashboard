@@ -3,6 +3,7 @@
  * @see md/access-api.integration.md
  */
 
+import { getSessionToken } from "@/lib/auth";
 import { getCoreAccess } from "@/lib/core-api";
 
 export type AccessKey = {
@@ -54,7 +55,8 @@ function parseBusiness(raw: unknown): AccessBusiness | null {
  */
 export async function getAccessContext(): Promise<AccessResult> {
   try {
-    const { ok, status, data } = await getCoreAccess();
+    const token = await getSessionToken();
+    const { ok, status, data } = await getCoreAccess(token ?? undefined);
     if (!ok || !data || typeof data !== "object") {
       const err =
         data && typeof data === "object" && "error" in data

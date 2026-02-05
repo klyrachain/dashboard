@@ -17,10 +17,15 @@ export type GetFailedValidationsParams = {
   code?: string;
 };
 
+/** No polling or timed refetch; data updates only via manual refetch or tag invalidation. */
 export const validationApi = createApi({
   reducerPath: "validationApi",
   tagTypes: ["ValidationFailed", "ValidationReport"],
   baseQuery: baseQueryWithStatus,
+  keepUnusedDataFor: 300,
+  refetchOnFocus: false,
+  refetchOnReconnect: false,
+  refetchOnMountOrArgChange: false,
   endpoints: (builder) => ({
     getFailedValidations: builder.query<
       { items: FailedValidationRow[]; meta: { page: number; limit: number; total: number } },

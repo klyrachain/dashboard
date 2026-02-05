@@ -184,7 +184,11 @@ export function DashboardRecentActivity({
                     {tx.fromAmount} → {tx.toAmount}
                   </TableCell>
                   <TableCell className="tabular-nums text-xs text-slate-600">
-                    {tx.fee != null && tx.fee !== "" ? tx.fee : "—"}
+                    {tx.feeInUsd != null && tx.feeInUsd !== ""
+                      ? `$${Number(tx.feeInUsd).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : tx.fee != null && tx.fee !== ""
+                        ? tx.fee
+                        : "—"}
                   </TableCell>
                   <TableCell className="text-xs text-slate-500">
                     {formatCreated(tx.createdAt)}

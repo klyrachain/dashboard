@@ -51,6 +51,7 @@ function NavGroup({
               <Link
                 key={item.href + item.label}
                 href={item.href}
+                prefetch={false}
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                   isActive
@@ -119,6 +120,7 @@ export function AppSidebar() {
       <div className="space-y-1 p-3">
         <Link
           href="/settings"
+          prefetch={false}
           className={cn(
             "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
             pathname === "/settings"

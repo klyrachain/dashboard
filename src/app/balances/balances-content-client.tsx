@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import {
   type ClaimableState,
   type BalanceActivity,
 } from "@/lib/data-balances";
+import type { RatesMap } from "@/lib/token-rates";
 import { BalancesSkeleton } from "@/components/balances/balances-skeleton";
 import { Badge } from "@/components/ui/badge";
 
@@ -83,10 +84,35 @@ export function BalancesContentClient({
   recentActivity,
 }: BalancesContentClientProps) {
   const { data: assets = [], isLoading } = useGetInventoryQuery();
+  const [ratesMap, setRatesMap] = useState<RatesMap | null>(null);
+
+  const fetchRates = useCallback(async () => {
+    if (assets.length === 0) {
+      setRatesMap(null);
+      return;
+    }
+    try {
+      const assetsParam = encodeURIComponent(
+        JSON.stringify(assets.map((a) => ({ chain: a.chain, token: a.token })))
+      );
+      const res = await fetch(
+        `/api/rates?assets=${assetsParam}&vs=usd`
+      );
+      const json = (await res.json()) as { success?: boolean; data?: RatesMap };
+      if (json.success && json.data) setRatesMap(json.data);
+      else setRatesMap(null);
+    } catch {
+      setRatesMap(null);
+    }
+  }, [assets]);
+
+  useEffect(() => {
+    fetchRates();
+  }, [fetchRates]);
 
   const { chains, aggregated } = useMemo(
-    () => buildBalancesFromAssets(assets),
-    [assets]
+    () => buildBalancesFromAssets(assets, ratesMap),
+    [assets, ratesMap]
   );
 
   const hasChains = chains.length > 0;
