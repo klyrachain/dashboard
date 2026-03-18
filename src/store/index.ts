@@ -1,15 +1,79 @@
-import { configureStore } from "@reduxjs/toolkit";
+import { configureStore, type EnhancedStore } from "@reduxjs/toolkit";
 import { inventoryApi } from "./inventory-api";
 import { providersApi } from "./providers-api";
 import { validationApi } from "./validation-api";
 import { layoutSlice } from "./layout-slice";
 import { statusIndicatorSlice } from "./status-indicator-slice";
+import {
+  merchantSessionSlice,
+  type MerchantSessionState,
+} from "./merchant-session-slice";
 import type { LayoutPreference } from "@/lib/layout-preference-cookie";
 
-export type RootState = ReturnType<ReturnType<typeof makeStore>["getState"]>;
-export type AppDispatch = ReturnType<typeof makeStore>["dispatch"];
+export interface RootState {
+  [inventoryApi.reducerPath]: ReturnType<typeof inventoryApi.reducer>;
+  [providersApi.reducerPath]: ReturnType<typeof providersApi.reducer>;
+  [validationApi.reducerPath]: ReturnType<typeof validationApi.reducer>;
+  layout: ReturnType<typeof layoutSlice.reducer>;
+  statusIndicator: ReturnType<typeof statusIndicatorSlice.reducer>;
+  merchantSession: ReturnType<typeof merchantSessionSlice.reducer>;
+}
 
-export function makeStore(initialLayout?: LayoutPreference | null) {
+export type AppDispatch = EnhancedStore<RootState>["dispatch"];
+export type AppStore = EnhancedStore<RootState>;
+
+export type MakeStoreInput =
+  | LayoutPreference
+  | null
+  | undefined
+  | {
+      layout?: LayoutPreference | null;
+      merchantSession?: Partial<MerchantSessionState> | null;
+    };
+
+function parseMakeStoreInput(input: MakeStoreInput): {
+  layout: LayoutPreference | null;
+  merchantSession: Partial<MerchantSessionState> | null;
+} {
+  if (input == null) {
+    return { layout: null, merchantSession: null };
+  }
+  if (typeof input === "object" && ("layout" in input || "merchantSession" in input)) {
+    const o = input as {
+      layout?: LayoutPreference | null;
+      merchantSession?: Partial<MerchantSessionState> | null;
+    };
+    return {
+      layout: o.layout ?? null,
+      merchantSession: o.merchantSession ?? null,
+    };
+  }
+  if (typeof input === "object" && "theme" in input) {
+    return { layout: input as LayoutPreference, merchantSession: null };
+  }
+  return { layout: null, merchantSession: null };
+}
+
+export function makeStore(input?: MakeStoreInput): AppStore {
+  const { layout: initialLayout, merchantSession: ms } = parseMakeStoreInput(input ?? null);
+
+  const merchantSessionPreload: MerchantSessionState = {
+    sessionType: ms?.sessionType ?? "platform",
+    portalJwt: ms?.portalJwt ?? null,
+    activeBusinessId: ms?.activeBusinessId ?? null,
+    businesses: ms?.businesses ?? [],
+  };
+
+  const preloaded: Partial<RootState> = {
+    merchantSession: merchantSessionPreload,
+  };
+  if (initialLayout) {
+    preloaded.layout = {
+      theme: initialLayout.theme,
+      testMode: initialLayout.testMode,
+    };
+  }
+
   return configureStore({
     reducer: {
       [inventoryApi.reducerPath]: inventoryApi.reducer,
@@ -17,17 +81,16 @@ export function makeStore(initialLayout?: LayoutPreference | null) {
       [validationApi.reducerPath]: validationApi.reducer,
       layout: layoutSlice.reducer,
       statusIndicator: statusIndicatorSlice.reducer,
+      merchantSession: merchantSessionSlice.reducer,
     },
-    middleware: (getDefaultMiddleware) =>
+    middleware: (getDefaultMiddleware: () => { concat: (...m: unknown[]) => unknown }) =>
       getDefaultMiddleware().concat(
         inventoryApi.middleware,
         providersApi.middleware,
         validationApi.middleware
       ),
-    preloadedState: initialLayout
-      ? { layout: { theme: initialLayout.theme, testMode: initialLayout.testMode } }
-      : undefined,
-  });
+    preloadedState: preloaded,
+  } as never) as AppStore;
 }
 
 /** @deprecated Use store from ReduxProvider context (useStore). Kept for non-React code that runs outside Provider. */

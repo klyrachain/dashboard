@@ -26,6 +26,7 @@
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-switch": "^1.1.2",
     "@reduxjs/toolkit": "^2.11.2",
+    "@simplewebauthn/browser": "^13.3.0",
     "@tanstack/react-table": "^8.20.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -33,7 +34,6 @@
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.468.0",
-    "xlsx": "^0.18.5",
     "next": "16.1.6",
     "pusher-js": "^8.4.0",
     "react": "19.2.3",
@@ -41,7 +41,8 @@
     "react-dom": "19.2.3",
     "react-redux": "^9.2.0",
     "recharts": "^2.15.0",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^2.6.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

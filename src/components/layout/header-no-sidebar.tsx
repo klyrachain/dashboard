@@ -18,7 +18,11 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { RootState } from "@/store";
 import { setTheme, setTestMode, type LayoutTheme } from "@/store/layout-slice";
-import { navGroups } from "@/lib/nav-config";
+import {
+  setActiveBusinessId,
+  type MerchantBusiness,
+} from "@/store/merchant-session-slice";
+import { getNavGroupsForSession, type NavGroupConfig } from "@/lib/nav-config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -26,21 +30,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState, useRef, useEffect } from "react";
-
-const SANDBOX_NAME = "Klyra sandbox";
-
-/** Active nav link colors (oklch). Inline style ensures they apply when Tailwind utilities are not emitted. */
-const INDIGO_100_BG = "oklch(0.93 0.034 272.788)";
-const INDIGO_800_TEXT = "oklch(0.398 0.195 277.366)";
 
 function NavParentDropdown({
   group,
   pathname,
 }: {
-  group: (typeof navGroups)[number];
+  group: NavGroupConfig;
   pathname: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -119,6 +118,18 @@ export function HeaderNoSidebar() {
   const dispatch = useDispatch();
   const theme = useSelector((s: RootState) => s.layout.theme);
   const testMode = useSelector((s: RootState) => s.layout.testMode);
+  const sessionType = useSelector((s: RootState) => s.merchantSession.sessionType);
+  const businesses = useSelector((s: RootState) => s.merchantSession.businesses);
+  const activeBusinessId = useSelector((s: RootState) => s.merchantSession.activeBusinessId);
+
+  const navGroups = getNavGroupsForSession(sessionType);
+  const activeBusiness =
+    businesses.find((b: MerchantBusiness) => b.id === activeBusinessId) ??
+    businesses[0];
+  const workspaceLabel =
+    sessionType === "merchant" && activeBusiness
+      ? activeBusiness.name
+      : "Klyra platform";
 
   const handleThemeSelect = (t: LayoutTheme) => () => dispatch(setTheme(t));
   const handleRefresh = () => router.refresh();
@@ -144,16 +155,31 @@ export function HeaderNoSidebar() {
                 type="button"
                 className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
               >
-                {SANDBOX_NAME}
+                {workspaceLabel}
                 <ChevronDown className="size-3.5" aria-hidden />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
               <div className="px-2 py-1.5 text-xs font-medium text-slate-500">
-                Workspace
+                {sessionType === "merchant" ? "Business" : "Workspace"}
               </div>
-              <div className="rounded-md bg-slate-50 px-2 py-1.5 text-sm">
-                {SANDBOX_NAME}
+              {sessionType === "merchant" && businesses.length > 0 ? (
+                <>
+                  {businesses.map((b: MerchantBusiness) => (
+                    <DropdownMenuItem
+                      key={b.id}
+                      onClick={() => dispatch(setActiveBusinessId(b.id))}
+                    >
+                      {b.name}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
+              <div className="rounded-md bg-slate-50 px-2 py-1.5 text-sm text-slate-700">
+                {sessionType === "merchant"
+                  ? activeBusiness?.name ?? "Business"
+                  : "Platform admin"}
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -207,16 +233,29 @@ export function HeaderNoSidebar() {
           >
             <Bell className="size-4" aria-hidden />
           </Button>
-          <Link href="/settings">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-9 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
-              aria-label="Settings"
-            >
-              <Settings className="size-4" aria-hidden />
-            </Button>
-          </Link>
+          {sessionType === "platform" ? (
+            <Link href="/settings">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
+                aria-label="Settings"
+              >
+                <Settings className="size-4" aria-hidden />
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/settings/general">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
+                aria-label="Business profile"
+              >
+                <Settings className="size-4" aria-hidden />
+              </Button>
+            </Link>
+          )}
           <div className="flex items-center gap-2 pl-2">
             <span className="text-xs text-white/60">
               {testMode ? "Testnet" : "Live"}
@@ -245,17 +284,19 @@ export function HeaderNoSidebar() {
           {navGroups.map((group) => (
             <NavParentDropdown key={group.title} group={group} pathname={pathname} />
           ))}
-          <Link
-            href="/settings"
-            className={cn(
-              "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              pathname === "/settings"
-                ? "border rounded-full p-1 px-4 border-slate-500 text-white "
-                : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
-            )}
-          >
-            Settings
-          </Link>
+          {sessionType === "platform" ? (
+            <Link
+              href="/settings"
+              className={cn(
+                "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                pathname === "/settings" || pathname.startsWith("/settings/")
+                  ? "border rounded-full p-1 px-4 border-slate-500 text-white "
+                  : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
+              )}
+            >
+              Settings
+            </Link>
+          ) : null}
         </nav>
         <Button
           variant="ghost"

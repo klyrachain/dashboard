@@ -1,16 +1,24 @@
 import { getSettingsGeneral } from "@/lib/data-settings";
+import { getAccessContext } from "@/lib/data-access";
 import { GeneralSettingsForm } from "@/components/settings/general-settings-form";
 import { mapInvoiceLoadError } from "@/lib/user-feedback-copy";
 
 export default async function SettingsGeneralPage() {
-  const { ok, data, error } = await getSettingsGeneral();
+  const [{ ok, data, error }, access] = await Promise.all([
+    getSettingsGeneral(),
+    getAccessContext(),
+  ]);
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-display font-semibold tracking-tight">General</h1>
+        <h1 className="text-display font-semibold tracking-tight">
+          {access.ok && access.context?.type === "merchant" ? "Business profile" : "General"}
+        </h1>
         <p className="font-secondary text-caption text-muted-foreground mt-1">
-          Branding, defaults, and maintenance mode.
+          {access.ok && access.context?.type === "merchant"
+            ? "Logo, public business name, and support contact."
+            : "Branding, defaults, and maintenance mode."}
         </p>
       </div>
       {error && (

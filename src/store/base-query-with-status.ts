@@ -10,13 +10,44 @@ type RequestArgs = {
   [key: string]: unknown;
 };
 
-const defaultBaseQuery = fetchBaseQuery({
-  baseUrl: "",
-  prepareHeaders: (headers) => {
-    headers.set("Content-Type", "application/json");
-    return headers;
-  },
-});
+/** Minimal slice shape for header injection (avoids circular RootState import). */
+type MerchantSessionForHeaders = {
+  merchantSession: {
+    portalJwt: string | null;
+    activeBusinessId: string | null;
+    businesses: { id: string }[];
+  };
+};
+
+const MERCHANT_API_SEGMENT = "/api/v1/merchant";
+
+function requestUrl(args: RequestArgs | string): string {
+  return typeof args === "string" ? args : (args as RequestArgs).url;
+}
+
+function createBaseQueryForRequest(args: RequestArgs | string) {
+  const urlSnapshot = requestUrl(args);
+  return fetchBaseQuery({
+    baseUrl: "",
+    prepareHeaders: (headers, { getState }) => {
+      headers.set("Content-Type", "application/json");
+      if (urlSnapshot.includes(MERCHANT_API_SEGMENT)) {
+        const state = getState() as MerchantSessionForHeaders;
+        const ms = state.merchantSession;
+        if (ms.portalJwt) {
+          headers.set("Authorization", `Bearer ${ms.portalJwt}`);
+        }
+        const businessId =
+          ms.activeBusinessId ??
+          (ms.businesses.length === 1 ? ms.businesses[0].id : null);
+        if (businessId) {
+          headers.set("X-Business-Id", businessId);
+        }
+      }
+      return headers;
+    },
+  });
+}
 
 function getMethod(args: RequestArgs | string): string {
   if (typeof args === "string") return "GET";
@@ -39,8 +70,8 @@ function getErrorMessage(error: unknown): string {
 }
 
 /**
- * Wraps the default baseQuery so all GET/POST/PUT/PATCH requests
- * update the global status indicator (Redux statusIndicator slice).
+ * RTK Query base query with status toasts. Injects `Authorization` and
+ * `X-Business-Id` for any request whose URL contains `/api/v1/merchant`.
  */
 export const baseQueryWithStatus: BaseQueryFn = async (
   args: RequestArgs | string,
@@ -56,7 +87,8 @@ export const baseQueryWithStatus: BaseQueryFn = async (
     api.dispatch(showStatus({ message: "Loading…", type: "saving" }));
   }
 
-  const result = await defaultBaseQuery(args, api, extraOptions);
+  const dynamicQuery = createBaseQueryForRequest(args);
+  const result = await dynamicQuery(args, api, extraOptions as object);
 
   if (result.error) {
     api.dispatch(
@@ -65,12 +97,10 @@ export const baseQueryWithStatus: BaseQueryFn = async (
         type: "error",
       })
     );
+  } else if (isMutation) {
+    api.dispatch(showStatus({ message: "Saved", type: "saved" }));
   } else {
-    if (isMutation) {
-      api.dispatch(showStatus({ message: "Saved", type: "saved" }));
-    } else {
-      api.dispatch(showStatus({ message: "Loaded", type: "saved" }));
-    }
+    api.dispatch(showStatus({ message: "Loaded", type: "saved" }));
   }
 
   return result;

@@ -75,12 +75,16 @@ type BalancesContentClientProps = {
   pending: PendingState;
   claimable: ClaimableState;
   recentActivity: BalanceActivity[];
+  pageTitle?: string;
+  pageDescription?: string;
 };
 
 export function BalancesContentClient({
   pending,
   claimable,
   recentActivity,
+  pageTitle = "Balances",
+  pageDescription = "Real-time overview of assets across all chains and liquidity pools.",
 }: BalancesContentClientProps) {
   const { data: assets = [], isLoading } = useGetInventoryQuery();
 
@@ -105,11 +109,9 @@ export function BalancesContentClient({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-            Balances
+            {pageTitle}
           </h1>
-          <p className="text-sm text-slate-500">
-            Real-time overview of assets across all chains and liquidity pools.
-          </p>
+          <p className="text-sm text-slate-500">{pageDescription}</p>
         </div>
         <Button variant="outline" size="sm" className="shrink-0 gap-2">
           <RefreshCcw className="size-4" aria-hidden />

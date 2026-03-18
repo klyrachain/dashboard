@@ -3,18 +3,23 @@ import { TransactionsDataTable } from "@/components/transactions/transactions-da
 import { TransactionsChartClient } from "@/components/transactions/transactions-chart-client";
 import { TransactionsPageHeader } from "@/components/transactions/transactions-page-header";
 import { UnfulfilledTransactionsView } from "@/components/transactions/unfulfilled-transactions-view";
+import { TransactionsMerchantRtkPanel } from "@/components/transactions/transactions-merchant-rtk-panel";
 import { getTransactions } from "@/lib/data-transactions";
 import {
   getValidationFailedList,
   getValidationFailedReport,
 } from "@/lib/data-validation";
 import type { TransactionsView } from "@/components/transactions/transactions-page-header";
+import { getAccessContext } from "@/lib/data-access";
 
 type TransactionsPageProps = {
   searchParams: Promise<{ view?: string; page?: string; limit?: string }>;
 };
 
 export default async function TransactionsPage({ searchParams }: TransactionsPageProps) {
+  const access = await getAccessContext();
+  const isMerchant = Boolean(access.ok && access.context?.type === "merchant");
+
   const params = await searchParams;
   const view = (params.view === "unfulfilled" ? "unfulfilled" : "fulfilled") as TransactionsView;
   const isUnfulfilled = view === "unfulfilled";
@@ -31,6 +36,20 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
     isUnfulfilled ? getValidationFailedList({ page, limit }) : { items: [], meta: { page: 1, limit: 20, total: 0 } },
     isUnfulfilled ? getValidationFailedReport({ days: 7 }) : null,
   ]);
+
+  if (isMerchant && !isUnfulfilled) {
+    return (
+      <div className="space-y-6 font-primary text-body">
+        <div>
+          <h1 className="text-display font-semibold tracking-tight">Transactions</h1>
+          <p className="font-secondary text-caption text-muted-foreground mt-1">
+            Payments for your business (merchant API).
+          </p>
+        </div>
+        <TransactionsMerchantRtkPanel />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 font-primary text-body">

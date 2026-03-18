@@ -7,6 +7,9 @@ import { ReduxProvider } from "@/components/providers/redux-provider";
 import { LayoutPreferenceSync } from "@/components/providers/layout-preference-sync";
 import { WebhookRefreshProvider } from "@/components/providers/webhook-refresh-provider";
 import { parseLayoutPreference } from "@/lib/layout-preference-cookie";
+import { getAccessContext } from "@/lib/data-access";
+import { merchantSessionFromAccess } from "@/lib/merchant-session-initial";
+import { PortalRoleCookieSync } from "@/components/providers/portal-role-cookie-sync";
 
 /** Primary: headings and main UI (Alpino). */
 const alpino = localFont({
@@ -46,13 +49,19 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const layoutPref = parseLayoutPreference(cookieStore.get("klyra_ui")?.value);
+  const access = await getAccessContext();
+  const merchantSession = merchantSessionFromAccess(access);
 
   return (
     <html lang="en">
       <body
         className={`${alpino.variable} ${ranade.variable} font-primary antialiased`}
       >
-        <ReduxProvider initialLayoutPreference={layoutPref ?? undefined}>
+        <ReduxProvider
+          initialLayoutPreference={layoutPref ?? undefined}
+          initialMerchantSession={merchantSession}
+        >
+          <PortalRoleCookieSync />
           <LayoutPreferenceSync />
           <WebhookRefreshProvider>
             <DashboardShell>{children}</DashboardShell>

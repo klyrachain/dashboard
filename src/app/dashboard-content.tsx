@@ -10,8 +10,12 @@ import {
   stripeApiKeys,
   stripeRecommendations,
 } from "@/lib/data-stripe-dashboard";
+import { getAccessContext } from "@/lib/data-access";
 
 export async function DashboardContent() {
+  const access = await getAccessContext();
+  const isMerchant = Boolean(access.ok && access.context?.type === "merchant");
+
   const [recentTransactions, platformResult] = await Promise.all([
     getRecentTransactions(5),
     getPlatformOverview(),
@@ -23,18 +27,22 @@ export async function DashboardContent() {
     <div className="space-y-8">
       <DashboardVolumeSection />
 
-      <DashboardPlatformOverview data={platformData} error={platformError} />
+      {!isMerchant ? (
+        <DashboardPlatformOverview data={platformData} error={platformError} />
+      ) : null}
 
       <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
         <div className="space-y-8">
-          <DashboardInventoryAndGlance />
+          {!isMerchant ? <DashboardInventoryAndGlance /> : null}
           <DashboardRecentActivity transactions={recentTransactions} />
         </div>
 
-        <div className="space-y-8">
-          <ApiKeysCard rows={stripeApiKeys} />
-          <RecommendationsBanner recommendations={stripeRecommendations} />
-        </div>
+        {!isMerchant ? (
+          <div className="space-y-8">
+            <ApiKeysCard rows={stripeApiKeys} />
+            <RecommendationsBanner recommendations={stripeRecommendations} />
+          </div>
+        ) : null}
       </div>
     </div>
   );
