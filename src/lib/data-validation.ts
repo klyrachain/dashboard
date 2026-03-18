@@ -3,6 +3,7 @@
  * @see API report: GET /api/validation/failed, /recent, /report
  */
 
+import { getSessionToken } from "@/lib/auth";
 import {
   getCoreValidationFailed,
   getCoreValidationFailedReport,
@@ -154,7 +155,8 @@ export async function getValidationFailedList(params?: {
 }): Promise<ValidationFailedListResult> {
   const defaultMeta = { page: params?.page ?? 1, limit: params?.limit ?? 20, total: 0 };
   try {
-    const result = await getCoreValidationFailed(params);
+    const token = await getSessionToken();
+    const result = await getCoreValidationFailed(params, token ?? undefined);
     if (!result.ok || !result.data || typeof result.data !== "object") {
       return { items: [], meta: defaultMeta };
     }
@@ -185,9 +187,10 @@ export async function getValidationFailedReport(params?: {
   days?: number;
 }): Promise<FailedValidationReport | null> {
   try {
+    const token = await getSessionToken();
     const result = await getCoreValidationFailedReport({
       days: params?.days ?? 7,
-    });
+    }, token ?? undefined);
     if (!result.ok || !result.data || typeof result.data !== "object") {
       return null;
     }

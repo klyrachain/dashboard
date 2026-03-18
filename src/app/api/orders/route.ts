@@ -1,11 +1,11 @@
 /**
- * Backend proxy to Core POST /webhook/order.
+ * Backend proxy to Core POST /webhook/order. Requires session (Bearer).
  * Frontend calls this API to create orders; this route calls Core.
- * @see md/core-api-integration.md
  */
 
 import { NextResponse } from "next/server";
 import { createOrder } from "@/lib/core-api";
+import { getSessionToken, UNAUTH_CORE_MESSAGE } from "@/lib/auth";
 import type { CoreWebhookOrderBody } from "@/types/core-api";
 
 const REQUIRED = [
@@ -19,6 +19,13 @@ const REQUIRED = [
 ] as const;
 
 export async function POST(request: Request) {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   try {
     const body = (await request.json()) as unknown;
     if (!body || typeof body !== "object") {
@@ -48,7 +55,7 @@ export async function POST(request: Request) {
     }
 
     const payload = body as CoreWebhookOrderBody;
-    const result = await createOrder(payload);
+    const result = await createOrder(payload, token);
 
     if (result.success) {
       return NextResponse.json(result, { status: 201 });

@@ -48,6 +48,14 @@ function createBaseQueryForRequest(args: RequestArgs | string) {
     },
   });
 }
+const defaultBaseQuery = fetchBaseQuery({
+  baseUrl: "",
+  credentials: "include",
+  prepareHeaders: (headers) => {
+    headers.set("Content-Type", "application/json");
+    return headers;
+  },
+});
 
 function getMethod(args: RequestArgs | string): string {
   if (typeof args === "string") return "GET";

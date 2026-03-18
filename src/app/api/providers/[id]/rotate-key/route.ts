@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
 import { postCoreProviderRotateKey } from "@/lib/core-api";
+import { getSessionToken, UNAUTH_CORE_MESSAGE } from "@/lib/auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 /**
- * POST /api/providers/:id/rotate-key — set/rotate provider API key (proxy to Core).
- * Body: { apiKey: string }.
+ * POST /api/providers/:id/rotate-key — set/rotate provider API key (proxy to Core). Requires session (Bearer).
  */
 export async function POST(request: Request, { params }: RouteParams) {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   const { id } = await params;
   if (!id) {
     return NextResponse.json(
@@ -23,7 +30,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    const result = await postCoreProviderRotateKey(id, { apiKey: String(body.apiKey).trim() });
+    const result = await postCoreProviderRotateKey(id, { apiKey: String(body.apiKey).trim() }, token);
     if (!result.ok) {
       const err =
         result.data && typeof result.data === "object" && "error" in result.data

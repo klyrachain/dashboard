@@ -1,5 +1,4 @@
 import { DashboardVolumeSection } from "@/components/dashboard/dashboard-volume-section";
-import { DashboardPlatformOverview } from "@/components/dashboard/dashboard-platform-overview";
 import { DashboardInventoryAndGlance } from "@/components/dashboard/dashboard-inventory-and-glance";
 import { DashboardRecentActivity } from "@/components/dashboard/dashboard-recent-activity";
 import { ApiKeysCard } from "@/components/dashboard/api-keys-card";

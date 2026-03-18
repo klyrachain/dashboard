@@ -11,9 +11,11 @@ import {
   Shield,
   Users,
   Webhook,
+  UserCircle,
 } from "lucide-react";
 
 const SETTINGS_TABS = [
+  { href: "/settings/account", label: "Account", icon: UserCircle },
   { href: "/settings/general", label: "General", icon: Settings },
   { href: "/settings/financials", label: "Financials", icon: DollarSign },
   { href: "/settings/providers", label: "Providers & Routing", icon: Route },
@@ -37,6 +39,7 @@ export function SettingsSidebar() {
             <Link
               key={tab.href}
               href={tab.href}
+              prefetch={false}
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 isActive

@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { startTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
-import Pusher from "pusher-js";
 import { inventoryApi } from "@/store/inventory-api";
+import { incrementWebhookTrigger } from "@/store/webhook-slice";
 
-const PUSHER_CHANNEL = "admin-dashboard";
-const PUSHER_EVENT = "admin-event";
+const WEBHOOK_STREAM_URL = "/api/webhooks/stream";
 
 /**
- * Subscribes to Pusher admin-dashboard / admin-event (triggered by Core on webhook).
- * On event: invalidates inventory cache and calls router.refresh() so Home, Balances,
- * and Transactions server data refetch.
+ * Connects to GET /api/webhooks/stream (SSE). When Core POSTs to /api/webhooks/admin,
+ * we increment webhook trigger (for volume/charts), invalidate inventory, and
+ * router.refresh() in startTransition so UI updates in place without full loading states.
  */
 export function WebhookRefreshProvider({
   children,
@@ -21,30 +20,28 @@ export function WebhookRefreshProvider({
 }) {
   const router = useRouter();
   const dispatch = useDispatch();
-  const pusherRef = useRef<Pusher | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER ?? "mt1";
+    if (typeof EventSource === "undefined") return;
 
-    if (!key) return;
+    const es = new EventSource(WEBHOOK_STREAM_URL);
+    eventSourceRef.current = es;
 
-    const pusher = new Pusher(key, {
-      cluster,
-    });
-    pusherRef.current = pusher;
-
-    const channel = pusher.subscribe(PUSHER_CHANNEL);
-    channel.bind(PUSHER_EVENT, () => {
+    es.onmessage = () => {
+      dispatch(incrementWebhookTrigger());
       dispatch(inventoryApi.util.invalidateTags(["Inventory"]));
-      router.refresh();
-    });
+      startTransition(() => router.refresh());
+    };
+
+    es.onerror = () => {
+      es.close();
+      eventSourceRef.current = null;
+    };
 
     return () => {
-      channel.unbind(PUSHER_EVENT);
-      pusher.unsubscribe(PUSHER_CHANNEL);
-      pusher.disconnect();
-      pusherRef.current = null;
+      es.close();
+      eventSourceRef.current = null;
     };
   }, [router, dispatch]);
 

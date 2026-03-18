@@ -12,10 +12,15 @@ export type UpdateProviderBody = {
   name?: string | null;
 };
 
+/** No polling or timed refetch; data updates only via manual refetch or tag invalidation. */
 export const providersApi = createApi({
   reducerPath: "providersApi",
   tagTypes: ["Providers", "Provider"],
   baseQuery: baseQueryWithStatus,
+  keepUnusedDataFor: 300,
+  refetchOnFocus: false,
+  refetchOnReconnect: false,
+  refetchOnMountOrArgChange: false,
   endpoints: (builder) => ({
     getProviders: builder.query<ProviderRow[], void>({
       query: () => ({ url: "/api/providers" }),
@@ -23,9 +28,9 @@ export const providersApi = createApi({
       providesTags: (result) =>
         result
           ? [
-              "Providers",
-              ...result.map((p) => ({ type: "Provider" as const, id: p.id })),
-            ]
+            "Providers",
+            ...result.map((p) => ({ type: "Provider" as const, id: p.id })),
+          ]
           : ["Providers"],
     }),
 

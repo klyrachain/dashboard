@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSelector } from "react-redux";
 import {
   Select,
   SelectContent,
@@ -17,6 +18,7 @@ import type {
   VolumeChartResult,
 } from "@/lib/data-dashboard";
 import { volumeLoadError } from "@/lib/user-feedback-copy";
+import { selectWebhookLastTrigger } from "@/store/webhook-slice";
 
 const DEFAULT_RANGE: VolumeDateRange = "7d";
 const DEFAULT_GRANULARITY: VolumeGranularity = "daily";
@@ -30,6 +32,7 @@ function formatVolume(value: number | undefined | null): string {
 }
 
 export function DashboardVolumeSection() {
+  const webhookTrigger = useSelector(selectWebhookLastTrigger);
   const [dateRange, setDateRange] =
     React.useState<VolumeDateRange>(DEFAULT_RANGE);
   const [granularity, setGranularity] =
@@ -39,8 +42,14 @@ export function DashboardVolumeSection() {
   const [data, setData] = React.useState<VolumeChartResult | null>(null);
 
   const fetchVolume = React.useCallback(
-    async (range: VolumeDateRange, gran: VolumeGranularity) => {
-      setLoading(true);
+    async (
+      range: VolumeDateRange,
+      gran: VolumeGranularity,
+      isBackgroundRefetch: boolean
+    ) => {
+      if (!isBackgroundRefetch) {
+        setLoading(true);
+      }
       setError(null);
       try {
         const result = await getDashboardVolumeAction(range, gran);
@@ -58,7 +67,7 @@ export function DashboardVolumeSection() {
         });
       } catch {
         setError(volumeLoadError);
-        setData(null);
+        if (!isBackgroundRefetch) setData(null);
       } finally {
         setLoading(false);
       }
@@ -67,8 +76,13 @@ export function DashboardVolumeSection() {
   );
 
   React.useEffect(() => {
-    void fetchVolume(dateRange, granularity);
+    void fetchVolume(dateRange, granularity, false);
   }, [dateRange, granularity, fetchVolume]);
+
+  React.useEffect(() => {
+    if (webhookTrigger === 0) return;
+    void fetchVolume(dateRange, granularity, true);
+  }, [webhookTrigger, dateRange, granularity, fetchVolume]);
 
   const handleRangeChange = (value: string) => {
     const next = value as VolumeDateRange;

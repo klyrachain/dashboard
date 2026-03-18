@@ -5,10 +5,18 @@ import {
   deleteCoreInventory,
   type UpdateCoreInventoryBody,
 } from "@/lib/core-api";
+import { getSessionToken, UNAUTH_CORE_MESSAGE } from "@/lib/auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: RouteParams) {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   const { id } = await params;
   if (!id) {
     return NextResponse.json(
@@ -17,7 +25,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     );
   }
   try {
-    const result = await getCoreInventoryAsset(id);
+    const result = await getCoreInventoryAsset(id, token);
     if (!result.ok) {
       return NextResponse.json(
         { success: false, error: "Core API error" },
@@ -35,6 +43,13 @@ export async function GET(_request: Request, { params }: RouteParams) {
 }
 
 export async function PATCH(request: Request, { params }: RouteParams) {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   const { id } = await params;
   if (!id) {
     return NextResponse.json(
@@ -44,7 +59,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
   try {
     const body = (await request.json()) as UpdateCoreInventoryBody;
-    const result = await patchCoreInventory(id, body);
+    const result = await patchCoreInventory(id, body, token);
     if (!result.ok) {
       const err =
         result.data && typeof result.data === "object" && "error" in result.data
@@ -71,6 +86,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 }
 
 export async function DELETE(_request: Request, { params }: RouteParams) {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   const { id } = await params;
   if (!id) {
     return NextResponse.json(
@@ -79,7 +101,7 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     );
   }
   try {
-    const result = await deleteCoreInventory(id);
+    const result = await deleteCoreInventory(id, token);
     if (!result.ok) {
       const err =
         result.data && typeof result.data === "object" && "error" in result.data

@@ -4,13 +4,21 @@ import {
   patchCoreProvider,
   type UpdateCoreProviderBody,
 } from "@/lib/core-api";
+import { getSessionToken, UNAUTH_CORE_MESSAGE } from "@/lib/auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 /**
- * GET /api/providers/:id — fetch one provider (proxy to Core).
+ * GET /api/providers/:id — fetch one provider (proxy to Core). Requires session (Bearer).
  */
 export async function GET(_request: Request, { params }: RouteParams) {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   const { id } = await params;
   if (!id) {
     return NextResponse.json(
@@ -19,7 +27,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     );
   }
   try {
-    const result = await getCoreProviderById(id);
+    const result = await getCoreProviderById(id, token);
     if (!result.ok) {
       return NextResponse.json(
         { success: false, error: "Core API error" },
@@ -37,9 +45,16 @@ export async function GET(_request: Request, { params }: RouteParams) {
 }
 
 /**
- * PATCH /api/providers/:id — update provider (status, operational, enabled, priority, fee, name).
+ * PATCH /api/providers/:id — update provider. Requires session (Bearer).
  */
 export async function PATCH(request: Request, { params }: RouteParams) {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   const { id } = await params;
   if (!id) {
     return NextResponse.json(
@@ -49,7 +64,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
   try {
     const body = (await request.json()) as UpdateCoreProviderBody;
-    const result = await patchCoreProvider(id, body);
+    const result = await patchCoreProvider(id, body, token);
     if (!result.ok) {
       const err =
         result.data && typeof result.data === "object" && "error" in result.data

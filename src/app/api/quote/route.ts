@@ -1,8 +1,7 @@
 /**
- * Prefetch quote API for backend/frontend.
+ * Prefetch quote API. Requires session (Bearer).
  * GET /api/quote?action=&f_amount=&t_amount=&f_price=&t_price=&f_token=&t_token=
  * Returns feeAmount, feePercent, totalCost, totalReceived, rate, grossValue, profit.
- * Backend can call this before creating a transaction to show the user cost and fee.
  */
 
 import { NextResponse } from "next/server";
@@ -11,6 +10,7 @@ import {
   type FeeOrderInput,
   type OrderAction,
 } from "@/lib/fee.service";
+import { getSessionToken, UNAUTH_CORE_MESSAGE } from "@/lib/auth";
 
 const VALID_ACTIONS: OrderAction[] = ["buy", "sell", "request", "claim"];
 
@@ -21,6 +21,13 @@ function parseNum(value: unknown): number | null {
 }
 
 export async function GET(request: Request) {
+  const token = await getSessionToken();
+  if (!token) {
+    return NextResponse.json(
+      { success: false, error: UNAUTH_CORE_MESSAGE, code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
+  }
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action")?.toLowerCase();

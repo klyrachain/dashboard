@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getSessionToken } from "@/lib/auth";
 import {
   createCoreInvoice,
   sendCoreInvoice,
@@ -21,7 +22,8 @@ export async function createInvoiceAction(
   if (!body.lineItems?.length) {
     return { success: false, error: "At least one line item is required." };
   }
-  const { ok, status, data } = await createCoreInvoice(body);
+  const token = await getSessionToken();
+  const { ok, status, data } = await createCoreInvoice(body, token ?? undefined);
   if (!ok || !data || typeof data !== "object") {
     const err =
       status === 404
@@ -45,7 +47,8 @@ export async function sendInvoiceAction(
   id: string,
   recipientEmail?: string
 ): Promise<InvoiceActionResult> {
-  const { ok, status, data } = await sendCoreInvoice(id, recipientEmail);
+  const token = await getSessionToken();
+  const { ok, status, data } = await sendCoreInvoice(id, recipientEmail, token ?? undefined);
   if (ok) {
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${id}`);
@@ -82,7 +85,8 @@ export async function updateInvoiceAction(
     }));
   }
 
-  const { ok, status, data } = await updateCoreInvoice(id, body);
+  const token = await getSessionToken();
+  const { ok, status, data } = await updateCoreInvoice(id, body, token ?? undefined);
   if (ok) {
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${id}`);
@@ -103,7 +107,8 @@ export async function updateInvoiceNotesAction(
 }
 
 export async function markInvoicePaidAction(id: string): Promise<InvoiceActionResult> {
-  const { ok, data } = await markCoreInvoicePaid(id);
+  const token = await getSessionToken();
+  const { ok, data } = await markCoreInvoicePaid(id, token ?? undefined);
   if (ok) {
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${id}`);
@@ -114,7 +119,8 @@ export async function markInvoicePaidAction(id: string): Promise<InvoiceActionRe
 }
 
 export async function cancelInvoiceAction(id: string): Promise<InvoiceActionResult> {
-  const { ok, data } = await cancelCoreInvoice(id);
+  const token = await getSessionToken();
+  const { ok, data } = await cancelCoreInvoice(id, token ?? undefined);
   if (ok) {
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${id}`);
@@ -125,7 +131,8 @@ export async function cancelInvoiceAction(id: string): Promise<InvoiceActionResu
 }
 
 export async function duplicateInvoiceAction(id: string): Promise<InvoiceActionResult & { newId?: string }> {
-  const { ok, status, data } = await duplicateCoreInvoice(id);
+  const token = await getSessionToken();
+  const { ok, status, data } = await duplicateCoreInvoice(id, token ?? undefined);
   if (!ok || !data || typeof data !== "object") {
     const err =
       status === 404

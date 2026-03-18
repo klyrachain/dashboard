@@ -19,6 +19,7 @@ export type GetFailedValidationsParams = {
 
 const MERCHANT_PREFIX = "/api/v1/merchant";
 
+/** No polling or timed refetch; data updates only via manual refetch or tag invalidation. */
 export const validationApi = createApi({
   reducerPath: "validationApi",
   tagTypes: [
@@ -30,6 +31,10 @@ export const validationApi = createApi({
     "MerchantLogs",
   ],
   baseQuery: baseQueryWithStatus,
+  keepUnusedDataFor: 300,
+  refetchOnFocus: false,
+  refetchOnReconnect: false,
+  refetchOnMountOrArgChange: false,
   endpoints: (builder) => ({
     getFailedValidations: builder.query<
       { items: FailedValidationRow[]; meta: { page: number; limit: number; total: number } },

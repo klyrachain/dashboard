@@ -11,6 +11,7 @@ import {
   getCoreConnectSettlements,
   getCoreConnectSettlement,
 } from "@/lib/core-api";
+import { getSessionToken } from "@/lib/auth";
 
 // ——— Overview ———
 
@@ -52,24 +53,24 @@ function parseOverview(raw: unknown): ConnectOverview | null {
   const takeRate = typeof o.takeRate === "number" ? o.takeRate : 0;
   const volumeByPartner: VolumeByPartnerItem[] = Array.isArray(o.volumeByPartner)
     ? o.volumeByPartner.map((v: unknown) => {
-        const item = v as Record<string, unknown>;
-        return {
-          businessId: String(item.businessId ?? ""),
-          businessName: String(item.businessName ?? ""),
-          volume: typeof item.volume === "number" ? item.volume : 0,
-        };
-      })
+      const item = v as Record<string, unknown>;
+      return {
+        businessId: String(item.businessId ?? ""),
+        businessName: String(item.businessName ?? ""),
+        volume: typeof item.volume === "number" ? item.volume : 0,
+      };
+    })
     : [];
   const recentOnboarding: RecentOnboardingItem[] = Array.isArray(o.recentOnboarding)
     ? o.recentOnboarding.map((r: unknown) => {
-        const item = r as Record<string, unknown>;
-        return {
-          id: String(item.id ?? ""),
-          name: String(item.name ?? ""),
-          slug: String(item.slug ?? ""),
-          createdAt: String(item.createdAt ?? ""),
-        };
-      })
+      const item = r as Record<string, unknown>;
+      return {
+        id: String(item.id ?? ""),
+        name: String(item.name ?? ""),
+        slug: String(item.slug ?? ""),
+        createdAt: String(item.createdAt ?? ""),
+      };
+    })
     : [];
   const feesByCurrency: FeesByCurrency = {};
   if (o.feesByCurrency && typeof o.feesByCurrency === "object" && !Array.isArray(o.feesByCurrency)) {
@@ -91,7 +92,8 @@ function parseOverview(raw: unknown): ConnectOverview | null {
 
 export async function getConnectOverview(): Promise<ConnectOverviewResult> {
   try {
-    const { ok, status, data } = await getCoreConnectOverview();
+    const token = await getSessionToken();
+    const { ok, status, data } = await getCoreConnectOverview(token ?? undefined);
     if (!ok || !data || typeof data !== "object") {
       const err =
         data && typeof data === "object" && "error" in data
@@ -142,10 +144,11 @@ export async function getConnectFeesReport(params?: {
   businessId?: string;
 }): Promise<ConnectFeesReportResult> {
   try {
+    const token = await getSessionToken();
     const { ok, status, data } = await getCoreConnectFeesReport({
       days: params?.days,
       businessId: params?.businessId,
-    });
+    }, token ?? undefined);
     if (!ok || !data || typeof data !== "object") {
       const err =
         data && typeof data === "object" && "error" in data
@@ -217,7 +220,8 @@ export async function getConnectMerchants(params?: {
 }): Promise<ConnectMerchantListResult> {
   const defaultMeta = { page: params?.page ?? 1, limit: params?.limit ?? 20, total: 0 };
   try {
-    const { ok, status, data } = await getCoreConnectMerchants(params);
+    const token = await getSessionToken();
+    const { ok, status, data } = await getCoreConnectMerchants(params, token ?? undefined);
     if (!ok || !data || typeof data !== "object") {
       const err =
         data && typeof data === "object" && "error" in data
@@ -257,15 +261,15 @@ function parseMerchantDetail(raw: unknown): ConnectMerchantDetail | null {
   const o = raw as Record<string, unknown>;
   const apiKeys: MerchantApiKey[] = Array.isArray(o.apiKeys)
     ? o.apiKeys.map((k: unknown) => {
-        const key = k as Record<string, unknown>;
-        return {
-          id: String(key.id ?? ""),
-          keyPrefix: String(key.keyPrefix ?? ""),
-          name: String(key.name ?? ""),
-          lastUsedAt: typeof key.lastUsedAt === "string" ? key.lastUsedAt : undefined,
-          isActive: key.isActive === true,
-        };
-      })
+      const key = k as Record<string, unknown>;
+      return {
+        id: String(key.id ?? ""),
+        keyPrefix: String(key.keyPrefix ?? ""),
+        name: String(key.name ?? ""),
+        lastUsedAt: typeof key.lastUsedAt === "string" ? key.lastUsedAt : undefined,
+        isActive: key.isActive === true,
+      };
+    })
     : [];
   return {
     ...base,
@@ -280,7 +284,8 @@ function parseMerchantDetail(raw: unknown): ConnectMerchantDetail | null {
 
 export async function getConnectMerchantById(id: string): Promise<ConnectMerchantDetailResult> {
   try {
-    const { ok, status, data } = await getCoreConnectMerchant(id);
+    const token = await getSessionToken();
+    const { ok, status, data } = await getCoreConnectMerchant(id, token ?? undefined);
     if (!ok || !data || typeof data !== "object") {
       const err =
         data && typeof data === "object" && "error" in data
@@ -354,7 +359,8 @@ export async function getConnectSettlements(params?: {
 }): Promise<ConnectSettlementListResult> {
   const defaultMeta = { page: params?.page ?? 1, limit: params?.limit ?? 20, total: 0 };
   try {
-    const { ok, status, data } = await getCoreConnectSettlements(params);
+    const token = await getSessionToken();
+    const { ok, status, data } = await getCoreConnectSettlements(params, token ?? undefined);
     if (!ok || !data || typeof data !== "object") {
       const err =
         data && typeof data === "object" && "error" in data
@@ -392,13 +398,13 @@ function parseSettlementDetail(raw: unknown): ConnectSettlementDetail | null {
   const gross = typeof o.gross === "number" ? o.gross : base.amount + base.fee;
   const timeline: SettlementTimelineStep[] = Array.isArray(o.timeline)
     ? o.timeline.map((t: unknown) => {
-        const step = t as Record<string, unknown>;
-        return {
-          step: String(step.step ?? ""),
-          at: String(step.at ?? ""),
-          done: step.done === true,
-        };
-      })
+      const step = t as Record<string, unknown>;
+      return {
+        step: String(step.step ?? ""),
+        at: String(step.at ?? ""),
+        done: step.done === true,
+      };
+    })
     : [];
   const sourceTransactions = Array.isArray(o.sourceTransactions) ? o.sourceTransactions : [];
   return {
@@ -413,7 +419,8 @@ function parseSettlementDetail(raw: unknown): ConnectSettlementDetail | null {
 
 export async function getConnectSettlementById(id: string): Promise<ConnectSettlementDetailResult> {
   try {
-    const { ok, status, data } = await getCoreConnectSettlement(id);
+    const token = await getSessionToken();
+    const { ok, status, data } = await getCoreConnectSettlement(id, token ?? undefined);
     if (!ok || !data || typeof data !== "object") {
       const err =
         data && typeof data === "object" && "error" in data

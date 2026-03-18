@@ -2,6 +2,7 @@
  * Recent transactions — Core API only (GET /api/transactions).
  * No database fallback. Returns [] if Core is unavailable.
  */
+import { getSessionToken } from "@/lib/auth";
 import { getCoreTransactions } from "@/lib/core-api";
 
 export type RecentTransaction = {
@@ -10,8 +11,10 @@ export type RecentTransaction = {
   status: string;
   fromAmount: string;
   toAmount: string;
-  /** Fee charged (set when status = COMPLETED). */
+  /** Fee in token units (legacy). Prefer feeInUsd for USD display. */
   fee: string | null;
+  /** Fee value in USD (set when status = COMPLETED). */
+  feeInUsd: string | null;
   createdAt: Date;
 };
 
@@ -35,6 +38,7 @@ function coreItemToRecent(item: unknown): RecentTransaction | null {
     fromAmount: String(o.fromAmount ?? o.f_amount ?? ""),
     toAmount: String(o.toAmount ?? o.t_amount ?? ""),
     fee: strFee(o.fee),
+    feeInUsd: o.feeInUsd != null ? String(o.feeInUsd).trim() || null : null,
     createdAt,
   };
 }
@@ -44,24 +48,11 @@ export async function getRecentTransactions(
   limit: number
 ): Promise<RecentTransaction[]> {
   try {
-    const result = await getCoreTransactions({ limit, page: 1 });
+    const token = await getSessionToken();
+    const result = await getCoreTransactions({ limit, page: 1 }, token ?? undefined);
     const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
       ? (result.data as { data: unknown[] }).data
       : [];
-    // #region agent log
-    fetch("http://127.0.0.1:7247/ingest/fb2f2837-e364-4285-91d5-3a0ec374dc33", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "data.ts:getRecentTransactions",
-        message: "getRecentTransactions result",
-        data: { ok: result.ok, rawLength: raw.length },
-        timestamp: Date.now(),
-        sessionId: "debug-session",
-        hypothesisId: ["B", "D"],
-      }),
-    }).catch(() => {});
-    // #endregion
     return raw
       .map((item) => coreItemToRecent(item))
       .filter((r): r is RecentTransaction => r !== null)

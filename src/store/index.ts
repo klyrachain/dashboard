@@ -3,11 +3,14 @@ import { inventoryApi } from "./inventory-api";
 import { providersApi } from "./providers-api";
 import { validationApi } from "./validation-api";
 import { layoutSlice } from "./layout-slice";
+import { authSlice } from "./auth-slice";
 import { statusIndicatorSlice } from "./status-indicator-slice";
 import {
   merchantSessionSlice,
   type MerchantSessionState,
 } from "./merchant-session-slice";
+import { preferencesSlice } from "./preferences-slice";
+import { webhookSlice } from "./webhook-slice";
 import type { LayoutPreference } from "@/lib/layout-preference-cookie";
 
 export interface RootState {
@@ -80,8 +83,11 @@ export function makeStore(input?: MakeStoreInput): AppStore {
       [providersApi.reducerPath]: providersApi.reducer,
       [validationApi.reducerPath]: validationApi.reducer,
       layout: layoutSlice.reducer,
+      auth: authSlice.reducer,
       statusIndicator: statusIndicatorSlice.reducer,
       merchantSession: merchantSessionSlice.reducer,
+      preferences: preferencesSlice.reducer,
+      webhook: webhookSlice.reducer,
     },
     middleware: (getDefaultMiddleware: () => { concat: (...m: unknown[]) => unknown }) =>
       getDefaultMiddleware().concat(

@@ -155,11 +155,13 @@ export function UsersList({
                               </Badge>
                               <span className="text-muted-foreground">
                                 {tx.fromAmount} → {tx.toAmount}
-                                {tx.fee != null && tx.fee !== "" && (
+                                {(tx.feeInUsd != null && tx.feeInUsd !== "") || (tx.fee != null && tx.fee !== "") ? (
                                   <span className="tabular-nums text-slate-600 ml-2">
-                                    Fee: {tx.fee}
+                                    Fee: {tx.feeInUsd != null && tx.feeInUsd !== ""
+                                      ? `$${Number(tx.feeInUsd).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                      : tx.fee}
                                   </span>
-                                )}
+                                ) : null}
                               </span>
                             </li>
                           ))}

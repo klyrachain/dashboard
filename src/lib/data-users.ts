@@ -2,6 +2,7 @@
  * Users data — Core API only (GET /api/users).
  * No database fallback. Returns [] if Core is unavailable.
  */
+import { getSessionToken } from "@/lib/auth";
 import { getCoreUsers } from "@/lib/core-api";
 
 export type UserRow = {
@@ -18,8 +19,10 @@ export type UserTransactionRow = {
   status: string;
   fromAmount: string;
   toAmount: string;
-  /** Fee charged (set when status = COMPLETED). */
+  /** Fee in token units (legacy). Prefer feeInUsd for USD display. */
   fee: string | null;
+  /** Fee value in USD (set when status = COMPLETED). */
+  feeInUsd: string | null;
   createdAt: Date;
 };
 
@@ -53,6 +56,7 @@ function coreUserToRow(item: unknown): UserWithTransactions | null {
         fromAmount: String(tx.fromAmount ?? tx.f_amount ?? ""),
         toAmount: String(tx.toAmount ?? tx.t_amount ?? ""),
         fee: feeVal(tx.fee),
+        feeInUsd: tx.feeInUsd != null ? String(tx.feeInUsd).trim() || null : null,
         createdAt: tx.createdAt instanceof Date ? tx.createdAt : new Date(String(tx.createdAt ?? "")),
       };
     })
@@ -63,7 +67,8 @@ function coreUserToRow(item: unknown): UserWithTransactions | null {
 /** Fetches users from Core API only. Returns [] if Core is unavailable or returns no data. */
 export async function getUsers(): Promise<UserWithTransactions[]> {
   try {
-    const result = await getCoreUsers({ limit: 100 });
+    const token = await getSessionToken();
+    const result = await getCoreUsers({ limit: 100 }, token ?? undefined);
     const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
       ? (result.data as { data: unknown[] }).data
       : [];
