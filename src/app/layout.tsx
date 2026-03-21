@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { PLATFORM_PRIMARY_HEX } from "@/lib/platform-theme";
 import { cookies } from "next/headers";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -13,6 +14,7 @@ import { parseLayoutPreference } from "@/lib/layout-preference-cookie";
 import { getAccessContext } from "@/lib/data-access";
 import { merchantSessionFromAccess } from "@/lib/merchant-session-initial";
 import { PortalRoleCookieSync } from "@/components/providers/portal-role-cookie-sync";
+import { PlatformChromeMeta } from "@/components/layout/platform-chrome-meta";
 
 /** Primary: headings and main UI (Alpino). */
 const alpino = localFont({
@@ -45,6 +47,14 @@ export const metadata: Metadata = {
   description: "Control center for Crypto Payment System",
 };
 
+/** Safari / mobile browser toolbar and tab tint (`<meta name="theme-color">`). */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: PLATFORM_PRIMARY_HEX },
+    { media: "(prefers-color-scheme: dark)", color: PLATFORM_PRIMARY_HEX },
+  ],
+};
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -59,7 +69,9 @@ export default async function RootLayout({
     <html lang="en">
       <body
         className={`${alpino.variable} ${ranade.variable} font-primary antialiased`}
+        style={{ backgroundColor: PLATFORM_PRIMARY_HEX }}
       >
+        <PlatformChromeMeta />
         <ReduxProvider
           initialLayoutPreference={layoutPref ?? undefined}
           initialMerchantSession={merchantSession}

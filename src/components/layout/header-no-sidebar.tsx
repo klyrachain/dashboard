@@ -30,6 +30,7 @@ import {
   type MerchantBusiness,
 } from "@/store/merchant-session-slice";
 import { getNavGroupsForSession, type NavGroupConfig } from "@/lib/nav-config";
+import { PLATFORM_PRIMARY_HEX } from "@/lib/platform-theme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -158,7 +159,10 @@ export function HeaderNoSidebar() {
   const displayName = admin?.name?.trim() || admin?.email || "Account";
 
   return (
-    <header className="flex shrink-0 flex-col border-b border-slate-200 bg-slate-900 text-white">
+    <header
+      className="flex shrink-0 flex-col border-b border-slate-200 text-white"
+      style={{ backgroundColor: PLATFORM_PRIMARY_HEX }}
+    >
       {/* Row 1: logo, sandbox, theme selector, search, notification, settings, live/testnet, refresh */}
       <div className="flex h-14 items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-4">

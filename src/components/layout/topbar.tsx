@@ -18,6 +18,7 @@ import { useAdmin } from "@/hooks/use-admin";
 import { postLogout } from "@/lib/auth-api";
 import { clearSession } from "@/store/auth-slice";
 import { resetAuthSessionSyncRef } from "@/components/auth/auth-session-sync";
+import { PLATFORM_PRIMARY_HEX } from "@/lib/platform-theme";
 
 export function Topbar({ className }: { className?: string }) {
   const dispatch = useDispatch();
@@ -55,9 +56,10 @@ export function Topbar({ className }: { className?: string }) {
 
       <header
         className={cn(
-          "flex h-14 shrink-0 items-center justify-between gap-4 bg-slate-800 px-6 text-white",
+          "flex h-14 shrink-0 items-center justify-between gap-4 px-6 text-white",
           className
         )}
+        style={{ backgroundColor: PLATFORM_PRIMARY_HEX }}
       >
         <div className="flex flex-1 items-center gap-4">
           <div className="relative max-w-xs flex-1">
