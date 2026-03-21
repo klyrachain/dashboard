@@ -92,7 +92,7 @@ export function AppSidebar() {
       : "Klyra platform";
 
   return (
-    <aside className="flex h-full w-64 flex-col bg-slate-900 text-white">
+    <aside className="flex h-full w-64 flex-col bg-platform-primary text-white">
       {/* Workspace / business switcher */}
       <div className="px-3 py-3">
         <DropdownMenu>

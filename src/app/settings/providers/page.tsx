@@ -17,8 +17,8 @@ export default async function SettingsProvidersPage() {
       </div>
       {error && (
         <div
-          className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 font-secondary text-caption text-amber-800"
-          role="alert"
+          className="rounded-lg px-4 py-3 font-secondary text-caption text-amber-800"
+          role="alert"  
         >
           {mapInvoiceLoadError(error)}
         </div>

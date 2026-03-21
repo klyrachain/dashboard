@@ -15,7 +15,7 @@ export default async function SettingsTeamPage() {
       </header>
       {error && (
         <div
-          className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 font-secondary text-caption text-amber-800"
+          className="rounded-lg px-4 py-3 font-secondary text-caption text-amber-800"
           role="alert"
         >
           {mapInvoiceLoadError(error)}
