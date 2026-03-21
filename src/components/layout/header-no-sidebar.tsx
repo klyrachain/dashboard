@@ -139,7 +139,7 @@ export function HeaderNoSidebar() {
   const workspaceLabel =
     sessionType === "merchant" && activeBusiness
       ? activeBusiness.name
-      : "Klyra platform";
+      : "morapay platform";
 
   const handleThemeSelect = (t: LayoutTheme) => () => dispatch(setTheme(t));
   const handleRefresh = () => router.refresh();
@@ -170,8 +170,8 @@ export function HeaderNoSidebar() {
             {/* <span className="flex size-8 items-center justify-center rounded-md bg-indigo-500 font-bold">
               K
             </span> */}
-            <Image src="/logo.jpg" alt="Klyra" width={32} height={32} />
-            <span>Klyra</span>
+            <Image src="/logo.jpg" alt="morapay" width={32} height={32} />
+            <span>morapay</span>
           </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

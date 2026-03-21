@@ -149,7 +149,7 @@ body {
 
 /* Fallback: Tailwind v4 did not emit these utilities in dev; define as plain rules
    with literal values so they always apply (no dependency on theme var scope). */
-.bg-indigo-100 {
+/* .bg-indigo-100 {
   background-color: oklch(0.93 0.034 272.788);
 }
 .text-indigo-800 {
@@ -160,6 +160,6 @@ body {
 }
 .bg-indigo-600 {
   background-color: oklch(0.511 0.262 276.966);
-}
+} */
 
 /* Stripe-style: refined density; main bg applied in dashboard-shell */
