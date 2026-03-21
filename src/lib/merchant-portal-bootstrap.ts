@@ -1,4 +1,8 @@
-import { getBusinessAccessToken } from "@/lib/businessAuthStorage";
+import {
+  getBusinessAccessToken,
+  getStoredActiveBusinessId,
+  getStoredMerchantEnvironment,
+} from "@/lib/businessAuthStorage";
 import type { MerchantSessionState } from "@/store/merchant-session-slice";
 
 function decodeJwtPayload(jwt: string): Record<string, unknown> | null {
@@ -58,6 +62,11 @@ export function mergeMerchantSessionWithStoredPortalJwt(
     const fromJwt = businessIdFromPortalJwt(token);
     if (fromJwt) {
       base.activeBusinessId = fromJwt;
+    } else {
+      const stored = getStoredActiveBusinessId();
+      if (stored?.trim()) {
+        base.activeBusinessId = stored.trim();
+      }
     }
   }
 
@@ -72,6 +81,11 @@ export function mergeMerchantSessionWithStoredPortalJwt(
         slug: "",
       },
     ];
+  }
+
+  const storedEnv = getStoredMerchantEnvironment();
+  if (!base.merchantEnvironment) {
+    base.merchantEnvironment = storedEnv ?? "LIVE";
   }
 
   return base;

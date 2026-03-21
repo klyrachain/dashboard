@@ -12,7 +12,10 @@ function isAuthPath(pathname: string | null): boolean {
     AUTH_PATHS.includes(p) ||
     p.startsWith("/signup") ||
     p.startsWith("/login/") ||
-    p.startsWith("/setup-passkey")
+    p.startsWith("/setup-passkey") ||
+    p.startsWith("/business/signin") ||
+    p.startsWith("/business/signup") ||
+    p === "/business/login"
   );
 }
 

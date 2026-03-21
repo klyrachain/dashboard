@@ -82,7 +82,7 @@ function RotateKeyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="border-none">
         <DialogHeader>
           <DialogTitle>Update API key — {provider.name}</DialogTitle>
         </DialogHeader>

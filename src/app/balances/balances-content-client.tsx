@@ -131,19 +131,21 @@ export function BalancesContentClient({
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+    <div className="space-y-8 font-primary text-body">
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-display font-semibold tracking-tight">
             {pageTitle}
           </h1>
-          <p className="text-sm text-slate-500">{pageDescription}</p>
+          <p className="font-secondary text-caption text-muted-foreground max-w-prose">
+            {pageDescription}
+          </p>
         </div>
         <Button variant="outline" size="sm" className="shrink-0 gap-2">
           <RefreshCcw className="size-4" aria-hidden />
           Refresh Liquidity
         </Button>
-      </div>
+      </header>
 
       {hasChains && (
         <section>

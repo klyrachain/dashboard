@@ -1,24 +1,17 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { Suspense } from "react";
-import { BusinessSigninFlow } from "@/components/business-auth/business-signin-flow";
-import { Loader2 } from "lucide-react";
+type Props = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
-export default function BusinessLoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div
-          className="flex min-h-[50vh] items-center justify-center"
-          role="status"
-          aria-live="polite"
-        >
-          <Loader2 className="size-8 shrink-0 animate-spin text-primary" aria-hidden />
-        </div>
-      }
-    >
-      <BusinessSigninFlow />
-    </Suspense>
-  );
+/** @deprecated Use /business/signin */
+export default async function LegacyBusinessLoginPage({ searchParams }: Props) {
+  const p = await searchParams;
+  const q = new URLSearchParams();
+  for (const [key, val] of Object.entries(p)) {
+    if (typeof val === "string" && val) q.set(key, val);
+    else if (Array.isArray(val) && val[0]) q.set(key, val[0]);
+  }
+  const s = q.toString();
+  redirect(s ? `/business/signin?${s}` : "/business/signin");
 }
-

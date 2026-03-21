@@ -26,7 +26,7 @@ export default async function BalancesPage() {
         pageTitle={isMerchant ? "Wallets" : "Balances"}
         pageDescription={
           isMerchant
-            ? "Funds you’ve collected and can withdraw."
+            ? "What you have collected and what you can move next."
             : "Real-time overview of assets across all chains and liquidity pools."
         }
       />

@@ -13,7 +13,7 @@ const PLATFORM_ROLE = "platform";
 export async function GET(request: NextRequest) {
   const access = await getAccessContext();
   if (!access.ok || !access.context) {
-    const u = new URL("/business/login", request.url);
+    const u = new URL("/login", request.url);
     u.searchParams.set("error", "platform_access");
     return NextResponse.redirect(u);
   }

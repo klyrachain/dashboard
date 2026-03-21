@@ -51,8 +51,11 @@ function date(v: unknown): Date {
   return Number.isNaN(t) ? new Date(0) : new Date(t);
 }
 
-/** Normalize Core API transaction item to TransactionRow (camelCase or snake_case). */
-function coreItemToRow(item: unknown): TransactionRow | null {
+/**
+ * Normalize a Core or Merchant API transaction item to TransactionRow (camelCase or snake_case).
+ * Use for chart/table parity across platform and merchant dashboards.
+ */
+export function normalizeTransactionItemToRow(item: unknown): TransactionRow | null {
   if (!item || typeof item !== "object") return null;
   const o = item as Record<string, unknown>;
   const id = str(o.id);
@@ -122,7 +125,7 @@ export async function getTransactions(): Promise<TransactionRow[]> {
     const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
       ? (result.data as { data: unknown[] }).data
       : [];
-    return raw.map((item) => coreItemToRow(item)).filter((r): r is TransactionRow => r !== null);
+    return raw.map((item) => normalizeTransactionItemToRow(item)).filter((r): r is TransactionRow => r !== null);
   } catch {
     // Core unavailable
   }

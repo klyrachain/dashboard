@@ -19,6 +19,8 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { getNavGroupsForSession } from "@/lib/nav-config";
+import { MerchantEnvironmentSwitch } from "@/components/merchant/merchant-environment-switch";
+import { setStoredActiveBusinessId } from "@/lib/businessAuthStorage";
 import { setActiveBusinessId, type MerchantBusiness } from "@/store/merchant-session-slice";
 
 function NavGroup({
@@ -117,7 +119,10 @@ export function AppSidebar() {
                 {businesses.map((b: MerchantBusiness) => (
                   <DropdownMenuItem
                     key={b.id}
-                    onClick={() => dispatch(setActiveBusinessId(b.id))}
+                    onClick={() => {
+                      dispatch(setActiveBusinessId(b.id));
+                      setStoredActiveBusinessId(b.id);
+                    }}
                     className={b.id === activeBusinessId ? "bg-slate-100 font-medium" : ""}
                   >
                     {b.name}
@@ -189,17 +194,23 @@ export function AppSidebar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="flex items-center justify-between rounded-md px-3 py-2">
-          <span className="text-sm font-normal text-white/60">
-            Test mode
-          </span>
-          <Switch
-            checked={testMode}
-            onCheckedChange={(v) => dispatch(setTestMode(v))}
-            aria-label="Toggle test mode"
-            className="data-[state=checked]:bg-indigo-500"
-          />
-        </div>
+        {sessionType === "merchant" ? (
+          <div className="flex items-center justify-between rounded-md px-3 py-2">
+            <MerchantEnvironmentSwitch />
+          </div>
+        ) : (
+          <div className="flex items-center justify-between rounded-md px-3 py-2">
+            <span className="text-sm font-normal text-white/60">
+              Test mode
+            </span>
+            <Switch
+              checked={testMode}
+              onCheckedChange={(v) => dispatch(setTestMode(v))}
+              aria-label="Toggle test mode"
+              className="data-[state=checked]:bg-indigo-500"
+            />
+          </div>
+        )}
       </div>
     </aside>
   );

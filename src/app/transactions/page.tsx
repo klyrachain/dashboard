@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { TransactionsDataTable } from "@/components/transactions/transactions-data-table";
 import { TransactionsChartClient } from "@/components/transactions/transactions-chart-client";
 import { TransactionsPageHeader } from "@/components/transactions/transactions-page-header";
@@ -24,6 +25,10 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
   const view = (params.view === "unfulfilled" ? "unfulfilled" : "fulfilled") as TransactionsView;
   const isUnfulfilled = view === "unfulfilled";
 
+  if (access.ok && access.context?.type === "merchant" && isUnfulfilled) {
+    redirect("/transactions");
+  }
+
   const page = isUnfulfilled
     ? Math.max(1, parseInt(params.page ?? "1", 10) || 1)
     : 1;
@@ -40,12 +45,14 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
   if (isMerchant && !isUnfulfilled) {
     return (
       <div className="space-y-6 font-primary text-body">
-        <div>
-          <h1 className="text-display font-semibold tracking-tight">Transactions</h1>
-          <p className="font-secondary text-caption text-muted-foreground mt-1">
-            Payments for your business (merchant API).
+        <header className="space-y-1">
+          <h1 className="text-display font-semibold tracking-tight">
+            Transactions
+          </h1>
+          <p className="font-secondary text-caption text-muted-foreground max-w-prose">
+            Review every sale and payment for your business.
           </p>
-        </div>
+        </header>
         <TransactionsMerchantRtkPanel />
       </div>
     );

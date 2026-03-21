@@ -2,10 +2,15 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 export type SessionPortalType = "platform" | "merchant";
 
+/** Tenant partition for Merchant API (`x-merchant-environment`). */
+export type MerchantEnvironment = "TEST" | "LIVE";
+
 export type MerchantBusiness = {
   id: string;
   name: string;
   slug: string;
+  /** Portal RBAC for this membership (when returned by session). */
+  role?: string;
 };
 
 export type MerchantSessionState = {
@@ -16,6 +21,10 @@ export type MerchantSessionState = {
   /** Active tenant scope */
   activeBusinessId: string | null;
   businesses: MerchantBusiness[];
+  /** Sent as `x-merchant-environment` on `/api/v1/merchant/*` */
+  merchantEnvironment: MerchantEnvironment;
+  /** Role for `activeBusinessId` — UI RBAC (portal JWT only). */
+  activeBusinessRole: string | null;
 };
 
 const initialState: MerchantSessionState = {
@@ -23,6 +32,8 @@ const initialState: MerchantSessionState = {
   portalJwt: null,
   activeBusinessId: null,
   businesses: [],
+  merchantEnvironment: "LIVE",
+  activeBusinessRole: null,
 };
 
 export const merchantSessionSlice = createSlice({
@@ -49,12 +60,36 @@ export const merchantSessionSlice = createSlice({
       ) {
         state.activeBusinessId = action.payload.businesses[0].id;
       }
+      if (action.payload.merchantEnvironment !== undefined) {
+        state.merchantEnvironment = action.payload.merchantEnvironment;
+      }
+      if (action.payload.activeBusinessRole !== undefined) {
+        state.activeBusinessRole = action.payload.activeBusinessRole;
+      } else if (state.activeBusinessId && state.businesses.length > 0) {
+        const m = state.businesses.find((b) => b.id === state.activeBusinessId);
+        state.activeBusinessRole = m?.role?.trim() ?? state.activeBusinessRole;
+      }
     },
     setPortalJwt(state, action: PayloadAction<string | null>) {
       state.portalJwt = action.payload;
     },
     setActiveBusinessId(state, action: PayloadAction<string | null>) {
       state.activeBusinessId = action.payload;
+      if (action.payload && state.businesses.length > 0) {
+        const m = state.businesses.find((b) => b.id === action.payload);
+        state.activeBusinessRole = m?.role?.trim() ?? null;
+      } else if (!action.payload) {
+        state.activeBusinessRole = null;
+      }
+    },
+    setMerchantEnvironment(
+      state,
+      action: PayloadAction<MerchantEnvironment>
+    ) {
+      state.merchantEnvironment = action.payload;
+    },
+    setActiveBusinessRole(state, action: PayloadAction<string | null>) {
+      state.activeBusinessRole = action.payload;
     },
     setBusinesses(state, action: PayloadAction<MerchantBusiness[]>) {
       state.businesses = action.payload;
@@ -64,6 +99,10 @@ export const merchantSessionSlice = createSlice({
         !state.activeBusinessId
       ) {
         state.activeBusinessId = action.payload[0].id;
+        state.activeBusinessRole = action.payload[0].role?.trim() ?? null;
+      } else if (state.activeBusinessId) {
+        const m = action.payload.find((b) => b.id === state.activeBusinessId);
+        state.activeBusinessRole = m?.role?.trim() ?? null;
       }
     },
     clearMerchantPortal(state) {
@@ -71,6 +110,8 @@ export const merchantSessionSlice = createSlice({
       state.portalJwt = null;
       state.activeBusinessId = null;
       state.businesses = [];
+      state.merchantEnvironment = "LIVE";
+      state.activeBusinessRole = null;
     },
   },
 });
@@ -79,6 +120,8 @@ export const {
   hydrateMerchantSession,
   setPortalJwt,
   setActiveBusinessId,
+  setMerchantEnvironment,
+  setActiveBusinessRole,
   setBusinesses,
   clearMerchantPortal,
 } = merchantSessionSlice.actions;

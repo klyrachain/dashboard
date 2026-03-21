@@ -327,7 +327,7 @@ function AssetFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="border-none">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

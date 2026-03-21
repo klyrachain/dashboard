@@ -17,19 +17,10 @@ export type GetFailedValidationsParams = {
   code?: string;
 };
 
-const MERCHANT_PREFIX = "/api/v1/merchant";
-
 /** No polling or timed refetch; data updates only via manual refetch or tag invalidation. */
 export const validationApi = createApi({
   reducerPath: "validationApi",
-  tagTypes: [
-    "ValidationFailed",
-    "ValidationReport",
-    "MerchantTransactions",
-    "MerchantSettlements",
-    "MerchantBalances",
-    "MerchantLogs",
-  ],
+  tagTypes: ["ValidationFailed", "ValidationReport"],
   baseQuery: baseQueryWithStatus,
   keepUnusedDataFor: 300,
   refetchOnFocus: false,
@@ -91,52 +82,6 @@ export const validationApi = createApi({
       providesTags: ["ValidationReport"],
     }),
 
-    getMerchantTransactions: builder.query<
-      { success?: boolean; data?: unknown; meta?: { page?: number; limit?: number; total?: number } },
-      Record<string, string | number | undefined>
-    >({
-      query: (params) => ({
-        url: `${MERCHANT_PREFIX}/transactions`,
-        params: params as Record<string, string>,
-      }),
-      providesTags: ["MerchantTransactions"],
-    }),
-    getMerchantSettlements: builder.query<
-      { success?: boolean; data?: unknown; meta?: { page?: number; limit?: number; total?: number } },
-      Record<string, string | number | undefined>
-    >({
-      query: (params) => ({
-        url: `${MERCHANT_PREFIX}/settlements`,
-        params: params as Record<string, string>,
-      }),
-      providesTags: ["MerchantSettlements"],
-    }),
-    getMerchantBalances: builder.query<{ success?: boolean; data?: unknown }, void>({
-      query: () => ({ url: `${MERCHANT_PREFIX}/balances` }),
-      providesTags: ["MerchantBalances"],
-    }),
-    getMerchantLogs: builder.query<
-      { success?: boolean; data?: unknown[]; meta?: { page?: number; limit?: number; total?: number } },
-      Record<string, string | number | undefined>
-    >({
-      query: (params) => ({
-        url: `${MERCHANT_PREFIX}/logs`,
-        params: params as Record<string, string>,
-      }),
-      providesTags: ["MerchantLogs"],
-    }),
-    getMerchantCustomers: builder.query<unknown, Record<string, string | number | undefined>>({
-      query: (params) => ({
-        url: `${MERCHANT_PREFIX}/customers`,
-        params: params as Record<string, string>,
-      }),
-    }),
-    getMerchantDashboard: builder.query<unknown, Record<string, string | undefined>>({
-      query: (params) => ({
-        url: `${MERCHANT_PREFIX}/dashboard`,
-        params: params as Record<string, string>,
-      }),
-    }),
   }),
 });
 
@@ -144,10 +89,4 @@ export const {
   useGetFailedValidationsQuery,
   useGetRecentFailedQuery,
   useGetFailedReportQuery,
-  useGetMerchantTransactionsQuery,
-  useGetMerchantSettlementsQuery,
-  useGetMerchantBalancesQuery,
-  useGetMerchantLogsQuery,
-  useGetMerchantCustomersQuery,
-  useGetMerchantDashboardQuery,
 } = validationApi;

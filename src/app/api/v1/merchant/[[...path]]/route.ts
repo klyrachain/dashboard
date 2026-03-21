@@ -34,6 +34,9 @@ async function proxyToCore(
   const businessId = request.headers.get("x-business-id");
   if (businessId) headers.set("X-Business-Id", businessId);
 
+  const merchantEnv = request.headers.get("x-merchant-environment");
+  if (merchantEnv) headers.set("x-merchant-environment", merchantEnv);
+
   const accept = request.headers.get("accept");
   headers.set("Accept", accept ?? "application/json");
 

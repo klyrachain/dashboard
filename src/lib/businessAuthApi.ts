@@ -1,4 +1,4 @@
-import { env } from "@/config/env";
+import { getBusinessAuthOrigin } from "@/config/env";
 
 const JSON_POST_HEADERS = {
   "Content-Type": "application/json",
@@ -58,12 +58,24 @@ function extractErrorMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
-/** Browser talks directly to business auth origin; server uses env origin as well. */
+/**
+ * Browser: same-origin `/api/business-auth/*` proxy (avoids CORS to Core).
+ * Server: direct Core URL when calling from RSC/API routes.
+ */
 function resolveBusinessAuthUrl(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
   if (typeof window !== "undefined") {
-    return `${env.businessApiOrigin}${path}`;
+    return normalized;
   }
-  return `${env.businessApiOrigin}${path}`;
+  const base = getBusinessAuthOrigin();
+  if (!base) {
+    throw new BusinessAuthApiError(
+      "Core URL not configured (set NEXT_PUBLIC_CORE_URL)",
+      503,
+      null
+    );
+  }
+  return `${base}${normalized}`;
 }
 
 async function requestJson(
@@ -342,8 +354,13 @@ export function consumePortalOrMagicTokenOnce(
   return pending;
 }
 
+/** Full Core URL — user navigates away (not a credentialed fetch). */
 export function getGoogleOAuthStartUrl(): string {
-  return `${env.businessApiOrigin}/api/business-auth/google/start`;
+  const base = getBusinessAuthOrigin();
+  if (!base) {
+    return "/api/business-auth/google/start";
+  }
+  return `${base}/api/business-auth/google/start`;
 }
 
 export async function submitOnboardingEntity(
@@ -404,11 +421,54 @@ export async function completeBusinessOnboarding(
   };
 }
 
+export type BusinessSessionBusiness = {
+  id: string;
+  name: string;
+  slug: string;
+  /** BusinessMember role when returned by session (portal RBAC). */
+  role?: string;
+};
+
 export interface BusinessSession {
   portalDisplayName: string | null;
   hasPassword: boolean;
   passkeyCount: number;
   profileComplete: boolean;
+  /** Active memberships — use first `id` as X-Business-Id when calling /api/v1/merchant/* */
+  businesses: BusinessSessionBusiness[];
+}
+
+function unwrapSessionPayload(body: unknown): Record<string, unknown> {
+  if (!body || typeof body !== "object") return {};
+  const o = body as Record<string, unknown>;
+  const data = o.data;
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    return data as Record<string, unknown>;
+  }
+  return o;
+}
+
+function parseBusinessesFromSession(raw: unknown): BusinessSessionBusiness[] {
+  if (!Array.isArray(raw)) return [];
+  const out: BusinessSessionBusiness[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const b = item as Record<string, unknown>;
+    const id = typeof b.id === "string" ? b.id : "";
+    if (!id) continue;
+    const roleRaw = b.role;
+    const role =
+      typeof roleRaw === "string" && roleRaw.trim().length > 0
+        ? roleRaw.trim()
+        : undefined;
+    out.push({
+      id,
+      name: typeof b.name === "string" ? b.name : "",
+      slug: typeof b.slug === "string" ? b.slug : "",
+      ...(role ? { role } : {}),
+    });
+  }
+  return out;
 }
 
 export async function fetchBusinessSession(
@@ -429,17 +489,30 @@ export async function fetchBusinessSession(
     );
   }
 
-  const o = body as Record<string, unknown>;
+  const d = unwrapSessionPayload(body);
+  const user =
+    d.user && typeof d.user === "object" && !Array.isArray(d.user)
+      ? (d.user as Record<string, unknown>)
+      : null;
+  const displayFromUser =
+    user && typeof user.portalDisplayName === "string"
+      ? user.portalDisplayName
+      : user && typeof user.displayName === "string"
+        ? user.displayName
+        : null;
 
   return {
     portalDisplayName:
-      typeof o.portalDisplayName === "string" ? o.portalDisplayName : null,
-    hasPassword: o.hasPassword === true,
+      typeof d.portalDisplayName === "string"
+        ? d.portalDisplayName
+        : displayFromUser,
+    hasPassword: d.hasPassword === true,
     passkeyCount:
-      typeof o.passkeyCount === "number" && Number.isFinite(o.passkeyCount)
-        ? o.passkeyCount
+      typeof d.passkeyCount === "number" && Number.isFinite(d.passkeyCount)
+        ? d.passkeyCount
         : 0,
-    profileComplete: o.profileComplete === true,
+    profileComplete: d.profileComplete === true,
+    businesses: parseBusinessesFromSession(d.businesses),
   };
 }
 
@@ -495,6 +568,54 @@ export async function registerBusinessPasskey(
     },
     body: JSON.stringify(payload),
   });
+}
+
+function parseLoginCodeCreateBody(body: unknown): {
+  code: string;
+  redirectUrl?: string;
+} {
+  const root = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const data =
+    root.data && typeof root.data === "object" && !Array.isArray(root.data)
+      ? (root.data as Record<string, unknown>)
+      : root;
+  const code = typeof data.code === "string" ? data.code.trim() : "";
+  if (!code) {
+    throw new BusinessAuthApiError(
+      "Invalid response: missing login code",
+      500,
+      body
+    );
+  }
+  const redirectUrl =
+    typeof data.redirectUrl === "string" && data.redirectUrl.length > 0
+      ? data.redirectUrl
+      : undefined;
+  return { code, redirectUrl };
+}
+
+/**
+ * Exchange portal JWT for a one-time code; dashboard opens `/?login_code=`.
+ * Core: POST /api/business-auth/login/code
+ */
+export async function createBusinessLoginCode(
+  accessToken: string,
+  dashboardBaseUrl: string
+): Promise<{ code: string; redirectUrl?: string }> {
+  const payload: { accessToken: string; redirectUrl?: string } = {
+    accessToken,
+  };
+  const base = dashboardBaseUrl.trim().replace(/\/$/, "");
+  if (base) payload.redirectUrl = base;
+
+  const body = await requestJson("/api/business-auth/login/code", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  return parseLoginCodeCreateBody(body);
 }
 
 export async function consumeBusinessLoginCode(

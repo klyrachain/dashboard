@@ -355,6 +355,18 @@ const columns: ColumnDef<TransactionRow>[] = [
   },
 ];
 
+function columnsWithMerchantOptions(hideFailedRetry: boolean): ColumnDef<TransactionRow>[] {
+  if (!hideFailedRetry) return columns;
+  return columns.map((c) =>
+    c.id === "actions"
+      ? {
+          ...c,
+          cell: () => null,
+        }
+      : c
+  );
+}
+
 const TRANSACTIONS_EXPORT_COLUMNS: ExportColumn[] = columns
   .filter(
     (c): c is ColumnDef<TransactionRow> & { accessorKey: string } =>
@@ -424,11 +436,22 @@ function loadPersistedColumnVisibility(): VisibilityState {
   return defaultColumnVisibility;
 }
 
+export type TransactionsDataTableProps = {
+  initialData: TransactionRow[];
+  /** When set, Refresh invokes this (e.g. merchant RTK refetch) instead of Core server action. */
+  onRefresh?: () => void | PromiseLike<unknown>;
+  /** Skip Core refetch when search filters empty the table (merchant data is client-scoped). */
+  disableSearchTriggeredRefetch?: boolean;
+  /** Hide failed-transaction retry (merchant API uses different retry semantics). */
+  hideFailedRetry?: boolean;
+};
+
 export function TransactionsDataTable({
   initialData,
-}: {
-  initialData: TransactionRow[];
-}) {
+  onRefresh,
+  disableSearchTriggeredRefetch = false,
+  hideFailedRetry = false,
+}: TransactionsDataTableProps) {
   const [data, setData] = React.useState<TransactionRow[]>(initialData);
   const [refreshing, setRefreshing] = React.useState(false);
   React.useEffect(() => {
@@ -530,9 +553,14 @@ export function TransactionsDataTable({
     dateTo,
   ]);
 
+  const tableColumns = React.useMemo(
+    () => columnsWithMerchantOptions(hideFailedRetry),
+    [hideFailedRetry]
+  );
+
   const table = useReactTable({
     data: filteredData,
-    columns,
+    columns: tableColumns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -580,15 +608,20 @@ export function TransactionsDataTable({
   const handleRefresh = React.useCallback(async () => {
     setRefreshing(true);
     try {
-      const next = await refreshTransactionsAction();
-      setData(Array.isArray(next) ? next : []);
+      if (onRefresh) {
+        await Promise.resolve(onRefresh());
+      } else {
+        const next = await refreshTransactionsAction();
+        setData(Array.isArray(next) ? next : []);
+      }
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [onRefresh]);
 
   // When search yields no results, trigger one background refresh so newly added transactions can appear
   React.useEffect(() => {
+    if (disableSearchTriggeredRefetch) return;
     const q = searchQuery.trim();
     if (!q) {
       searchRefreshDoneForQuery.current = null;
@@ -600,7 +633,7 @@ export function TransactionsDataTable({
     refreshTransactionsAction().then((next) => {
       setData(Array.isArray(next) ? next : []);
     });
-  }, [searchQuery, filteredData.length]);
+  }, [searchQuery, filteredData.length, disableSearchTriggeredRefetch]);
 
   if (data.length === 0) {
     return (
@@ -813,7 +846,7 @@ export function TransactionsDataTable({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={tableColumns.length}
                   className="h-24 text-center text-muted-foreground"
                 >
                   No transactions found.

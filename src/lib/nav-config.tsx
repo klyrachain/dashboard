@@ -71,43 +71,46 @@ export const platformNavGroups: NavGroupConfig[] = [
   },
 ];
 
-/** Tenant portal — no platform plumbing or other merchants’ data. */
+/**
+ * Tenant portal — surfaces backed by `/api/v1/merchant/*` (Bearer + X-Business-Id).
+ * IA: Sales → who paid; Catalog & checkout → what/how you sell; Finances → balances & payouts.
+ */
 export const merchantNavGroups: NavGroupConfig[] = [
   {
-    title: "Payments",
+    title: "Sales",
     items: [
       { href: "/", label: "Dashboard", icon: LayoutDashboard },
       { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
-      { href: "/validation", label: "Payment Issues", icon: AlertTriangle },
-      { href: "/users", label: "Customers", icon: Users },
+      { href: "/customers", label: "Customers", icon: Users },
     ],
   },
   {
-    title: "Money",
+    title: "Catalog & checkout",
     items: [
-      { href: "/balances", label: "Wallets", icon: Wallet },
-      { href: "/settlements", label: "Payouts", icon: Landmark },
-    ],
-  },
-  {
-    title: "Sales tools",
-    items: [
-      { href: "/payment-links", label: "Payment Links", icon: Link2 },
+      { href: "/products", label: "Products", icon: Package },
+      { href: "/payment-links", label: "Payment links", icon: Link2 },
       { href: "/invoices", label: "Invoices", icon: FileText },
     ],
   },
   {
-    title: "Developers",
+    title: "Finances",
     items: [
-      { href: "/developers/api", label: "API Keys", icon: Key },
-      { href: "/settings/api", label: "Webhooks", icon: Webhook },
-      { href: "/logs", label: "API Logs", icon: ScrollText },
+      { href: "/balances", label: "Balances", icon: Wallet },
+      { href: "/settlements", label: "Payouts", icon: Landmark },
     ],
+  },
+  {
+    title: "Developers",
+    items: [{ href: "/developers/api", label: "API keys", icon: Key }],
   },
   {
     title: "Settings",
     items: [
-      { href: "/settings/general", label: "Business Profile", icon: UserCircle },
+      {
+        href: "/settings/general",
+        label: "Business profile & webhooks",
+        icon: UserCircle,
+      },
       { href: "/settings/team", label: "Team", icon: UserPlus },
     ],
   },

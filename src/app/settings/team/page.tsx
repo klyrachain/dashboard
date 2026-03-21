@@ -6,13 +6,13 @@ export default async function SettingsTeamPage() {
   const { ok, data: admins, error } = await getSettingsTeamAdmins();
 
   return (
-    <div className="space-y-8">
-      <div>
+    <div className="space-y-6 font-primary text-body">
+      <header className="space-y-1">
         <h1 className="text-display font-semibold tracking-tight">Team</h1>
-        <p className="font-secondary text-caption text-muted-foreground mt-1">
-          Admin list and access control. Invite staff and assign roles.
+        <p className="font-secondary text-caption text-muted-foreground max-w-prose">
+          Invite people and choose what they can see and do.
         </p>
-      </div>
+      </header>
       {error && (
         <div
           className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 font-secondary text-caption text-amber-800"

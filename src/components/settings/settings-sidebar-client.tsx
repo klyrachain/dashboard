@@ -25,9 +25,8 @@ const PLATFORM_TABS = [
 ] as const;
 
 const MERCHANT_TABS = [
-  { href: "/settings/general", label: "Business Profile", icon: Building2 },
+  { href: "/settings/general", label: "Business & webhooks", icon: Building2 },
   { href: "/settings/team", label: "Team", icon: Users },
-  { href: "/settings/api", label: "Webhooks", icon: Webhook },
 ] as const;
 
 export function SettingsSidebarClient() {

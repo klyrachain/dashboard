@@ -21,6 +21,8 @@ import { useAdmin } from "@/hooks/use-admin";
 import { postLogout } from "@/lib/auth-api";
 import { clearSession } from "@/store/auth-slice";
 import { resetAuthSessionSyncRef } from "@/components/auth/auth-session-sync";
+import { MerchantEnvironmentSwitch } from "@/components/merchant/merchant-environment-switch";
+import { setStoredActiveBusinessId } from "@/lib/businessAuthStorage";
 import { cn } from "@/lib/utils";
 import { setTheme, setTestMode, type LayoutTheme } from "@/store/layout-slice";
 import {
@@ -36,7 +38,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -191,7 +192,10 @@ export function HeaderNoSidebar() {
                   {businesses.map((b: MerchantBusiness) => (
                     <DropdownMenuItem
                       key={b.id}
-                      onClick={() => dispatch(setActiveBusinessId(b.id))}
+                      onClick={() => {
+                        dispatch(setActiveBusinessId(b.id));
+                        setStoredActiveBusinessId(b.id);
+                      }}
                     >
                       {b.name}
                     </DropdownMenuItem>
@@ -315,17 +319,21 @@ export function HeaderNoSidebar() {
               </Button>
             </Link>
           )}
-          <div className="flex items-center gap-2 pl-2">
-            <span className="text-xs text-white/60">
-              {testMode ? "Testnet" : "Live"}
-            </span>
-            <Switch
-              checked={testMode}
-              onCheckedChange={(v) => dispatch(setTestMode(v))}
-              aria-label="Toggle live / testnet"
-              className="data-[state=checked]:bg-indigo-600 bg-slate-600"
-            />
-          </div>
+          {sessionType === "merchant" ? (
+            <MerchantEnvironmentSwitch className="pl-2" />
+          ) : (
+            <div className="flex items-center gap-2 pl-2">
+              <span className="text-xs text-white/60">
+                {testMode ? "Testnet" : "Live"}
+              </span>
+              <Switch
+                checked={testMode}
+                onCheckedChange={(v) => dispatch(setTestMode(v))}
+                aria-label="Toggle live / testnet"
+                className="data-[state=checked]:bg-indigo-600 bg-slate-600"
+              />
+            </div>
+          )}
           <Button
             variant="ghost"
             size="icon"

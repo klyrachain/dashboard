@@ -8,7 +8,8 @@ function hasPortalAccess(role: string | undefined): boolean {
   return role === PLATFORM_ROLE || role === MERCHANT_ROLE;
 }
 
-function isBusinessAuthPath(pathname: string): boolean {
+/** Business (merchant) auth — separate from platform /login. */
+function isPublicBusinessPortalPath(pathname: string): boolean {
   return pathname.startsWith("/business/");
 }
 
@@ -39,7 +40,7 @@ export function middleware(request: NextRequest) {
   const role = request.cookies.get("klyra_portal_role")?.value;
   const url = request.nextUrl.clone();
 
-  if (isBusinessAuthPath(pathname)) {
+  if (isPublicBusinessPortalPath(pathname)) {
     return NextResponse.next();
   }
 
@@ -49,7 +50,7 @@ export function middleware(request: NextRequest) {
     if (homeAllowsWithoutPortalCookie(request.nextUrl)) {
       return NextResponse.next();
     }
-    url.pathname = "/business/login";
+    url.pathname = "/business/signin";
     url.search = "";
     const full = pathname + request.nextUrl.search;
     url.searchParams.set("return_to", full === "/" ? "/" : full);

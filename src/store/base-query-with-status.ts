@@ -16,6 +16,7 @@ type MerchantSessionForHeaders = {
     portalJwt: string | null;
     activeBusinessId: string | null;
     businesses: { id: string }[];
+    merchantEnvironment: "TEST" | "LIVE";
   };
 };
 
@@ -34,15 +35,19 @@ function createBaseQueryForRequest(args: RequestArgs | string) {
       if (urlSnapshot.includes(MERCHANT_API_SEGMENT)) {
         const state = getState() as MerchantSessionForHeaders;
         const ms = state.merchantSession;
-        if (ms.portalJwt) {
-          headers.set("Authorization", `Bearer ${ms.portalJwt}`);
-        }
         const businessId =
           ms.activeBusinessId ??
           (ms.businesses.length === 1 ? ms.businesses[0].id : null);
+        if (ms.portalJwt) {
+          headers.set("Authorization", `Bearer ${ms.portalJwt}`);
+        }
         if (businessId) {
           headers.set("X-Business-Id", businessId);
         }
+        headers.set(
+          "x-merchant-environment",
+          ms.merchantEnvironment ?? "LIVE"
+        );
       }
       return headers;
     },

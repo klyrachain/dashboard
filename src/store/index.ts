@@ -2,6 +2,8 @@ import { configureStore, type EnhancedStore } from "@reduxjs/toolkit";
 import { inventoryApi } from "./inventory-api";
 import { providersApi } from "./providers-api";
 import { validationApi } from "./validation-api";
+import { merchantApi } from "./merchant-api";
+import { merchantListenerMiddleware } from "./merchant-listener-middleware";
 import { layoutSlice } from "./layout-slice";
 import { authSlice } from "./auth-slice";
 import { statusIndicatorSlice } from "./status-indicator-slice";
@@ -17,6 +19,7 @@ export interface RootState {
   [inventoryApi.reducerPath]: ReturnType<typeof inventoryApi.reducer>;
   [providersApi.reducerPath]: ReturnType<typeof providersApi.reducer>;
   [validationApi.reducerPath]: ReturnType<typeof validationApi.reducer>;
+  [merchantApi.reducerPath]: ReturnType<typeof merchantApi.reducer>;
   layout: ReturnType<typeof layoutSlice.reducer>;
   statusIndicator: ReturnType<typeof statusIndicatorSlice.reducer>;
   merchantSession: ReturnType<typeof merchantSessionSlice.reducer>;
@@ -65,6 +68,8 @@ export function makeStore(input?: MakeStoreInput): AppStore {
     portalJwt: ms?.portalJwt ?? null,
     activeBusinessId: ms?.activeBusinessId ?? null,
     businesses: ms?.businesses ?? [],
+    merchantEnvironment: ms?.merchantEnvironment ?? "LIVE",
+    activeBusinessRole: ms?.activeBusinessRole ?? null,
   };
 
   const preloaded: Partial<RootState> = {
@@ -82,6 +87,7 @@ export function makeStore(input?: MakeStoreInput): AppStore {
       [inventoryApi.reducerPath]: inventoryApi.reducer,
       [providersApi.reducerPath]: providersApi.reducer,
       [validationApi.reducerPath]: validationApi.reducer,
+      [merchantApi.reducerPath]: merchantApi.reducer,
       layout: layoutSlice.reducer,
       auth: authSlice.reducer,
       statusIndicator: statusIndicatorSlice.reducer,
@@ -93,7 +99,9 @@ export function makeStore(input?: MakeStoreInput): AppStore {
       getDefaultMiddleware().concat(
         inventoryApi.middleware,
         providersApi.middleware,
-        validationApi.middleware
+        validationApi.middleware,
+        merchantApi.middleware,
+        merchantListenerMiddleware.middleware
       ),
     preloadedState: preloaded,
   } as never) as AppStore;

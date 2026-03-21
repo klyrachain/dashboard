@@ -162,7 +162,7 @@ export function HomePortalGate() {
           <p className="mt-3 text-sm text-muted-foreground">
             Use the latest link from your email, or{" "}
             <a
-              href="/business/login"
+              href="/business/signin"
               className="font-medium text-primary underline underline-offset-2"
             >
               sign in with email and password

@@ -27,14 +27,14 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
   return (
     <div className="space-y-6 font-primary text-body">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <header className="space-y-1 min-w-0">
           <h1 className="text-display font-semibold tracking-tight">
             Invoices
           </h1>
-          <p className="font-secondary text-caption text-muted-foreground">
-            View and manage invoices. Send new invoices to customers.
+          <p className="font-secondary text-caption text-muted-foreground max-w-prose">
+            Create and track invoices you send to customers.
           </p>
-        </div>
+        </header>
         <InvoicesPageClient statusFilter={status} />
       </div>
       {error && (
