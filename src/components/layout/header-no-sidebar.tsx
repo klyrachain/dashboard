@@ -22,10 +22,14 @@ import { postLogout } from "@/lib/auth-api";
 import { clearSession } from "@/store/auth-slice";
 import { resetAuthSessionSyncRef } from "@/components/auth/auth-session-sync";
 import { MerchantEnvironmentSwitch } from "@/components/merchant/merchant-environment-switch";
-import { setStoredActiveBusinessId } from "@/lib/businessAuthStorage";
+import {
+  clearBusinessAccessToken,
+  setStoredActiveBusinessId,
+} from "@/lib/businessAuthStorage";
 import { cn } from "@/lib/utils";
 import { setTheme, setTestMode, type LayoutTheme } from "@/store/layout-slice";
 import {
+  clearMerchantPortal,
   setActiveBusinessId,
   type MerchantBusiness,
 } from "@/store/merchant-session-slice";
@@ -138,22 +142,36 @@ export function HeaderNoSidebar() {
     businesses.find((b: MerchantBusiness) => b.id === activeBusinessId) ??
     businesses[0];
   const workspaceLabel =
-    sessionType === "merchant" && activeBusiness
-      ? activeBusiness.name
-      : "morapay platform";
+    sessionType !== "merchant"
+      ? "Morapay platform"
+      : activeBusiness
+        ? activeBusiness.name?.trim() || "Your business"
+        : "Morapay platform";
 
   const handleThemeSelect = (t: LayoutTheme) => () => dispatch(setTheme(t));
   const handleRefresh = () => router.refresh();
 
   const handleLogout = async () => {
     resetAuthSessionSyncRef();
+    if (sessionType === "merchant") {
+      dispatch(clearMerchantPortal());
+      clearBusinessAccessToken();
+      try {
+        await fetch("/api/portal/merchant-session", { method: "DELETE" });
+      } catch {
+        /* continue */
+      }
+      window.location.href = "/business/signin";
+      return;
+    }
     dispatch(clearSession());
     try {
       await postLogout();
     } catch {
       // continue to clear client session
     }
-    window.location.href = "/api/auth/signout?callbackUrl=" + encodeURIComponent("/login");
+    window.location.href =
+      "/api/auth/signout?callbackUrl=" + encodeURIComponent("/login");
   };
 
   const displayName = admin?.name?.trim() || admin?.email || "Account";
@@ -201,7 +219,7 @@ export function HeaderNoSidebar() {
                         setStoredActiveBusinessId(b.id);
                       }}
                     >
-                      {b.name}
+                      {b.name?.trim() || "Your business"}
                     </DropdownMenuItem>
                   ))}
                   <DropdownMenuSeparator />
@@ -209,7 +227,7 @@ export function HeaderNoSidebar() {
               ) : null}
               <div className="rounded-md bg-slate-50 px-2 py-1.5 text-sm text-slate-700">
                 {sessionType === "merchant"
-                  ? activeBusiness?.name ?? "Business"
+                  ? activeBusiness?.name?.trim() || "Your business"
                   : "Platform admin"}
               </div>
             </DropdownMenuContent>
@@ -312,16 +330,39 @@ export function HeaderNoSidebar() {
             </DropdownMenuContent>
           </DropdownMenu>
           ) : (
-            <Link href="/settings/general">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-9 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
-                aria-label="Business profile"
-              >
-                <Settings className="size-4" aria-hidden />
-              </Button>
-            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+                  aria-label="Business account menu"
+                >
+                  Account
+                  <ChevronDown className="size-3.5" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/settings/general"
+                    prefetch={false}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <Settings className="size-4" />
+                    Business settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive cursor-pointer"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="size-4" />
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           {sessionType === "merchant" ? (
             <MerchantEnvironmentSwitch className="pl-2" />

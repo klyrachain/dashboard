@@ -1,7 +1,7 @@
 import { SignupFlow } from "@/components/auth/signup-flow";
 
 export const metadata = {
-  title: "Sign up | Klyra Admin",
+  title: "Sign up | Morapay Admin",
   description: "Create your account with an invite link",
 };
 

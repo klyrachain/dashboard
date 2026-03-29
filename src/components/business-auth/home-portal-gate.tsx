@@ -1,15 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useDispatch } from "react-redux";
 import { Loader2 } from "lucide-react";
+import type { Session } from "next-auth";
+import type { SessionUser } from "@/lib/auth";
 import { consumeBusinessLoginCode } from "@/lib/businessAuthApi";
 import { getBusinessAccessToken, setBusinessAccessToken } from "@/lib/businessAuthStorage";
 import { setPortalJwt } from "@/store/merchant-session-slice";
 import { establishMerchantPortalSession } from "@/lib/establish-merchant-portal-session";
 
+function adminCoreTokenFromSession(session: Session | null): string | undefined {
+  const u = session?.user as SessionUser | undefined;
+  const t = u?.token?.trim();
+  return t ? t : undefined;
+}
+
 export function HomePortalGate() {
+  const { status, data: session } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const dispatch = useDispatch();
@@ -26,11 +36,18 @@ export function HomePortalGate() {
   const returnToParam = searchParams.get("return_to")?.trim() ?? "";
 
   useEffect(() => {
+    if (status === "loading") return;
+    if (status === "authenticated" && adminCoreTokenFromSession(session)) {
+      return;
+    }
+
     if (loginCode) {
       const key = `code:${loginCode}`;
       if (handledRef.current === key) return;
       handledRef.current = key;
-      setMode("processing_code");
+      startTransition(() => {
+        setMode("processing_code");
+      });
 
       const returnTo =
         returnToParam.startsWith("/") && !returnToParam.startsWith("//")
@@ -40,7 +57,18 @@ export function HomePortalGate() {
       void (async () => {
         try {
           const { accessToken } = await consumeBusinessLoginCode(loginCode);
-          setBusinessAccessToken(accessToken);
+          if (!setBusinessAccessToken(accessToken)) {
+            setCodeError(
+              "This sign-in link returned an invalid token. Request a new link from your email."
+            );
+            setMode(null);
+            handledRef.current = null;
+            const u = new URL(window.location.href);
+            u.searchParams.delete("login_code");
+            u.searchParams.delete("return_to");
+            router.replace(u.pathname + u.search);
+            return;
+          }
           dispatch(setPortalJwt(accessToken));
           const ok = await establishMerchantPortalSession(accessToken);
           if (!ok) {
@@ -55,7 +83,13 @@ export function HomePortalGate() {
             router.replace(u.pathname + u.search);
             return;
           }
-          router.replace(returnTo);
+          const safeTo =
+          returnTo.startsWith("/") &&
+          !returnTo.startsWith("//") &&
+          !returnTo.startsWith("/api/")
+            ? returnTo
+            : "/";
+        router.replace(safeTo);
         } catch {
           setCodeError(
             "This sign-in link is invalid or has expired. Request a new link from your email."
@@ -79,7 +113,9 @@ export function HomePortalGate() {
       const key = `boot:${returnTo}`;
       if (handledRef.current === key) return;
       handledRef.current = key;
-      setMode("bootstrap");
+      startTransition(() => {
+        setMode("bootstrap");
+      });
 
       void (async () => {
         try {
@@ -88,7 +124,13 @@ export function HomePortalGate() {
             const ok = await establishMerchantPortalSession(token);
             if (ok) {
               dispatch(setPortalJwt(token));
-              router.replace(returnTo);
+              const safeTo =
+              returnTo.startsWith("/") &&
+              !returnTo.startsWith("//") &&
+              !returnTo.startsWith("/api/")
+                ? returnTo
+                : "/";
+            router.replace(safeTo);
               return;
             }
           }
@@ -96,7 +138,13 @@ export function HomePortalGate() {
             method: "GET",
             credentials: "include",
           });
-          router.replace(returnTo);
+          const safeTo =
+          returnTo.startsWith("/") &&
+          !returnTo.startsWith("//") &&
+          !returnTo.startsWith("/api/")
+            ? returnTo
+            : "/";
+        router.replace(safeTo);
         } catch {
           setBootstrapError(
             "We could not restore your session. Open the sign-in link from your email again."
@@ -116,7 +164,13 @@ export function HomePortalGate() {
     returnToParam,
     router,
     dispatch,
+    status,
+    session,
   ]);
+
+  if (status === "authenticated" && adminCoreTokenFromSession(session)) {
+    return null;
+  }
 
   if (mode === "processing_code" || mode === "bootstrap") {
     const label =

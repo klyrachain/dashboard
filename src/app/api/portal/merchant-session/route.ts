@@ -62,3 +62,15 @@ export async function POST(request: Request) {
   });
   return res;
 }
+
+/** Clears HttpOnly portal role cookie (business logout). */
+export async function DELETE() {
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set(COOKIE_ROLE, "", {
+    path: "/",
+    maxAge: 0,
+    httpOnly: true,
+    sameSite: "lax",
+  });
+  return res;
+}

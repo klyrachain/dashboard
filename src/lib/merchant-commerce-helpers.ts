@@ -14,24 +14,17 @@ export function aggregateProductPurchaseCounts(
 }
 
 /**
- * Public URL shown for copy/QR. Prefer `NEXT_PUBLIC_PAYMENT_LINK_BASE_URL`
- * (no trailing slash), e.g. `https://pay.example.com`.
+ * Public checkout URL for a payment link.
+ * Prefer `publicCode` when building URLs so paths are opaque; fall back to `slug`.
+ * `checkoutBase` must be the payer app origin (from Core or env), no trailing slash.
  */
-export function getPaymentLinkBaseUrl(): string {
-  if (typeof window === "undefined") {
-    return "";
-  }
-  const env = process.env.NEXT_PUBLIC_PAYMENT_LINK_BASE_URL?.trim().replace(
-    /\/$/,
-    ""
-  );
-  if (env) return env;
-  return `${window.location.origin}/pay`;
-}
-
-export function buildPaymentLinkPublicUrl(slug: string): string {
-  const base = getPaymentLinkBaseUrl();
-  return base ? `${base}/${encodeURIComponent(slug)}` : "";
+export function buildPaymentLinkPublicUrl(
+  checkoutCode: string,
+  checkoutBase: string
+): string {
+  const base = checkoutBase?.trim().replace(/\/$/, "");
+  if (!base) return "";
+  return `${base}/checkout/${encodeURIComponent(checkoutCode)}`;
 }
 
 export function parsePrice(value: string | undefined | null): number {

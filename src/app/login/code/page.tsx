@@ -1,7 +1,7 @@
 import { LoginCodeStep } from "@/components/auth/login-code-step";
 
 export const metadata = {
-  title: "Verification code | Sign in | Klyra Admin",
+  title: "Verification code | Sign in | Morapay Admin",
 };
 
 type Props = { searchParams: Promise<{ email?: string }> };

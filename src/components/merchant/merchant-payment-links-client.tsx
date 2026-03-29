@@ -1,25 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSelector } from "react-redux";
 import { Copy, Plus, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import {
+  useGetCheckoutBaseUrlQuery,
   useGetMerchantPayPagesQuery,
   useGetMerchantProductsQuery,
   useGetMerchantSummaryQuery,
   useGetMerchantTransactionsQuery,
   usePatchMerchantPayPageMutation,
+  usePostMerchantFiatQuoteMutation,
   usePostMerchantPayPageMutation,
 } from "@/store/merchant-api";
 import type { RootState } from "@/store";
 import type { MerchantPayPageRow } from "@/types/merchant-api";
 import { isForbiddenMerchantRole } from "@/lib/merchant-api-error";
-import {
-  buildPaymentLinkPublicUrl,
-  getPaymentLinkBaseUrl,
-} from "@/lib/merchant-commerce-helpers";
+import { buildPaymentLinkPublicUrl } from "@/lib/merchant-commerce-helpers";
+import { PaymentLinkCurrencyPicker } from "@/components/merchant/payment-link-currency-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DataTablePaginationBar } from "@/components/ui/data-table-pagination-bar";
 
 function slugifyHint(value: string): string {
   return value
@@ -69,38 +70,61 @@ function isOpenAmount(row: MerchantPayPageRow): boolean {
 type StatusFilter = "all" | "active" | "inactive";
 type AmountFilter = "all" | "fixed" | "open";
 
+const EMPTY_PAY_PAGE_ROWS: MerchantPayPageRow[] = [];
+
+function usdMapsEqual(
+  a: Record<string, string>,
+  b: Record<string, string>
+): boolean {
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  for (const k of keysA) {
+    if (a[k] !== b[k]) return false;
+  }
+  return true;
+}
+
 export function MerchantPaymentLinksClient() {
   const searchParams = useSearchParams();
   const activeBusinessId = useSelector(
     (s: RootState) => s.merchantSession.activeBusinessId
   );
 
-  const [page] = useState(1);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [amountFilter, setAmountFilter] = useState<AmountFilter>("all");
+  const [linkUsage, setLinkUsage] = useState<"unlimited" | "onetime">("unlimited");
 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
-  const [slug, setSlug] = useState("");
   const [amount, setAmount] = useState("");
-  const [openAmount, setOpenAmount] = useState(false);
   const [productId, setProductId] = useState<string | undefined>(undefined);
+  const [chargeKind, setChargeKind] = useState<"FIAT" | "CRYPTO">("FIAT");
+  const [currencyCode, setCurrencyCode] = useState("USD");
 
   const [qrOpen, setQrOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState("");
   const [qrTitle, setQrTitle] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const params = useMemo(
-    () => ({
-      page,
-      limit: 100,
-      ...(q.trim() ? { q: q.trim() } : {}),
-    }),
-    [page, q]
-  );
+  const params = useMemo(() => {
+    const p: Record<string, string | number> = { page, limit: pageSize };
+    if (q.trim()) p.q = q.trim();
+    if (statusFilter === "active") p.active = "true";
+    if (statusFilter === "inactive") p.active = "false";
+    if (amountFilter === "fixed") p.amountType = "fixed";
+    if (amountFilter === "open") p.amountType = "open";
+    return p;
+  }, [page, pageSize, q, statusFilter, amountFilter]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [q, statusFilter, amountFilter]);
+
+  const { data: checkoutMeta } = useGetCheckoutBaseUrlQuery();
   const { data, isLoading, isError, error, refetch } = useGetMerchantPayPagesQuery(
     params,
     { skip: !activeBusinessId }
@@ -121,6 +145,23 @@ export function MerchantPaymentLinksClient() {
   const [postLink, { isLoading: posting, error: postErr }] =
     usePostMerchantPayPageMutation();
   const [patchLink] = usePatchMerchantPayPageMutation();
+  const [postFiatQuote] = usePostMerchantFiatQuoteMutation();
+  const postFiatQuoteRef = useRef(postFiatQuote);
+  postFiatQuoteRef.current = postFiatQuote;
+  const [usdByRowId, setUsdByRowId] = useState<Record<string, string>>({});
+  const [clientReady, setClientReady] = useState(false);
+
+  useEffect(() => {
+    setClientReady(true);
+  }, []);
+
+  const meta = data?.meta;
+  const totalLinks = meta?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalLinks / pageSize));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const productNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -140,23 +181,79 @@ export function MerchantPaymentLinksClient() {
     }
   }, [searchParams]);
 
-  const rows = data?.items ?? [];
+  const rows = data?.items ?? EMPTY_PAY_PAGE_ROWS;
 
-  const filteredRows = useMemo(() => {
-    let list = [...rows];
-    if (statusFilter === "active") list = list.filter((r) => r.isActive !== false);
-    if (statusFilter === "inactive") list = list.filter((r) => r.isActive === false);
-    if (amountFilter === "fixed") list = list.filter((r) => !isOpenAmount(r));
-    if (amountFilter === "open") list = list.filter((r) => isOpenAmount(r));
-    return list;
-  }, [rows, statusFilter, amountFilter]);
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const next: Record<string, string> = {};
+      const quote = postFiatQuoteRef.current;
+      for (const row of rows) {
+        if (cancelled) return;
+        if (isOpenAmount(row) || row.amount == null || row.amount === "") {
+          next[row.id] = "—";
+          continue;
+        }
+        const amt = parseFloat(String(row.amount));
+        if (!Number.isFinite(amt) || amt <= 0) {
+          next[row.id] = "—";
+          continue;
+        }
+        const cur = (row.currency ?? "USD").trim().toUpperCase();
+        if (row.chargeKind === "CRYPTO") {
+          if (["USDC", "USDT", "DAI", "BUSD", "USD"].includes(cur)) {
+            next[row.id] = `≈ $${amt.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`;
+          } else {
+            next[row.id] = "—";
+          }
+          continue;
+        }
+        if (cur === "USD") {
+          next[row.id] = `≈ $${amt.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`;
+          continue;
+        }
+        try {
+          const res = await quote({
+            from: cur,
+            to: "USD",
+            amount: amt,
+          }).unwrap();
+          if (cancelled) return;
+          const conv = res?.convertedAmount;
+          if (typeof conv === "number" && Number.isFinite(conv)) {
+            next[row.id] = `≈ $${conv.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`;
+          } else {
+            next[row.id] = "—";
+          }
+        } catch {
+          next[row.id] = "—";
+        }
+      }
+      if (!cancelled) {
+        setUsdByRowId((prev) => (usdMapsEqual(prev, next) ? prev : next));
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [rows]);
 
   const forbidden =
     isForbiddenMerchantRole(error) || isForbiddenMerchantRole(postErr);
 
   const completedInPeriod = summary?.transactions?.completedCountInPeriod;
   const volume30 = summary?.transactions?.volumeUsdInPeriod;
-  const linkCount = rows.length;
+  const linkCount = totalLinks;
 
   const txWithLink = useMemo(() => {
     return (txData?.items ?? []).filter((t) => {
@@ -171,28 +268,36 @@ export function MerchantPaymentLinksClient() {
       ? `${Math.min(100, Math.round((txWithLink / Math.max(linkCount, 1)) * 100))}%`
       : "None";
 
+  const paymentLinkBase = useMemo(() => {
+    const fromCore = checkoutMeta?.checkoutBaseUrl?.trim().replace(/\/$/, "") ?? "";
+    const fromEnv =
+      process.env.NEXT_PUBLIC_PAYMENT_LINK_BASE_URL?.trim().replace(/\/$/, "") ?? "";
+    return fromCore || fromEnv;
+  }, [checkoutMeta?.checkoutBaseUrl]);
+
   const handleCreate = async () => {
-    if (!title.trim() || !slug.trim()) return;
+    if (!title.trim()) return;
+    const slugHint = slugifyHint(title);
     const base: Parameters<typeof postLink>[0] = {
       title: title.trim(),
-      slug: slugifyHint(slug) || slugifyHint(title),
-      currency: "USD",
+      currency: currencyCode.trim().toUpperCase() || "USD",
+      chargeKind,
       isActive: true,
+      ...(slugHint ? { slug: slugHint } : {}),
       ...(productId ? { productId } : {}),
     };
-    if (!openAmount) {
-      const a = parseFloat(amount);
-      if (Number.isNaN(a) || a < 0) return;
-      base.amount = a;
-    }
+    const a = parseFloat(amount);
+    if (Number.isNaN(a) || a < 0) return;
+    base.amount = a;
     try {
       await postLink(base).unwrap();
       setOpen(false);
       setTitle("");
-      setSlug("");
       setAmount("");
-      setOpenAmount(false);
       setProductId(undefined);
+      setChargeKind("FIAT");
+      setCurrencyCode("USD");
+      setLinkUsage("unlimited");
     } catch {
       /* base query */
     }
@@ -206,7 +311,10 @@ export function MerchantPaymentLinksClient() {
   };
 
   const copyUrl = useCallback(async (row: MerchantPayPageRow) => {
-    const url = buildPaymentLinkPublicUrl(row.slug);
+    const url = buildPaymentLinkPublicUrl(
+      row.publicCode?.trim() || row.slug,
+      paymentLinkBase
+    );
     if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
@@ -215,14 +323,27 @@ export function MerchantPaymentLinksClient() {
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [paymentLinkBase]);
 
   const showQr = (row: MerchantPayPageRow) => {
-    const url = buildPaymentLinkPublicUrl(row.slug);
+    const url = buildPaymentLinkPublicUrl(
+      row.publicCode?.trim() || row.slug,
+      paymentLinkBase
+    );
     setQrUrl(url);
     setQrTitle(row.title);
     setQrOpen(true);
   };
+
+  if (!clientReady) {
+    return (
+      <div className="space-y-3" aria-busy="true">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-10 max-w-md" />
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
 
   if (!activeBusinessId) {
     return (
@@ -272,7 +393,8 @@ export function MerchantPaymentLinksClient() {
     );
   }
 
-  const baseDisplay = getPaymentLinkBaseUrl() || "Not set";
+  const baseDisplay = paymentLinkBase || "Not configured";
+  const baseConfigured = Boolean(paymentLinkBase);
 
   return (
     <div className="space-y-8">
@@ -315,11 +437,18 @@ export function MerchantPaymentLinksClient() {
         </Card>
       </section>
 
-      <p className="text-xs text-muted-foreground">
-        Public checkout base: <span className="font-mono">{baseDisplay}</span>.
-        Set <span className="font-mono">NEXT_PUBLIC_PAYMENT_LINK_BASE_URL</span> for
-        your live domain.
-      </p>
+      {baseConfigured ? (
+        <p className="text-xs text-muted-foreground">
+          Checkout base: <span className="font-mono">{baseDisplay}</span>
+        </p>
+      ) : (
+        <p className="text-xs text-amber-800" role="status">
+          No checkout base configured. Set Core{" "}
+          <span className="font-mono">CHECKOUT_BASE_URL</span> or this app&apos;s{" "}
+          <span className="font-mono">NEXT_PUBLIC_PAYMENT_LINK_BASE_URL</span>. Copy and QR are
+          disabled.
+        </p>
+      )}
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-2">
@@ -371,11 +500,14 @@ export function MerchantPaymentLinksClient() {
               New link
             </Button>
           </DialogTrigger>
-          <DialogContent className="border-none">
+          <DialogContent
+            className="border-none sm:max-w-135"
+            aria-describedby={undefined}
+          >
             <DialogHeader>
-              <DialogTitle>Create payment link</DialogTitle>
+              <DialogTitle>Generate a payment link</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-3 py-2">
+            <div className="grid gap-4 py-2">
               {productId ? (
                 <p className="text-sm text-muted-foreground">
                   Prefilled product ID:{" "}
@@ -383,50 +515,108 @@ export function MerchantPaymentLinksClient() {
                 </p>
               ) : null}
               <div className="space-y-2">
-                <Label htmlFor="pl-title">Title</Label>
+                <Label htmlFor="pl-title">Name</Label>
                 <Input
                   id="pl-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter payment link name"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pl-slug">Slug (a-z, 0-9, hyphens)</Label>
-                <Input
-                  id="pl-slug"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  placeholder="consulting-hour"
-                />
+                <span className="text-sm font-medium">Price</span>
+                <div
+                  className="grid grid-cols-2 gap-2 rounded-lg border border-border p-1"
+                  role="group"
+                  aria-label="Charge in fiat or crypto"
+                >
+                  <Button
+                    type="button"
+                    variant={chargeKind === "CRYPTO" ? "default" : "ghost"}
+                    className="h-9"
+                    onClick={() => {
+                      setChargeKind("CRYPTO");
+                      setCurrencyCode("USDC");
+                    }}
+                  >
+                    Crypto
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={chargeKind === "FIAT" ? "default" : "ghost"}
+                    className="h-9"
+                    onClick={() => {
+                      setChargeKind("FIAT");
+                      setCurrencyCode("USD");
+                    }}
+                  >
+                    Fiat
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="pl-open"
-                  checked={openAmount}
-                  onChange={(e) => setOpenAmount(e.target.checked)}
-                  className="size-4 rounded border-input"
-                />
-                <Label htmlFor="pl-open">Open amount (customer enters)</Label>
-              </div>
-              {!openAmount ? (
-                <div className="space-y-2">
+              <div className="grid gap-3 sm:grid-cols-[1fr_1.1fr] sm:items-end">
+                <div className="min-w-0">
+                  <PaymentLinkCurrencyPicker
+                    value={currencyCode}
+                    onChange={setCurrencyCode}
+                    chargeKind={chargeKind}
+                    disabled={posting}
+                    triggerPlaceholder="Search currency…"
+                  />
+                </div>
+                <div className="min-w-0 space-y-2">
                   <Label htmlFor="pl-amt">Amount</Label>
                   <Input
                     id="pl-amt"
                     inputMode="decimal"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
+                    className="w-full min-w-0"
+                    placeholder="0.00"
                   />
                 </div>
-              ) : null}
+              </div>
+              <div className="space-y-2">
+                <span className="text-sm font-medium">Payment link type</span>
+                <div
+                  className="grid grid-cols-2 gap-2 rounded-lg border border-border p-1"
+                  role="group"
+                  aria-label="Link usage"
+                >
+                  <Button
+                    type="button"
+                    variant={linkUsage === "unlimited" ? "default" : "ghost"}
+                    className="h-10 text-sm"
+                    onClick={() => setLinkUsage("unlimited")}
+                  >
+                    Unlimited use
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={linkUsage === "onetime" ? "default" : "ghost"}
+                    className="h-10 text-sm"
+                    onClick={() => setLinkUsage("onetime")}
+                  >
+                    One-time
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Single-use redemption enforcement is planned; both options create a
+                  standard link today.
+                </p>
+              </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="button" onClick={handleCreate} disabled={posting}>
-                Create
+              <Button
+                type="button"
+                className="w-full sm:w-auto"
+                onClick={handleCreate}
+                disabled={posting || !title.trim()}
+              >
+                Create payment link
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -439,9 +629,13 @@ export function MerchantPaymentLinksClient() {
             <TableRow>
               <TableHead scope="col">Title</TableHead>
               <TableHead scope="col">Checkout URL</TableHead>
+              <TableHead scope="col">Kind</TableHead>
               <TableHead scope="col">Linked product</TableHead>
               <TableHead scope="col" className="text-right">
                 Amount
+              </TableHead>
+              <TableHead scope="col" className="text-right">
+                ~ USD
               </TableHead>
               <TableHead scope="col">Status</TableHead>
               <TableHead scope="col" className="text-right">
@@ -450,15 +644,18 @@ export function MerchantPaymentLinksClient() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredRows.length === 0 ? (
+            {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={8} className="text-center text-muted-foreground">
                   No payment links match your filters.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRows.map((row) => {
-                const url = buildPaymentLinkPublicUrl(row.slug);
+              rows.map((row) => {
+                const url = buildPaymentLinkPublicUrl(
+                  row.publicCode?.trim() || row.slug,
+                  paymentLinkBase
+                );
                 const pid = row.productId ?? undefined;
                 const pname = pid ? productNameById.get(pid) : undefined;
                 return (
@@ -468,6 +665,9 @@ export function MerchantPaymentLinksClient() {
                       <span className="break-all font-mono text-xs text-muted-foreground">
                         {url || row.slug}
                       </span>
+                    </TableCell>
+                    <TableCell className="text-sm tabular-nums">
+                      {row.chargeKind === "CRYPTO" ? "Crypto" : "Fiat"}
                     </TableCell>
                     <TableCell className="text-sm">
                       {pid ? (
@@ -485,6 +685,9 @@ export function MerchantPaymentLinksClient() {
                         </>
                       )}
                     </TableCell>
+                    <TableCell className="text-right tabular-nums text-sm text-muted-foreground">
+                      {usdByRowId[row.id] ?? "…"}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={row.isActive !== false ? "success" : "secondary"}>
                         {row.isActive !== false ? "Active" : "Inactive"}
@@ -498,6 +701,7 @@ export function MerchantPaymentLinksClient() {
                           size="sm"
                           className="gap-1"
                           onClick={() => copyUrl(row)}
+                          disabled={!url}
                         >
                           <Copy className="size-3.5" aria-hidden />
                           {copiedId === row.id ? "Copied" : "Copy link"}
@@ -529,10 +733,21 @@ export function MerchantPaymentLinksClient() {
             )}
           </TableBody>
         </Table>
+        <DataTablePaginationBar
+          className="mt-4"
+          page={page}
+          pageSize={pageSize}
+          total={totalLinks}
+          onPageChange={setPage}
+          onPageSizeChange={(n) => {
+            setPageSize(n);
+            setPage(1);
+          }}
+        />
       </div>
 
       <Dialog open={qrOpen} onOpenChange={setQrOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>QR code — {qrTitle}</DialogTitle>
           </DialogHeader>

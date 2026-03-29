@@ -1,8 +1,4 @@
-/**
- * NextAuth config — session key (Bearer token from Core login) stored in JWT.
- * "Not authenticated. Provide x-api-key (platform) or Authorization: Bearer <session>."
- * User requests use the session key from this auth; platform requests use x-api-key.
- */
+/** NextAuth: Core admin session token in JWT; Core calls use Bearer or platform x-api-key. */
 
 import type { NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
@@ -21,6 +17,9 @@ declare module "next-auth" {
     expiresAt?: string;
     /** Set when session has passed expiresAt (Core session expired). */
     expired?: boolean;
+  }
+  interface NextAuthOptions {
+    trustHost?: boolean;
   }
 }
 
@@ -48,6 +47,7 @@ function parseExpiresAtMs(raw: string | number | null | undefined): number {
 }
 
 export const authOptions: NextAuthOptions = {
+  trustHost: true,
   providers: [
     CredentialsProvider({
       id: "credentials",
@@ -121,14 +121,9 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-/** 401 message when Core API is called without a session. */
 export const UNAUTH_CORE_MESSAGE =
   "Not authenticated. Provide x-api-key (platform) or Authorization: Bearer <session>.";
 
-/**
- * Get the session key (Bearer token) for the current request.
- * Returns null if no session or if Core session has expired (expiresAt in the past).
- */
 export async function getSessionToken(): Promise<string | null> {
   const session = await getServerSession(authOptions);
   if (!session || (session as { expired?: boolean }).expired) return null;

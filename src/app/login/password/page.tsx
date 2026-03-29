@@ -1,7 +1,7 @@
 import { LoginPasswordStep } from "@/components/auth/login-password-step";
 
 export const metadata = {
-  title: "Password | Sign in | Klyra Admin",
+  title: "Password | Sign in | Morapay Admin",
 };
 
 type Props = { searchParams: Promise<{ email?: string }> };

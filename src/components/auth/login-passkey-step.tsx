@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Input } from "@/components/ui/input";
@@ -10,11 +9,14 @@ import {
   postLoginPasskeyOptions,
   postLoginPasskeyVerify,
 } from "@/lib/auth-api";
-import { normalizeRequestOptions } from "@/lib/webauthn-options";
+import {
+  formatWebAuthnClientError,
+  isWebAuthnAvailable,
+  runPasskeyAuthentication,
+} from "@/lib/webauthn-client";
 import { isAuthSuccess } from "@/types/auth";
 
 export function LoginPasskeyStep({ email: initialEmail }: { email: string }) {
-  const router = useRouter();
   const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,31 +32,28 @@ export function LoginPasskeyStep({ email: initialEmail }: { email: string }) {
       setError("Enter your email");
       return;
     }
+    if (!isWebAuthnAvailable()) {
+      setError(
+        "Passkeys are not supported in this browser. Use a current version of Chrome, Safari, or Edge."
+      );
+      return;
+    }
     setError(null);
     setLoading(true);
     const optionsRes = await postLoginPasskeyOptions({ email: trimmed });
     if (!isAuthSuccess(optionsRes) || !optionsRes.data.options) {
       setLoading(false);
-      setError(
-        optionsRes.success ? "No passkey found" : (optionsRes as { error: string }).error
-      );
+      const errMsg = optionsRes.success
+        ? "No passkey found for this account."
+        : (optionsRes as { error: string }).error;
+      setError(errMsg);
       return;
     }
     try {
-      const options = normalizeRequestOptions(
-        optionsRes.data.options as Parameters<typeof normalizeRequestOptions>[0]
-      );
-      const credential = await navigator.credentials.get({
-        publicKey: options,
-      });
-      if (!credential) {
-        setLoading(false);
-        setError("Sign-in was cancelled");
-        return;
-      }
+      const assertion = await runPasskeyAuthentication(optionsRes.data.options);
       const verifyRes = await postLoginPasskeyVerify({
         email: trimmed,
-        response: credential as unknown as Record<string, unknown>,
+        response: assertion,
         sessionTtlMinutes: 15,
       });
       setLoading(false);
@@ -75,7 +74,7 @@ export function LoginPasskeyStep({ email: initialEmail }: { email: string }) {
       setError((verifyRes as { error: string }).error ?? "Verification failed");
     } catch (err) {
       setLoading(false);
-      setError(err instanceof Error ? err.message : "Passkey sign-in failed");
+      setError(formatWebAuthnClientError(err));
     }
   };
 
@@ -86,11 +85,16 @@ export function LoginPasskeyStep({ email: initialEmail }: { email: string }) {
       <h1 className="text-heading font-semibold tracking-tight text-foreground leading-tight">
         Sign in with passkey
       </h1>
-      <form onSubmit={handlePasskey} className="mt-8 space-y-4">
+      <p className="mt-4 text-caption text-muted-foreground leading-relaxed">
+        Use the passkey you registered for this admin account. You must have
+        completed authenticator setup and added a passkey from the dashboard
+        or first-time setup.
+      </p>
+      <form onSubmit={(e) => void handlePasskey(e)} className="mt-8 space-y-4">
         {needsEmail && (
           <Input
             type="email"
-            autoComplete="email"
+            autoComplete="username webauthn"
             placeholder="you@example.com"
             value={email}
             onChange={(e) => {

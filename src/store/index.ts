@@ -21,8 +21,11 @@ export interface RootState {
   [validationApi.reducerPath]: ReturnType<typeof validationApi.reducer>;
   [merchantApi.reducerPath]: ReturnType<typeof merchantApi.reducer>;
   layout: ReturnType<typeof layoutSlice.reducer>;
+  auth: ReturnType<typeof authSlice.reducer>;
   statusIndicator: ReturnType<typeof statusIndicatorSlice.reducer>;
   merchantSession: ReturnType<typeof merchantSessionSlice.reducer>;
+  preferences: ReturnType<typeof preferencesSlice.reducer>;
+  webhook: ReturnType<typeof webhookSlice.reducer>;
 }
 
 export type AppDispatch = EnhancedStore<RootState>["dispatch"];

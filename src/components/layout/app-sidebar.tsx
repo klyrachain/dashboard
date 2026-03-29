@@ -87,9 +87,11 @@ export function AppSidebar() {
   const activeBusiness =
     businesses.find((b: MerchantBusiness) => b.id === activeBusinessId) ?? businesses[0];
   const workspaceLabel =
-    sessionType === "merchant" && activeBusiness
-      ? activeBusiness.name
-      : "Klyra platform";
+    sessionType !== "merchant"
+      ? "Morapay platform"
+      : activeBusiness
+        ? activeBusiness.name?.trim() || "Your business"
+        : "Morapay platform";
 
   return (
     <aside className="flex h-full w-64 flex-col bg-platform-primary text-white">
@@ -125,7 +127,7 @@ export function AppSidebar() {
                     }}
                     className={b.id === activeBusinessId ? "bg-slate-100 font-medium" : ""}
                   >
-                    {b.name}
+                    {b.name?.trim() || "Your business"}
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
@@ -133,7 +135,7 @@ export function AppSidebar() {
             ) : null}
             <div className="rounded-md bg-slate-50 px-2 py-1.5 text-sm text-slate-700">
               {sessionType === "merchant"
-                ? activeBusiness?.name ?? "Business"
+                ? activeBusiness?.name?.trim() || "Your business"
                 : "Platform admin"}
             </div>
           </DropdownMenuContent>

@@ -1,8 +1,8 @@
 import { LoginEmailStep } from "@/components/auth/login-email-step";
 
 export const metadata = {
-  title: "Sign in | Klyra Admin",
-  description: "Sign in to the Klyra admin dashboard",
+  title: "Sign in | Morapay Admin",
+  description: "Sign in to the Morapay admin dashboard",
 };
 
 export default function LoginPage() {

@@ -67,10 +67,49 @@ async function proxyToCore(
     }
   }
 
+  const status = res.status;
   const buf = await res.arrayBuffer();
+  const rawCt = res.headers.get("content-type") ?? "";
+  const text = new TextDecoder().decode(buf);
+
+  if (status >= 400 && text.trim().length > 0) {
+    if (rawCt.includes("text/html")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Core returned HTML instead of JSON.",
+          code: "UPSTREAM_HTML_ERROR",
+        },
+        { status }
+      );
+    }
+    try {
+      JSON.parse(text);
+    } catch {
+      const looksHtml = /^\s*</.test(text);
+      if (looksHtml) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Core returned HTML instead of JSON.",
+            code: "UPSTREAM_HTML_ERROR",
+          },
+          { status }
+        );
+      }
+      return NextResponse.json(
+        {
+          success: false,
+          error: res.statusText || "Upstream error",
+          code: "UPSTREAM_NON_JSON",
+        },
+        { status }
+      );
+    }
+  }
+
   const out = new NextResponse(buf, { status: res.status });
-  const ct = res.headers.get("content-type");
-  if (ct) out.headers.set("Content-Type", ct);
+  if (rawCt) out.headers.set("Content-Type", rawCt);
   return out;
 }
 

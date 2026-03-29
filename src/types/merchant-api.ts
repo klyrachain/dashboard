@@ -203,26 +203,53 @@ export type MerchantCrmCustomerCreateBody = {
 
 export type MerchantCrmCustomerPatchBody = Partial<MerchantCrmCustomerCreateBody>;
 
+/** Core `GET /api/meta/checkout-base-url` */
+export type CheckoutBaseUrlMeta = {
+  checkoutBaseUrl: string | null;
+};
+
+/** Core `GET /api/public/currencies` item */
+export type PublicCurrencyItem = {
+  code: string;
+  name: string;
+  kind: "fiat" | "crypto";
+};
+
+/** Core `POST /api/v1/merchant/rates/fiat` (ExchangeRate-API backed). */
+export type MerchantFiatQuoteResult = {
+  from: string;
+  to: string;
+  rate: number;
+  timeLastUpdateUtc?: string;
+  amount?: number;
+  convertedAmount?: number;
+};
+
 /** `GET /api/v1/merchant/pay-pages` (payment links) */
 export type MerchantPayPageRow = {
   id: string;
   title: string;
   slug: string;
+  /** Opaque segment for public `/checkout/:code` URLs (preferred over slug). */
+  publicCode?: string | null;
   description?: string | null;
   type?: string | null;
   productId?: string | null;
   amount?: string | null;
   currency?: string | null;
+  chargeKind?: string | null;
   isActive?: boolean;
   environment?: string;
 };
 
 export type MerchantPayPageCreateBody = {
   title: string;
-  slug: string;
+  /** Omit to let Core generate a unique slug (`pay-` + random). */
+  slug?: string;
   description?: string;
   type?: string;
   productId?: string;
+  chargeKind?: "FIAT" | "CRYPTO";
   /** Omit for open-amount / pay-what-you-want style links when API allows. */
   amount?: number;
   currency?: string;

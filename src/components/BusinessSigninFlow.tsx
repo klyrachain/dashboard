@@ -37,7 +37,9 @@ function isValidEmail(value: string): boolean {
 function safeReturnPath(returnTo: string | null): string {
   if (!returnTo?.trim()) return "/";
   const t = returnTo.trim();
-  if (!t.startsWith("/") || t.startsWith("//")) return "/";
+  if (!t.startsWith("/") || t.startsWith("//") || t.startsWith("/api/")) {
+    return "/";
+  }
   return t;
 }
 
@@ -59,8 +61,14 @@ async function completeBusinessPortalSignIn(
   router: ReturnType<typeof useRouter>,
   returnTo: string | null
 ): Promise<void> {
+  if (!setBusinessAccessToken(accessToken)) {
+    throw new BusinessAuthApiError(
+      "Invalid session token format.",
+      502,
+      null
+    );
+  }
   const session = await fetchBusinessSession(accessToken);
-  setBusinessAccessToken(accessToken);
 
   const businesses = session.businesses;
   const activeId = businesses.length > 0 ? businesses[0].id : null;
@@ -308,7 +316,7 @@ export function BusinessSigninFlow() {
 
             {magicSent ? (
               <p className="text-sm text-zinc-600" role="status" aria-live="polite">
-                Check your inbox. The link opens on Klyra to finish sign-in;
+                Check your inbox. The link opens on Morapay to finish sign-in;
                 then return to the dashboard if needed.
               </p>
             ) : null}
@@ -385,7 +393,7 @@ export function BusinessSigninFlow() {
           </div>
 
           <p className="mt-10 text-center text-sm text-zinc-600">
-            New to Klyra?{" "}
+            New to Morapay?{" "}
             <Link
               href="/business/signup"
               className="font-medium text-zinc-900 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"

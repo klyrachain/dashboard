@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { postCoreAuthLoginPasskeyVerify } from "@/lib/auth-api-server";
 
 export async function POST(request: NextRequest) {
-  let body: { email?: string; response?: unknown; sessionTtlMinutes?: 15 | 30 };
+  let body: { email?: string; response?: unknown; sessionTtlMinutes?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -18,10 +18,13 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+  const rawTtl = body.sessionTtlMinutes;
+  const sessionTtlMinutes =
+    rawTtl === 15 || rawTtl === 30 ? rawTtl : undefined;
   const result = await postCoreAuthLoginPasskeyVerify({
     email,
     response: body.response,
-    sessionTtlMinutes: body.sessionTtlMinutes,
+    sessionTtlMinutes,
   });
   const status = result.status >= 400 ? result.status : result.ok ? 200 : 502;
   return NextResponse.json(result.data, { status });

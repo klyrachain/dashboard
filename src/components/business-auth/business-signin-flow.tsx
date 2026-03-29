@@ -32,7 +32,9 @@ function isValidEmail(value: string): boolean {
 function safeReturnPath(returnTo: string | null): string {
   if (!returnTo?.trim()) return "/";
   const t = returnTo.trim();
-  if (!t.startsWith("/") || t.startsWith("//")) return "/";
+  if (!t.startsWith("/") || t.startsWith("//") || t.startsWith("/api/")) {
+    return "/";
+  }
   return t;
 }
 
@@ -51,7 +53,13 @@ async function redirectAfterSession(
   accessToken: string,
   returnTo: string | null
 ): Promise<void> {
-  setBusinessAccessToken(accessToken);
+  if (!setBusinessAccessToken(accessToken)) {
+    throw new BusinessAuthApiError(
+      "Invalid session token format.",
+      502,
+      null
+    );
+  }
   dispatch(setPortalJwt(accessToken));
   await establishMerchantPortalSession(accessToken);
   try {
@@ -352,7 +360,7 @@ export function BusinessSigninFlow() {
           </p>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            New to Klyra?{" "}
+            New to Morapay?{" "}
             <Link
               href="/business/signup"
               className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"

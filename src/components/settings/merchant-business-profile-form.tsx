@@ -159,7 +159,7 @@ export function MerchantBusinessProfileForm() {
               type="url"
               value={webhookUrl}
               onChange={(e) => setWebhookUrl(e.target.value)}
-              placeholder="https://api.yourapp.com/webhooks/klyra"
+              placeholder="https://api.yourapp.com/webhooks/morapay"
             />
           </div>
         </CardContent>

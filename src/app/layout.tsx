@@ -43,8 +43,8 @@ const ranade = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Backoffice | Crypto Payment Control Center",
-  description: "Control center for Crypto Payment System",
+  title: "Morapay Backoffice | Payment Control Center",
+  description: "Morapay control center for payments and operations",
 };
 
 /** Safari / mobile browser toolbar and tab tint (`<meta name="theme-color">`). */

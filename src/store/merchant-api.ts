@@ -22,6 +22,9 @@ import type {
   MerchantSummary,
   MerchantSummaryQueryParams,
   MerchantWithdrawBody,
+  CheckoutBaseUrlMeta,
+  PublicCurrencyItem,
+  MerchantFiatQuoteResult,
 } from "@/types/merchant-api";
 import { baseQueryWithStatus } from "./base-query-with-status";
 
@@ -285,6 +288,27 @@ export const merchantApi = createApi({
         unwrapData<MerchantCrmCustomerRow>(raw),
       invalidatesTags: ["MerchantCrmCustomers"],
     }),
+    getCheckoutBaseUrl: builder.query<CheckoutBaseUrlMeta | null, void>({
+      query: () => ({ url: "/api/meta/checkout-base-url" }),
+      transformResponse: (raw: unknown) => unwrapData<CheckoutBaseUrlMeta>(raw),
+    }),
+    getPublicCurrencies: builder.query<
+      { items: PublicCurrencyItem[] },
+      { q?: string } | void
+    >({
+      query: (arg) => {
+        const q =
+          arg && typeof arg === "object" && arg.q != null && String(arg.q).trim()
+            ? String(arg.q).trim()
+            : undefined;
+        return {
+          url: "/api/public/currencies",
+          ...(q ? { params: { q } } : {}),
+        };
+      },
+      transformResponse: (raw: unknown) =>
+        unwrapData<{ items: PublicCurrencyItem[] }>(raw) ?? { items: [] },
+    }),
     getMerchantPayPages: builder.query<
       { items: MerchantPayPageRow[]; meta: MerchantListMeta },
       Record<string, string | number | undefined>
@@ -387,6 +411,18 @@ export const merchantApi = createApi({
         unwrapData<Record<string, unknown>>(raw),
       invalidatesTags: ["MerchantSettlements", "MerchantSummary"],
     }),
+    postMerchantFiatQuote: builder.mutation<
+      MerchantFiatQuoteResult | null,
+      { from: string; to: string; amount?: number }
+    >({
+      query: (body) => ({
+        url: `${PREFIX}/rates/fiat`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (raw: unknown) =>
+        unwrapData<MerchantFiatQuoteResult>(raw),
+    }),
   }),
 });
 
@@ -409,6 +445,9 @@ export const {
   usePostMerchantCrmCustomerMutation,
   usePatchMerchantCrmCustomerMutation,
   useGetMerchantPayPagesQuery,
+  useGetCheckoutBaseUrlQuery,
+  useGetPublicCurrenciesQuery,
+  useLazyGetPublicCurrenciesQuery,
   usePostMerchantPayPageMutation,
   usePatchMerchantPayPageMutation,
   usePostMerchantTransactionRefundMutation,
@@ -416,4 +455,5 @@ export const {
   usePostMerchantPayoutMethodMutation,
   usePatchMerchantPayoutMethodMutation,
   usePostMerchantSettlementWithdrawMutation,
+  usePostMerchantFiatQuoteMutation,
 } = merchantApi;

@@ -1,7 +1,7 @@
 import { SetupPasskeyClient } from "@/components/auth/setup-passkey-client";
 
 export const metadata = {
-  title: "Set up passkey | Klyra Admin",
+  title: "Set up passkey | Morapay Admin",
   description: "Add a passkey to sign in faster next time",
 };
 

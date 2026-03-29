@@ -11,7 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { postLogout, postChangePassword, getPasskeyOptions, postPasskeyVerify } from "@/lib/auth-api";
-import { normalizeCreateOptions } from "@/lib/webauthn-options";
+import {
+  formatWebAuthnClientError,
+  isWebAuthnAvailable,
+  runPasskeyRegistration,
+} from "@/lib/webauthn-client";
 import { isAuthSuccess } from "@/types/auth";
 import type { Role } from "@/types/auth";
 
@@ -25,7 +29,6 @@ const ROLE_LABELS: Record<Role, string> = {
 export function AccountSettingsContent() {
   const dispatch = useDispatch();
   const admin = useAdmin();
-  console.log("admin", admin);
 
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyError, setPasskeyError] = useState<string | null>(null);
@@ -36,6 +39,7 @@ export function AccountSettingsContent() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [newPasskeyLabel, setNewPasskeyLabel] = useState("");
 
   const handleLogout = async () => {
     resetAuthSessionSyncRef();
@@ -51,36 +55,42 @@ export function AccountSettingsContent() {
 
   const handleSetupPasskey = async () => {
     if (!admin) return;
+    if (!isWebAuthnAvailable()) {
+      setPasskeyError(
+        "Passkeys are not supported in this browser. Try Chrome, Safari, or Edge."
+      );
+      return;
+    }
     setPasskeyError(null);
     setPasskeyLoading(true);
     const optionsRes = await getPasskeyOptions();
     if (!isAuthSuccess(optionsRes) || !optionsRes.data.options) {
       setPasskeyLoading(false);
-      setPasskeyError(optionsRes.success ? "Could not get options" : (optionsRes as { error: string }).error);
+      setPasskeyError(
+        optionsRes.success
+          ? "Could not get passkey options."
+          : (optionsRes as { error: string }).error
+      );
       return;
     }
     try {
-      const options = normalizeCreateOptions(optionsRes.data.options);
-      const credential = await navigator.credentials.create(options);
-      if (!credential) {
-        setPasskeyLoading(false);
-        setPasskeyError("Passkey creation was cancelled");
-        return;
-      }
+      const attestation = await runPasskeyRegistration(optionsRes.data.options);
+      const label = newPasskeyLabel.trim().slice(0, 80);
       const verifyRes = await postPasskeyVerify({
-        response: credential as unknown as Record<string, unknown>,
-        name: "Device",
+        response: attestation,
+        name: label.length > 0 ? label : undefined,
       });
       setPasskeyLoading(false);
       if (isAuthSuccess(verifyRes)) {
         setPasskeySuccess(true);
         setPasskeyError(null);
+        setNewPasskeyLabel("");
       } else {
         setPasskeyError((verifyRes as { error: string }).error ?? "Verification failed");
       }
     } catch (err) {
       setPasskeyLoading(false);
-      setPasskeyError(err instanceof Error ? err.message : "Passkey setup failed");
+      setPasskeyError(formatWebAuthnClientError(err));
     }
   };
 
@@ -189,9 +199,23 @@ export function AccountSettingsContent() {
               {passkeyError}
             </p>
           )}
+          <div className="space-y-2 max-w-sm mb-4">
+            <Label htmlFor="account-passkey-label">Label for this passkey (optional)</Label>
+            <Input
+              id="account-passkey-label"
+              type="text"
+              autoComplete="off"
+              placeholder="e.g. Work laptop"
+              maxLength={80}
+              value={newPasskeyLabel}
+              onChange={(e) => setNewPasskeyLabel(e.target.value)}
+              disabled={passkeyLoading}
+              className="h-10"
+            />
+          </div>
           <Button
             variant="outline"
-            onClick={handleSetupPasskey}
+            onClick={() => void handleSetupPasskey()}
             disabled={passkeyLoading}
             className="gap-2"
           >

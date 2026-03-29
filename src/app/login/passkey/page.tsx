@@ -1,7 +1,7 @@
 import { LoginPasskeyStep } from "@/components/auth/login-passkey-step";
 
 export const metadata = {
-  title: "Sign in with passkey | Klyra Admin",
+  title: "Sign in with passkey | Morapay Admin",
 };
 
 type Props = { searchParams: Promise<{ email?: string }> };

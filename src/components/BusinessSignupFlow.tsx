@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useDispatch } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ChevronDown, Fingerprint, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,8 +38,13 @@ import { cn } from "@/lib/utils";
 import {
   clearBusinessAccessToken,
   getBusinessAccessToken,
+  getStoredMerchantEnvironment,
   setBusinessAccessToken,
+  setStoredActiveBusinessId,
 } from "@/lib/businessAuthStorage";
+import { establishMerchantPortalSession } from "@/lib/establish-merchant-portal-session";
+import type { AppDispatch } from "@/store";
+import { hydrateMerchantSession } from "@/store/merchant-session-slice";
 
 const STEP_COUNT = 4;
 const PASSWORD_MIN_LENGTH = 10;
@@ -95,6 +101,7 @@ const selectClassName =
 
 export function BusinessSignupFlow() {
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
   const searchParams = useSearchParams();
   const formId = useId();
   const [step, setStep] = useState(1);
@@ -163,7 +170,11 @@ export function BusinessSignupFlow() {
     void consumePortalOrMagicTokenOnce(portalToken)
       .then(({ accessToken }) => {
         if (cancelled) return;
-        setBusinessAccessToken(accessToken);
+        if (!setBusinessAccessToken(accessToken)) {
+          setStepError("Invalid session token from server. Try signing in again.");
+          router.replace("/business/signup", { scroll: false });
+          return;
+        }
         setStep(2);
         router.replace("/business/signup", { scroll: false });
       })
@@ -204,10 +215,10 @@ export function BusinessSignupFlow() {
       .then((session) => {
         if (cancelled) return;
         if (session.profileComplete) {
-          router.replace("/app");
+          router.replace("/");
           return;
         }
-        setPostOnboardingPath("/app");
+        setPostOnboardingPath("/");
         setStep(4);
         router.replace("/business/signup", { scroll: false });
       })
@@ -272,7 +283,10 @@ export function BusinessSignupFlow() {
     setIsConsumingMagicLink(true);
     void consumePortalOrMagicTokenOnce(magicTokenFromEmail)
       .then(({ accessToken }) => {
-        setBusinessAccessToken(accessToken);
+        if (!setBusinessAccessToken(accessToken)) {
+          setMagicLinkError("Invalid session token. Request a new magic link.");
+          return;
+        }
         setStep(2);
         router.replace("/business/signup", { scroll: false });
       })
@@ -429,7 +443,11 @@ export function BusinessSignupFlow() {
           primaryGoal: toApiPrimaryGoal(primaryGoal),
         }
       );
-      setBusinessAccessToken(accessToken);
+      if (!setBusinessAccessToken(accessToken)) {
+        setStepError("Invalid session token. Sign in again from step one.");
+        setStep(1);
+        return;
+      }
       setPostOnboardingPath(pathFromLandingHint(landingHint));
       setStep(4);
     } catch (err: unknown) {
@@ -468,6 +486,40 @@ export function BusinessSignupFlow() {
         displayName: name,
         password: profilePassword,
       });
+      const cookieOk = await establishMerchantPortalSession(token);
+      if (!cookieOk) {
+        setStepError(
+          "Could not start your dashboard session. Check that the API is running and try again."
+        );
+        return;
+      }
+      let session;
+      try {
+        session = await fetchBusinessSession(token);
+      } catch (err: unknown) {
+        setStepError(formatApiError(err));
+        return;
+      }
+      const businesses = session.businesses;
+      const activeId = businesses.length > 0 ? businesses[0].id : null;
+      const activeRole =
+        activeId != null
+          ? businesses.find((b) => b.id === activeId)?.role ?? null
+          : null;
+      const storedEnv = getStoredMerchantEnvironment();
+      dispatch(
+        hydrateMerchantSession({
+          sessionType: "merchant",
+          portalJwt: token,
+          businesses,
+          activeBusinessId: activeId,
+          activeBusinessRole: activeRole,
+          merchantEnvironment: storedEnv ?? "LIVE",
+        })
+      );
+      if (activeId) {
+        setStoredActiveBusinessId(activeId);
+      }
       const profile = {
         email: email.trim().toLowerCase() || undefined,
         companyName: companyName.trim(),
@@ -481,6 +533,7 @@ export function BusinessSignupFlow() {
       setIsRedirecting(true);
       window.setTimeout(() => {
         router.push(`${path}?sandbox=1`);
+        router.refresh();
       }, 600);
     } catch (err: unknown) {
       setStepError(formatApiError(err));
@@ -649,7 +702,7 @@ export function BusinessSignupFlow() {
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
+              size="sm"
               className="shrink-0"
               onClick={goBack}
               disabled={isSubmitting}

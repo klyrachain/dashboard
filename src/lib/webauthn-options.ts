@@ -1,6 +1,7 @@
 /**
- * Normalize WebAuthn options from API (base64url strings) for navigator.credentials.get.
- * Many backends return challenge and allowCredentials[].id as base64url; the browser expects ArrayBuffer.
+ * Normalize WebAuthn options from API (base64url strings) for navigator.credentials.*.
+ * Admin dashboard passkey sign-in and registration use `@/lib/webauthn-client` with
+ * `@simplewebauthn/browser` instead, so responses match Core verification.
  */
 
 function base64UrlToBuffer(base64Url: string): ArrayBuffer {
@@ -54,7 +55,7 @@ export function normalizeCreateOptions(raw: unknown): CredentialCreationOptions 
     publicKey: {
       challenge: typeof challenge === "string" ? base64UrlToBuffer(challenge) : (challenge as ArrayBuffer),
       rp: {
-        name: rp?.name ?? "Klyra Admin",
+        name: rp?.name ?? "Morapay Admin",
         id: rp?.id ?? (typeof window !== "undefined" ? window.location.hostname : "localhost"),
       },
       user: {

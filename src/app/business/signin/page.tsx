@@ -3,7 +3,7 @@ import { BusinessSigninFlow } from "@/components/BusinessSigninFlow";
 import { Loader2 } from "lucide-react";
 
 export const metadata = {
-  title: "Business sign in | Klyra",
+  title: "Business sign in | Morapay",
   description: "Sign in to your business account",
 };
 

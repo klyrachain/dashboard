@@ -5,7 +5,7 @@ import { Provider } from "react-redux";
 import { makeStore } from "@/store";
 import type { LayoutPreference } from "@/lib/layout-preference-cookie";
 import type { MerchantSessionState } from "@/store/merchant-session-slice";
-import { mergeMerchantSessionWithStoredPortalJwt } from "@/lib/merchant-portal-bootstrap";
+import { MerchantPortalReduxHydrate } from "@/components/providers/merchant-portal-redux-hydrate";
 
 export function ReduxProvider({
   children,
@@ -21,10 +21,13 @@ export function ReduxProvider({
   if (storeRef.current === null) {
     storeRef.current = makeStore({
       layout: initialLayoutPreference ?? null,
-      merchantSession: mergeMerchantSessionWithStoredPortalJwt(
-        initialMerchantSession ?? null
-      ),
+      merchantSession: initialMerchantSession ?? null,
     });
   }
-  return <Provider store={storeRef.current}>{children}</Provider>;
+  return (
+    <Provider store={storeRef.current}>
+      <MerchantPortalReduxHydrate serverSnapshot={initialMerchantSession ?? null} />
+      {children}
+    </Provider>
+  );
 }

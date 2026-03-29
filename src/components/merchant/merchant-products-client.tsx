@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { Link2, Pencil, Plus } from "lucide-react";
 import {
@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DataTablePaginationBar } from "@/components/ui/data-table-pagination-bar";
 
 const PRODUCT_TYPES = ["DIGITAL", "PHYSICAL", "SERVICE"] as const;
 type ProductType = (typeof PRODUCT_TYPES)[number];
@@ -72,7 +73,8 @@ export function MerchantProductsClient() {
     (s: RootState) => s.merchantSession.activeBusinessId
   );
 
-  const [page] = useState(1);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -93,15 +95,22 @@ export function MerchantProductsClient() {
   const [eImageUrl, setEImageUrl] = useState("");
   const [eActive, setEActive] = useState(true);
 
-  const params = useMemo(
-    () => ({
+  const params = useMemo(() => {
+    const p: Record<string, string | number> = {
       page,
-      limit: 100,
+      limit: pageSize,
       includeArchived: 1,
-      ...(q.trim() ? { q: q.trim() } : {}),
-    }),
-    [page, q]
-  );
+    };
+    if (q.trim()) p.q = q.trim();
+    if (statusFilter === "active") p.status = "active";
+    if (statusFilter === "archived") p.status = "archived";
+    if (typeFilter !== "all") p.type = typeFilter;
+    return p;
+  }, [page, pageSize, q, statusFilter, typeFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q, statusFilter, typeFilter]);
 
   const { data, isLoading, isError, error, refetch } = useGetMerchantProductsQuery(
     params,
@@ -126,13 +135,16 @@ export function MerchantProductsClient() {
     [txData?.items]
   );
 
-  const filteredSorted = useMemo(() => {
-    let list = [...rawRows];
-    if (statusFilter === "active") list = list.filter((r) => r.isActive !== false);
-    if (statusFilter === "archived") list = list.filter((r) => r.isActive === false);
-    if (typeFilter !== "all") {
-      list = list.filter((r) => (r.type ?? "").toUpperCase() === typeFilter);
-    }
+  const meta = data?.meta;
+  const totalProducts = meta?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalProducts / pageSize));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const sortedRows = useMemo(() => {
+    const list = [...rawRows];
     const sales = (id: string) => purchaseByProduct.get(id) ?? 0;
     list.sort((a, b) => {
       switch (sortKey) {
@@ -148,12 +160,7 @@ export function MerchantProductsClient() {
       }
     });
     return list;
-  }, [rawRows, statusFilter, typeFilter, sortKey, purchaseByProduct]);
-
-  const activeCount = useMemo(
-    () => rawRows.filter((r) => r.isActive !== false).length,
-    [rawRows]
-  );
+  }, [rawRows, sortKey, purchaseByProduct]);
 
   const topChartItems = useMemo(() => {
     return rawRows.map((p) => ({
@@ -290,13 +297,13 @@ export function MerchantProductsClient() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active products
+              Products (filters)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold tabular-nums">{activeCount}</p>
+            <p className="text-3xl font-semibold tabular-nums">{totalProducts}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              In this environment ({rawRows.length} loaded)
+              Total rows matching search and filters
             </p>
           </CardContent>
         </Card>
@@ -476,14 +483,14 @@ export function MerchantProductsClient() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredSorted.length === 0 ? (
+            {sortedRows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground">
                   No products match your filters.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredSorted.map((row) => {
+              sortedRows.map((row) => {
                 const sales = purchaseByProduct.get(row.id) ?? 0;
                 return (
                   <TableRow key={row.id}>
@@ -566,6 +573,17 @@ export function MerchantProductsClient() {
             )}
           </TableBody>
         </Table>
+        <DataTablePaginationBar
+          className="mt-4"
+          page={page}
+          pageSize={pageSize}
+          total={totalProducts}
+          onPageChange={setPage}
+          onPageSizeChange={(n) => {
+            setPageSize(n);
+            setPage(1);
+          }}
+        />
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

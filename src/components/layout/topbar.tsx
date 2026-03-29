@@ -42,7 +42,7 @@ export function Topbar({ className }: { className?: string }) {
       {/* Sandbox banner */}
       <div className="flex shrink-0 items-center justify-between gap-4 bg-platform-primary px-6 py-3 text-sm text-white">
         <p className="text-slate-300">
-          You&apos;re testing in a sandbox—your place to experiment with Klyra
+          You&apos;re testing in a sandbox—your place to experiment with Morapay
           functionality.
         </p>
         <Button

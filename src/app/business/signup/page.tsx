@@ -3,8 +3,8 @@ import { BusinessSignupFlow } from "@/components/BusinessSignupFlow";
 import { Loader2 } from "lucide-react";
 
 export const metadata = {
-  title: "Create business account | Klyra",
-  description: "Create your Klyra business account",
+  title: "Create business account | Morapay",
+  description: "Create your Morapay business account",
 };
 
 export default function BusinessSignupPage() {
