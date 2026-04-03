@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSelector } from "react-redux";
-import { Copy, Plus, QrCode } from "lucide-react";
+import { Copy, Loader2, Plus, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import {
   useGetCheckoutBaseUrlQuery,
+  useGetMerchantGasAccountQuery,
   useGetMerchantPayPagesQuery,
   useGetMerchantProductsQuery,
   useGetMerchantSummaryQuery,
-  useGetMerchantTransactionsQuery,
   usePatchMerchantPayPageMutation,
   usePostMerchantFiatQuoteMutation,
   usePostMerchantPayPageMutation,
@@ -51,15 +51,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTablePaginationBar } from "@/components/ui/data-table-pagination-bar";
 
-function slugifyHint(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
 function isOpenAmount(row: MerchantPayPageRow): boolean {
   const a = row.amount;
   if (a == null || a === "") return true;
@@ -71,6 +62,9 @@ type StatusFilter = "all" | "active" | "inactive";
 type AmountFilter = "all" | "fixed" | "open";
 
 const EMPTY_PAY_PAGE_ROWS: MerchantPayPageRow[] = [];
+
+const FILTER_CONTROL_CLASS =
+  "border border-slate-300 bg-background dark:border-slate-600";
 
 function usdMapsEqual(
   a: Record<string, string>,
@@ -104,6 +98,7 @@ export function MerchantPaymentLinksClient() {
   const [productId, setProductId] = useState<string | undefined>(undefined);
   const [chargeKind, setChargeKind] = useState<"FIAT" | "CRYPTO">("FIAT");
   const [currencyCode, setCurrencyCode] = useState("USD");
+  const [gasSponsorshipEnabled, setGasSponsorshipEnabled] = useState(false);
 
   const [qrOpen, setQrOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState("");
@@ -137,17 +132,19 @@ export function MerchantPaymentLinksClient() {
     { days: 30, seriesDays: 7 },
     { skip: !activeBusinessId }
   );
-  const { data: txData } = useGetMerchantTransactionsQuery(
-    { page: 1, limit: 200 },
-    { skip: !activeBusinessId }
-  );
+  const { data: gasAccount } = useGetMerchantGasAccountQuery(undefined, {
+    skip: !activeBusinessId,
+  });
+  const globalGasToggleOn = gasAccount?.sponsorshipEnabled === true;
 
   const [postLink, { isLoading: posting, error: postErr }] =
     usePostMerchantPayPageMutation();
   const [patchLink] = usePatchMerchantPayPageMutation();
   const [postFiatQuote] = usePostMerchantFiatQuoteMutation();
   const postFiatQuoteRef = useRef(postFiatQuote);
-  postFiatQuoteRef.current = postFiatQuote;
+  useEffect(() => {
+    postFiatQuoteRef.current = postFiatQuote;
+  }, [postFiatQuote]);
   const [usdByRowId, setUsdByRowId] = useState<Record<string, string>>({});
   const [clientReady, setClientReady] = useState(false);
 
@@ -252,21 +249,20 @@ export function MerchantPaymentLinksClient() {
     isForbiddenMerchantRole(error) || isForbiddenMerchantRole(postErr);
 
   const completedInPeriod = summary?.transactions?.completedCountInPeriod;
-  const volume30 = summary?.transactions?.volumeUsdInPeriod;
-  const linkCount = totalLinks;
+  const volumeAll30 = summary?.transactions?.volumeUsdInPeriod;
+  const plStats = summary?.paymentLinks;
+  const linkVolume30 = plStats?.volumeUsdInPeriod;
+  const distinctLinksUsed = plStats?.distinctLinksUsedInPeriod ?? 0;
+  const totalPaymentLinksCatalog = plStats?.totalPaymentLinks ?? 0;
+  const completedSalesViaLinks = plStats?.completedTxWithLinkCount ?? 0;
 
-  const txWithLink = useMemo(() => {
-    return (txData?.items ?? []).filter((t) => {
-      const pl =
-        t.paymentLinkId ?? t.payment_link_id ?? t.payPageId ?? t.pay_page_id;
-      return pl != null && String(pl).length > 0;
-    }).length;
-  }, [txData?.items]);
-
-  const conversionHint =
-    linkCount > 0 && txWithLink >= 0
-      ? `${Math.min(100, Math.round((txWithLink / Math.max(linkCount, 1)) * 100))}%`
-      : "None";
+  const linksInUsePercent =
+    totalPaymentLinksCatalog > 0
+      ? Math.min(
+          100,
+          Math.round((distinctLinksUsed / totalPaymentLinksCatalog) * 100)
+        )
+      : 0;
 
   const paymentLinkBase = useMemo(() => {
     const fromCore = checkoutMeta?.checkoutBaseUrl?.trim().replace(/\/$/, "") ?? "";
@@ -277,13 +273,18 @@ export function MerchantPaymentLinksClient() {
 
   const handleCreate = async () => {
     if (!title.trim()) return;
-    const slugHint = slugifyHint(title);
     const base: Parameters<typeof postLink>[0] = {
       title: title.trim(),
       currency: currencyCode.trim().toUpperCase() || "USD",
       chargeKind,
+      ...(chargeKind === "CRYPTO"
+        ? {
+            gasSponsorshipEnabled:
+              gasSponsorshipEnabled === true && globalGasToggleOn === true,
+          }
+        : {}),
+      isOneTime: linkUsage === "onetime",
       isActive: true,
-      ...(slugHint ? { slug: slugHint } : {}),
       ...(productId ? { productId } : {}),
     };
     const a = parseFloat(amount);
@@ -297,6 +298,7 @@ export function MerchantPaymentLinksClient() {
       setProductId(undefined);
       setChargeKind("FIAT");
       setCurrencyCode("USD");
+      setGasSponsorshipEnabled(false);
       setLinkUsage("unlimited");
     } catch {
       /* base query */
@@ -395,6 +397,12 @@ export function MerchantPaymentLinksClient() {
 
   const baseDisplay = paymentLinkBase || "Not configured";
   const baseConfigured = Boolean(paymentLinkBase);
+  const gasToggleDisabledReason =
+    chargeKind !== "CRYPTO"
+      ? "Gas sponsorship is available only for crypto links."
+      : !globalGasToggleOn
+        ? "Enable gas sponsorship first on Settings > Gas before enabling it per link."
+        : undefined;
 
   return (
     <div className="space-y-8">
@@ -402,18 +410,28 @@ export function MerchantPaymentLinksClient() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Volume (last 30 days)
+              Link volume (last {summary?.periodDays ?? 30} days)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold tabular-nums">
-              {volume30 != null && volume30 !== ""
-                ? `$${Number(volume30).toLocaleString("en-US", { maximumFractionDigits: 0 })}`
-                : "None"}
+              {linkVolume30 != null && Number.isFinite(Number(linkVolume30))
+                ? `$${Number(linkVolume30).toLocaleString("en-US", { maximumFractionDigits: 0 })}`
+                : "—"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Your overall sales in this window, not link traffic only.
+              Completed sales attributed to a payment link (checkout). Overall
+              completed volume:{" "}
+              {volumeAll30 != null && volumeAll30 !== ""
+                ? `$${Number(volumeAll30).toLocaleString("en-US", { maximumFractionDigits: 0 })}`
+                : "—"}
             </p>
+            {completedSalesViaLinks > 0 ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {completedSalesViaLinks} completed transaction
+                {completedSalesViaLinks === 1 ? "" : "s"} via payment links in this period.
+              </p>
+            ) : null}
           </CardContent>
         </Card>
         <Card>
@@ -423,14 +441,17 @@ export function MerchantPaymentLinksClient() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold tabular-nums">{conversionHint}</p>
+            <p className="text-3xl font-semibold tabular-nums">
+              {totalPaymentLinksCatalog > 0 ? `${linksInUsePercent}%` : "—"}
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Share of transactions that reference a link ({txWithLink} of{" "}
-              {linkCount} links). Add view tracking later for full funnel data.
+              {distinctLinksUsed} of {totalPaymentLinksCatalog} payment link
+              {totalPaymentLinksCatalog === 1 ? "" : "s"} had at least one completed sale in
+              this period. Percentage = distinct links with sales ÷ total links defined.
             </p>
             {completedInPeriod != null ? (
               <p className="mt-1 text-xs text-muted-foreground">
-                Completed txs in period: {completedInPeriod}
+                All completed txs in period (any rail): {completedInPeriod}
               </p>
             ) : null}
           </CardContent>
@@ -458,7 +479,7 @@ export function MerchantPaymentLinksClient() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Title or slug"
-            className="w-[220px]"
+            className={`w-[220px] ${FILTER_CONTROL_CLASS}`}
           />
         </div>
         <div className="space-y-2">
@@ -467,7 +488,7 @@ export function MerchantPaymentLinksClient() {
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v as StatusFilter)}
           >
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className={`w-[160px] ${FILTER_CONTROL_CLASS}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -483,7 +504,7 @@ export function MerchantPaymentLinksClient() {
             value={amountFilter}
             onValueChange={(v) => setAmountFilter(v as AmountFilter)}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className={`w-[180px] ${FILTER_CONTROL_CLASS}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -548,6 +569,7 @@ export function MerchantPaymentLinksClient() {
                     onClick={() => {
                       setChargeKind("FIAT");
                       setCurrencyCode("USD");
+                      setGasSponsorshipEnabled(false);
                     }}
                   >
                     Fiat
@@ -601,8 +623,39 @@ export function MerchantPaymentLinksClient() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Single-use redemption enforcement is planned; both options create a
-                  standard link today.
+                  One-time links are marked paid after successful settlement and cannot be paid again.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <span className="text-sm font-medium">Gas sponsorship</span>
+                <div
+                  className="grid grid-cols-2 gap-2 rounded-lg border border-border p-1"
+                  role="group"
+                  aria-label="Gas sponsorship toggle"
+                >
+                  <Button
+                    type="button"
+                    variant={!gasSponsorshipEnabled ? "default" : "ghost"}
+                    className="h-10 text-sm"
+                    onClick={() => setGasSponsorshipEnabled(false)}
+                  >
+                    Off
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={gasSponsorshipEnabled ? "default" : "ghost"}
+                    className="h-10 text-sm"
+                    onClick={() => {
+                      if (!gasToggleDisabledReason) setGasSponsorshipEnabled(true);
+                    }}
+                    disabled={Boolean(gasToggleDisabledReason)}
+                  >
+                    On
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {gasToggleDisabledReason ??
+                    "If enabled, checkout can apply sponsorship when global/business gas policy is healthy."}
                 </p>
               </div>
             </div>
@@ -616,7 +669,8 @@ export function MerchantPaymentLinksClient() {
                 onClick={handleCreate}
                 disabled={posting || !title.trim()}
               >
-                Create payment link
+                {posting ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
+                {posting ? "Creating..." : "Create payment link"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -639,6 +693,9 @@ export function MerchantPaymentLinksClient() {
               </TableHead>
               <TableHead scope="col">Status</TableHead>
               <TableHead scope="col" className="text-right">
+                Uses
+              </TableHead>
+              <TableHead scope="col" className="text-right">
                 Actions
               </TableHead>
             </TableRow>
@@ -646,7 +703,7 @@ export function MerchantPaymentLinksClient() {
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground">
+                <TableCell colSpan={9} className="text-center text-muted-foreground">
                   No payment links match your filters.
                 </TableCell>
               </TableRow>
@@ -689,9 +746,16 @@ export function MerchantPaymentLinksClient() {
                       {usdByRowId[row.id] ?? "…"}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={row.isActive !== false ? "success" : "secondary"}>
-                        {row.isActive !== false ? "Active" : "Inactive"}
+                      <Badge variant={row.isOneTime && row.paidAt ? "outline" : row.isActive !== false ? "success" : "secondary"}>
+                        {row.isOneTime && row.paidAt
+                          ? "Paid"
+                          : row.isActive !== false
+                            ? "Active"
+                            : "Inactive"}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-sm">
+                      {row.isOneTime ? (row.paidAt ? "1" : "0") : (row.usageCount ?? 0)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex flex-wrap justify-end gap-1">

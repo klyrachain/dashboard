@@ -12,6 +12,7 @@ import {
 } from "@/store/merchant-api";
 import type { RootState } from "@/store";
 import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 
 export function MerchantBusinessProfileForm() {
   const activeBusinessId = useSelector(
@@ -166,10 +167,15 @@ export function MerchantBusinessProfileForm() {
       </Card>
 
       {data.kybStatus ? (
-        <p className="text-sm text-muted-foreground">
-          KYB status: <strong>{data.kybStatus}</strong>
-          {data.country ? ` · ${data.country}` : null}
-        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-muted-foreground">
+            KYB status: <strong>{data.kybStatus}</strong>
+            {data.country ? ` · ${data.country}` : null}
+          </p>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/settings/verification">Manage verification</Link>
+          </Button>
+        </div>
       ) : null}
 
       {formMessage ? (

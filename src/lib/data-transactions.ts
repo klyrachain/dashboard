@@ -8,6 +8,8 @@ import { getCoreTransactions } from "@/lib/core-api";
 /** Row shape for display; maps all fields returned by Core GET /api/transactions. */
 export type TransactionRow = {
   id: string;
+  /** Payment link public code when transaction is tied to a link (merchant API). */
+  paymentLinkPublicCode: string;
   type: string;
   status: string;
   fromAmount: string;
@@ -35,6 +37,14 @@ export type TransactionRow = {
   requestId: string;
   /** Fee in token units (legacy). Prefer feeInUsd for USD display. */
   fee: string | null;
+  /** Paystack / provider reference (fiat checkout). */
+  providerSessionId: string;
+  /** On-chain send hash when applicable (e.g. onramp). */
+  cryptoSendTxHash: string;
+  /** On-chain hash if set, else Paystack reference (for export/search convenience). */
+  referenceOrTxHash: string;
+  /** Merchant business name (merchant API); use for Recipient when toIdentifier is empty. */
+  businessName: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -68,8 +78,24 @@ export function normalizeTransactionItemToRow(item: unknown): TransactionRow | n
         ? feeVal.trim()
         : String(feeVal).trim();
 
+  const fPx =
+    o.fTokenPriceUsd != null
+      ? str(o.fTokenPriceUsd)
+      : o.f_tokenPriceUsd != null
+        ? str(o.f_tokenPriceUsd)
+        : null;
+  const tPx =
+    o.tTokenPriceUsd != null
+      ? str(o.tTokenPriceUsd)
+      : o.t_tokenPriceUsd != null
+        ? str(o.t_tokenPriceUsd)
+        : null;
+
   return {
     id,
+    paymentLinkPublicCode: str(
+      o.paymentLinkPublicCode ?? (o.paymentLink as { publicCode?: string } | undefined)?.publicCode
+    ),
     type: str(o.type),
     status: str(o.status),
     fromAmount: str(o.fromAmount ?? o.f_amount),
@@ -79,8 +105,8 @@ export function normalizeTransactionItemToRow(item: unknown): TransactionRow | n
     fromChain: str(o.fromChain ?? o.f_chain ?? "ETHEREUM"),
     toChain: str(o.toChain ?? o.t_chain ?? "ETHEREUM"),
     exchangeRate: o.exchangeRate != null ? str(o.exchangeRate) : null,
-    fTokenPriceUsd: o.f_tokenPriceUsd != null ? str(o.f_tokenPriceUsd) : null,
-    tTokenPriceUsd: o.t_tokenPriceUsd != null ? str(o.t_tokenPriceUsd) : null,
+    fTokenPriceUsd: fPx,
+    tTokenPriceUsd: tPx,
     feeInUsd: o.feeInUsd != null ? str(o.feeInUsd) : null,
     fromIdentifier: str(o.fromIdentifier ?? o.f_identifier),
     toIdentifier: str(o.toIdentifier ?? o.t_identifier),
@@ -92,6 +118,17 @@ export function normalizeTransactionItemToRow(item: unknown): TransactionRow | n
     toProvider: str(o.toProvider ?? o.t_provider ?? o.provider),
     requestId: str(o.requestId),
     fee: fee || null,
+    providerSessionId: str(o.providerSessionId ?? o.provider_session_id),
+    cryptoSendTxHash: str(o.cryptoSendTxHash ?? o.crypto_send_tx_hash),
+    referenceOrTxHash: (() => {
+      const h = str(o.cryptoSendTxHash ?? o.crypto_send_tx_hash);
+      const r = str(o.providerSessionId ?? o.provider_session_id);
+      return h || r;
+    })(),
+    businessName: str(
+      o.businessName ??
+        (o.business as { name?: string } | undefined)?.name
+    ),
     createdAt: date(o.createdAt),
     updatedAt: date(o.updatedAt),
   };

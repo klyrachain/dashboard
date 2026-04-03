@@ -23,10 +23,9 @@ function isPayerCheckoutPath(pathname: string): boolean {
   );
 }
 
+/** Only magic-link handoff on `/` — session recovery runs on `/business/signin` so SSR never ships the dashboard unauthenticated. */
 function homeAllowsWithoutPortalCookie(url: URL): boolean {
-  if (Boolean(url.searchParams.get("login_code")?.trim())) return true;
-  if (url.searchParams.get("session_bootstrap") === "1") return true;
-  return false;
+  return Boolean(url.searchParams.get("login_code")?.trim());
 }
 
 const MERCHANT_BLOCKED: string[] = [
@@ -58,6 +57,14 @@ function safeReturnToParam(pathWithQuery: string): string {
   return t;
 }
 
+/** Paths where stale platform cookie should clear and allow through (admin sign-in flows). */
+function isAdminAuthPath(pathname: string): boolean {
+  const p = pathname.replace(/\/$/, "") || "/";
+  if (p === "/login" || p === "/signup" || p.startsWith("/setup-passkey")) return true;
+  if (p.startsWith("/login/") || p.startsWith("/signup/")) return true;
+  return false;
+}
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const url = request.nextUrl.clone();
@@ -75,7 +82,39 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  /** Unauthenticated users must reach admin login/signup without being bounced to `/` + bootstrap. */
+  if (isAdminAuthPath(pathname)) {
+    return NextResponse.next();
+  }
+
   const role = request.cookies.get("klyra_portal_role")?.value;
+
+  /**
+   * `klyra_portal_role=platform` must only apply when a platform admin session exists.
+   * Otherwise GET /api/portal/role-sync could set it using CORE_API_KEY alone, which
+   * incorrectly unlocked the dashboard after sign-out or for anonymous visitors.
+   */
+  if (role === PLATFORM_ROLE) {
+    const cleared = {
+      path: "/",
+      maxAge: 0,
+      httpOnly: true,
+      sameSite: "lax" as const,
+    };
+    if (isAdminAuthPath(pathname)) {
+      const res = NextResponse.next();
+      res.cookies.set("klyra_portal_role", "", cleared);
+      return res;
+    }
+    const signIn = new URL("/business/signin", request.url);
+    signIn.searchParams.set(
+      "return_to",
+      safeReturnToParam(pathname + request.nextUrl.search)
+    );
+    const res = NextResponse.redirect(signIn);
+    res.cookies.set("klyra_portal_role", "", cleared);
+    return res;
+  }
 
   if (isPublicBusinessPortalPath(pathname)) {
     return NextResponse.next();
@@ -113,13 +152,13 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!onHome && !hasPortalAccess(role)) {
-    url.pathname = "/";
-    url.searchParams.set("session_bootstrap", "1");
-    url.searchParams.set(
+    const recover = new URL("/business/signin", request.url);
+    recover.searchParams.set("session_bootstrap", "1");
+    recover.searchParams.set(
       "return_to",
       safeReturnToParam(pathname + request.nextUrl.search)
     );
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(recover);
   }
 
   if (role === MERCHANT_ROLE && isBlockedForMerchant(pathname)) {

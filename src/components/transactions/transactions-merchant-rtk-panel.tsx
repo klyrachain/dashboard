@@ -117,6 +117,7 @@ export function TransactionsMerchantRtkPanel() {
           onRefresh={() => refetch()}
           disableSearchTriggeredRefetch
           hideFailedRetry
+          viewerScope="business"
         />
       </div>
     </div>

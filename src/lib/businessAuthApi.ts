@@ -430,6 +430,8 @@ export type BusinessSessionBusiness = {
 };
 
 export interface BusinessSession {
+  /** Portal user email (Core `getBusinessPortalSession`). */
+  email: string | null;
   portalDisplayName: string | null;
   hasPassword: boolean;
   passkeyCount: number;
@@ -501,7 +503,16 @@ export async function fetchBusinessSession(
         ? user.displayName
         : null;
 
+  const emailRaw = d.email;
+  const email =
+    typeof emailRaw === "string" && emailRaw.includes("@")
+      ? emailRaw.trim().toLowerCase()
+      : user && typeof user.email === "string" && user.email.includes("@")
+        ? String(user.email).trim().toLowerCase()
+        : null;
+
   return {
+    email,
     portalDisplayName:
       typeof d.portalDisplayName === "string"
         ? d.portalDisplayName

@@ -23,6 +23,9 @@ export async function createInvoiceAction(
     return { success: false, error: "At least one line item is required." };
   }
   const token = await getSessionToken();
+  if (!token?.trim()) {
+    return { success: false, error: "You must be signed in to manage business invoices." };
+  }
   const { ok, status, data } = await createCoreInvoice(body, token ?? undefined);
   if (!ok || !data || typeof data !== "object") {
     const err =
@@ -48,6 +51,9 @@ export async function sendInvoiceAction(
   recipientEmail?: string
 ): Promise<InvoiceActionResult> {
   const token = await getSessionToken();
+  if (!token?.trim()) {
+    return { success: false, error: "You must be signed in to manage business invoices." };
+  }
   const { ok, status, data } = await sendCoreInvoice(id, recipientEmail, token ?? undefined);
   if (ok) {
     revalidatePath("/invoices");
@@ -86,6 +92,9 @@ export async function updateInvoiceAction(
   }
 
   const token = await getSessionToken();
+  if (!token?.trim()) {
+    return { success: false, error: "You must be signed in to manage business invoices." };
+  }
   const { ok, status, data } = await updateCoreInvoice(id, body, token ?? undefined);
   if (ok) {
     revalidatePath("/invoices");
@@ -108,6 +117,9 @@ export async function updateInvoiceNotesAction(
 
 export async function markInvoicePaidAction(id: string): Promise<InvoiceActionResult> {
   const token = await getSessionToken();
+  if (!token?.trim()) {
+    return { success: false, error: "You must be signed in to manage business invoices." };
+  }
   const { ok, data } = await markCoreInvoicePaid(id, token ?? undefined);
   if (ok) {
     revalidatePath("/invoices");
@@ -120,6 +132,9 @@ export async function markInvoicePaidAction(id: string): Promise<InvoiceActionRe
 
 export async function cancelInvoiceAction(id: string): Promise<InvoiceActionResult> {
   const token = await getSessionToken();
+  if (!token?.trim()) {
+    return { success: false, error: "You must be signed in to manage business invoices." };
+  }
   const { ok, data } = await cancelCoreInvoice(id, token ?? undefined);
   if (ok) {
     revalidatePath("/invoices");
@@ -132,6 +147,9 @@ export async function cancelInvoiceAction(id: string): Promise<InvoiceActionResu
 
 export async function duplicateInvoiceAction(id: string): Promise<InvoiceActionResult & { newId?: string }> {
   const token = await getSessionToken();
+  if (!token?.trim()) {
+    return { success: false, error: "You must be signed in to manage business invoices." };
+  }
   const { ok, status, data } = await duplicateCoreInvoice(id, token ?? undefined);
   if (!ok || !data || typeof data !== "object") {
     const err =

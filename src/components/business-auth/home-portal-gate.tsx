@@ -2,7 +2,7 @@
 
 import { startTransition, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useDispatch } from "react-redux";
 import { Loader2 } from "lucide-react";
 import type { Session } from "next-auth";
@@ -83,6 +83,11 @@ export function HomePortalGate() {
             router.replace(u.pathname + u.search);
             return;
           }
+          try {
+            await signOut({ redirect: false });
+          } catch {
+            /* no admin session */
+          }
           const safeTo =
           returnTo.startsWith("/") &&
           !returnTo.startsWith("//") &&
@@ -138,13 +143,16 @@ export function HomePortalGate() {
             method: "GET",
             credentials: "include",
           });
-          const safeTo =
-          returnTo.startsWith("/") &&
-          !returnTo.startsWith("//") &&
-          !returnTo.startsWith("/api/")
-            ? returnTo
-            : "/";
-        router.replace(safeTo);
+          const signInUrl = new URL("/business/signin", window.location.origin);
+          signInUrl.searchParams.set(
+            "return_to",
+            returnTo.startsWith("/") &&
+              !returnTo.startsWith("//") &&
+              !returnTo.startsWith("/api/")
+              ? returnTo
+              : "/"
+          );
+          router.replace(signInUrl.pathname + signInUrl.search);
         } catch {
           setBootstrapError(
             "We could not restore your session. Open the sign-in link from your email again."

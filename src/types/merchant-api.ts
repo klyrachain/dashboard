@@ -95,6 +95,13 @@ export interface MerchantSummary {
     countByStatus?: MerchantSummaryStatusCounts;
     amountSumByCurrencyAndStatus?: MerchantSummarySettlementAmountRow[];
   };
+  /** Checkout payment links: volume, usage, catalog size (Core GET /summary). */
+  paymentLinks?: {
+    volumeUsdInPeriod?: number;
+    completedTxWithLinkCount?: number;
+    distinctLinksUsedInPeriod?: number;
+    totalPaymentLinks?: number;
+  };
   /** When Core exposes treasury / rail split (optional). */
   balances?: {
     fiatAvailable?: Record<string, string>;
@@ -225,6 +232,18 @@ export type MerchantFiatQuoteResult = {
   convertedAmount?: number;
 };
 
+export type MerchantWrappedSummary = {
+  period: string;
+  totals?: {
+    transactions: number;
+    completed: number;
+    successRate: number;
+  };
+  topTokens?: Array<{ symbol: string; amount: number }>;
+  topChains?: Array<{ chain: string; count: number }>;
+  timeline?: Array<Record<string, unknown>>;
+};
+
 /** `GET /api/v1/merchant/pay-pages` (payment links) */
 export type MerchantPayPageRow = {
   id: string;
@@ -238,6 +257,12 @@ export type MerchantPayPageRow = {
   amount?: string | null;
   currency?: string | null;
   chargeKind?: string | null;
+  gasSponsorshipEnabled?: boolean;
+  isOneTime?: boolean;
+  paidAt?: string | null;
+  paidByTransactionId?: string | null;
+  paidByWalletAddress?: string | null;
+  usageCount?: number;
   isActive?: boolean;
   environment?: string;
 };
@@ -250,6 +275,8 @@ export type MerchantPayPageCreateBody = {
   type?: string;
   productId?: string;
   chargeKind?: "FIAT" | "CRYPTO";
+  gasSponsorshipEnabled?: boolean;
+  isOneTime?: boolean;
   /** Omit for open-amount / pay-what-you-want style links when API allows. */
   amount?: number;
   currency?: string;

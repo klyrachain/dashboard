@@ -32,7 +32,7 @@ export default async function PaymentLinksPage() {
     );
   }
 
-  const data = await getPaymentLinks();
+  const { items, error } = await getPaymentLinks({ page: 1, limit: 200 });
 
   return (
     <div className="space-y-6 font-primary text-body">
@@ -44,8 +44,16 @@ export default async function PaymentLinksPage() {
           View and manage payment link requests sent to customers.
         </p>
       </div>
+      {error ? (
+        <div
+          className="rounded-lg px-4 py-3 font-secondary text-caption text-amber-800"
+          role="alert"
+        >
+          {error}
+        </div>
+      ) : null}
       <div className="rounded-lg border border-slate-200 bg-white font-tertiary text-table tabular-nums">
-        <PaymentLinksTable data={data} />
+        <PaymentLinksTable data={items} />
       </div>
     </div>
   );

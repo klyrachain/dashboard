@@ -203,7 +203,7 @@ export function AppSidebar() {
         ) : (
           <div className="flex items-center justify-between rounded-md px-3 py-2">
             <span className="text-sm font-normal text-white/60">
-              Test mode
+              Platform test mode
             </span>
             <Switch
               checked={testMode}

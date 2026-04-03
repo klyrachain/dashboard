@@ -26,12 +26,16 @@ import type { InviteCreateData } from "@/types/auth";
 
 type Envelope<T> = { success?: boolean; data?: T; error?: string };
 
-function extract<T>(res: { ok: boolean; data: unknown }): { ok: boolean; data: T | null; error?: string } {
+function extract<T>(res: {
+  ok: boolean;
+  status?: number;
+  data: unknown;
+}): { ok: boolean; data: T | null; error?: string } {
   if (!res.ok || !res.data || typeof res.data !== "object") {
     const err =
       res.data && typeof res.data === "object" && "error" in res.data
         ? String((res.data as { error: string }).error)
-        : "Request failed";
+        : `Request failed${res.status ? ` (${res.status})` : ""}`;
     return { ok: false, data: null, error: err };
   }
   const envelope = res.data as Envelope<T>;

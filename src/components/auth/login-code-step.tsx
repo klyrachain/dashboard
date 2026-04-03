@@ -4,15 +4,20 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { useDispatch } from "react-redux";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { postLogin } from "@/lib/auth-api";
 import { isAuthSuccess } from "@/types/auth";
+import { clearBusinessAccessToken } from "@/lib/businessAuthStorage";
+import { clearMerchantPortalHttpOnlyCookie } from "@/lib/portal-auth-client";
+import { clearMerchantPortal } from "@/store/merchant-session-slice";
 
 const DRAFT_KEY = "klyra_login_draft";
 
 export function LoginCodeStep({ email }: { email: string }) {
   const router = useRouter();
+  const dispatch = useDispatch();
   const searchParams = useSearchParams();
   const signup = searchParams.get("signup") === "1";
   const [code, setCode] = useState("");
@@ -61,6 +66,13 @@ export function LoginCodeStep({ email }: { email: string }) {
         redirect: false,
       });
       if (result?.ok) {
+        try {
+          await clearMerchantPortalHttpOnlyCookie();
+        } catch {
+          /* non-fatal */
+        }
+        clearBusinessAccessToken();
+        dispatch(clearMerchantPortal());
         const target = signup ? "/setup-passkey" : "/";
         window.location.href = target;
       } else {

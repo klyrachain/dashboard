@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { useSelector } from "react-redux";
 import {
@@ -89,6 +89,34 @@ function buildStatusChartData(byStatus: Record<string, number> | undefined) {
   }));
 }
 
+function isKybVerified(value: string | undefined): boolean {
+  const normalized = (value ?? "").trim().toLowerCase();
+  return normalized === "approved" || normalized === "verified";
+}
+
+/** Matches loading UI; used for SSR + first client paint to avoid hydration mismatch when Redux hydrates after mount. */
+function MerchantOverviewLoadingSkeleton() {
+  return (
+    <div
+      className="space-y-6"
+      aria-busy="true"
+      aria-label="Loading business overview"
+    >
+      <div className="flex flex-wrap gap-4">
+        <Skeleton className="h-10 w-40" />
+        <Skeleton className="h-10 w-40" />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+      <Skeleton className="h-72 w-full" />
+    </div>
+  );
+}
+
 function MerchantOverviewFallback() {
   const activeBusinessId = useSelector(
     (s: RootState) => s.merchantSession.activeBusinessId
@@ -147,6 +175,11 @@ function MerchantOverviewFallback() {
 }
 
 export function DashboardMerchantOverview() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const activeBusinessId = useSelector(
     (s: RootState) => s.merchantSession.activeBusinessId
   );
@@ -180,6 +213,10 @@ export function DashboardMerchantOverview() {
     [data]
   );
 
+  if (!mounted) {
+    return <MerchantOverviewLoadingSkeleton />;
+  }
+
   if (!activeBusinessId) {
     return (
       <Card>
@@ -198,21 +235,7 @@ export function DashboardMerchantOverview() {
   }
 
   if (summaryQ.isLoading || summaryQ.isFetching) {
-    return (
-      <div className="space-y-6">
-        <div className="flex flex-wrap gap-4">
-          <Skeleton className="h-10 w-40" />
-          <Skeleton className="h-10 w-40" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-        </div>
-        <Skeleton className="h-72 w-full" />
-      </div>
-    );
+    return <MerchantOverviewLoadingSkeleton />;
   }
 
   if (showFallback) {
@@ -259,6 +282,11 @@ export function DashboardMerchantOverview() {
               </span>
             ) : null}
           </p>
+          {!isKybVerified(data.business.kybStatus) ? (
+            <Button variant="outline" size="sm" className="mt-2" asChild>
+              <Link href="/settings/verification">Complete verification</Link>
+            </Button>
+          ) : null}
           <p className="text-xs text-muted-foreground">
             Completed volume {formatUsd(t.volumeUsdInPeriod)} this period,{" "}
             {data.periodFrom.slice(0, 10)} to {data.periodTo.slice(0, 10)}

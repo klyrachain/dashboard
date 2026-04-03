@@ -20,6 +20,7 @@ import type {
   MerchantProductPatchBody,
   MerchantProductRow,
   MerchantSummary,
+  MerchantWrappedSummary,
   MerchantSummaryQueryParams,
   MerchantWithdrawBody,
   CheckoutBaseUrlMeta,
@@ -78,6 +79,8 @@ export const merchantApi = createApi({
     "MerchantCrmCustomers",
     "MerchantPayPages",
     "MerchantPayoutMethods",
+    "MerchantGas",
+    "MerchantWrapped",
   ],
   keepUnusedDataFor: 120,
   refetchOnFocus: false,
@@ -100,6 +103,18 @@ export const merchantApi = createApi({
       transformResponse: (raw: unknown) =>
         unwrapData<MerchantSummary>(raw),
       providesTags: ["MerchantSummary"],
+    }),
+    getMerchantWrappedSummary: builder.query<
+      MerchantWrappedSummary | null,
+      { period?: "month" | "quarter" | "year" } | void
+    >({
+      query: (params) => ({
+        url: `${PREFIX}/wrapped/summary`,
+        params: params ? (params as Record<string, string>) : undefined,
+      }),
+      transformResponse: (raw: unknown) =>
+        unwrapData<MerchantWrappedSummary>(raw),
+      providesTags: ["MerchantWrapped"],
     }),
     getMerchantTransactions: builder.query<
       { items: Record<string, unknown>[]; meta: MerchantListMeta },
@@ -423,11 +438,40 @@ export const merchantApi = createApi({
       transformResponse: (raw: unknown) =>
         unwrapData<MerchantFiatQuoteResult>(raw),
     }),
+    getMerchantGasAccount: builder.query<
+      {
+        businessId: string;
+        hasAccount: boolean;
+        prepaidBalanceUsd: string;
+        sponsorshipEnabled: boolean;
+        lowBalanceWarnUsd: string | null;
+        businessName?: string;
+        slug?: string;
+      } | null,
+      void
+    >({
+      query: () => `${PREFIX}/gas/account`,
+      transformResponse: (raw: unknown) => unwrapData(raw),
+      providesTags: ["MerchantGas"],
+    }),
+    patchMerchantGasAccount: builder.mutation<
+      unknown | null,
+      { sponsorshipEnabled?: boolean; lowBalanceWarnUsd?: number | null }
+    >({
+      query: (body) => ({
+        url: `${PREFIX}/gas/account`,
+        method: "PATCH",
+        body,
+      }),
+      transformResponse: (raw: unknown) => unwrapData<unknown>(raw),
+      invalidatesTags: ["MerchantGas"],
+    }),
   }),
 });
 
 export const {
   useGetMerchantSummaryQuery,
+  useGetMerchantWrappedSummaryQuery,
   useGetMerchantTransactionsQuery,
   useGetMerchantTransactionByIdQuery,
   useGetMerchantSettlementsQuery,
@@ -456,4 +500,6 @@ export const {
   usePatchMerchantPayoutMethodMutation,
   usePostMerchantSettlementWithdrawMutation,
   usePostMerchantFiatQuoteMutation,
+  useGetMerchantGasAccountQuery,
+  usePatchMerchantGasAccountMutation,
 } = merchantApi;

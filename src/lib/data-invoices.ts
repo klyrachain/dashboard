@@ -168,6 +168,12 @@ function mapInvoice(raw: CoreInvoiceRaw): Invoice {
   };
 }
 
+/** Parse Core GET /api/invoices/:id `data` payload (e.g. client fetch via BFF). */
+export function invoiceFromCoreApiData(raw: unknown): Invoice | null {
+  if (!raw || typeof raw !== "object") return null;
+  return mapInvoice(raw as CoreInvoiceRaw);
+}
+
 export type InvoiceListResult = {
   items: InvoiceListItem[];
   meta: { page: number; limit: number; total: number };

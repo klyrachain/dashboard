@@ -35,6 +35,7 @@ import {
 } from "@/store/merchant-session-slice";
 import { getNavGroupsForSession, type NavGroupConfig } from "@/lib/nav-config";
 import { PLATFORM_PRIMARY_HEX } from "@/lib/platform-theme";
+import { clearMerchantPortalHttpOnlyCookie } from "@/lib/portal-auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -136,6 +137,10 @@ export function HeaderNoSidebar() {
   const sessionType = useSelector((s: RootState) => s.merchantSession.sessionType);
   const businesses = useSelector((s: RootState) => s.merchantSession.businesses);
   const activeBusinessId = useSelector((s: RootState) => s.merchantSession.activeBusinessId);
+  const portalUserEmail = useSelector((s: RootState) => s.merchantSession.portalUserEmail);
+  const portalUserDisplayName = useSelector(
+    (s: RootState) => s.merchantSession.portalUserDisplayName
+  );
 
   const navGroups = getNavGroupsForSession(sessionType);
   const activeBusiness =
@@ -169,6 +174,11 @@ export function HeaderNoSidebar() {
       await postLogout();
     } catch {
       // continue to clear client session
+    }
+    try {
+      await clearMerchantPortalHttpOnlyCookie();
+    } catch {
+      // non-fatal
     }
     window.location.href =
       "/api/auth/signout?callbackUrl=" + encodeURIComponent("/login");
@@ -338,11 +348,26 @@ export function HeaderNoSidebar() {
                   className="gap-1.5 text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
                   aria-label="Business account menu"
                 >
-                  Account
+                  {portalUserDisplayName?.trim() ||
+                    portalUserEmail?.trim() ||
+                    "Account"}
                   <ChevronDown className="size-3.5" aria-hidden />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col gap-0.5">
+                    {portalUserDisplayName?.trim() ? (
+                      <span className="font-medium text-foreground">
+                        {portalUserDisplayName.trim()}
+                      </span>
+                    ) : null}
+                    <span className="text-xs text-muted-foreground">
+                      {portalUserEmail?.trim() ?? "—"}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link
                     href="/settings/general"

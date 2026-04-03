@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
+import { signOut } from "next-auth/react";
 import { Fingerprint, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,9 +19,14 @@ import {
   requestBusinessMagicLink,
   verifyBusinessPasskeyLogin,
 } from "@/lib/businessAuthApi";
-import { setBusinessAccessToken } from "@/lib/businessAuthStorage";
+import {
+  getStoredMerchantEnvironment,
+  setBusinessAccessToken,
+  setStoredActiveBusinessId,
+} from "@/lib/businessAuthStorage";
 import { establishMerchantPortalSession } from "@/lib/establish-merchant-portal-session";
-import { setPortalJwt } from "@/store/merchant-session-slice";
+import type { AppDispatch } from "@/store";
+import { hydrateMerchantSession } from "@/store/merchant-session-slice";
 import { cn } from "@/lib/utils";
 
 const MAGIC_COOLDOWN_SECONDS = 30;
@@ -49,7 +55,7 @@ function formatApiError(error: unknown): string {
 
 async function redirectAfterSession(
   router: ReturnType<typeof useRouter>,
-  dispatch: ReturnType<typeof useDispatch>,
+  dispatch: AppDispatch,
   accessToken: string,
   returnTo: string | null
 ): Promise<void> {
@@ -60,18 +66,42 @@ async function redirectAfterSession(
       null
     );
   }
-  dispatch(setPortalJwt(accessToken));
   await establishMerchantPortalSession(accessToken);
   try {
-    const session = await fetchBusinessSession(accessToken);
-    if (!session.profileComplete) {
-      router.push("/business/signup?finishProfile=1");
-      return;
-    }
+    await signOut({ redirect: false });
   } catch {
-    // fall through to dashboard
+    /* no admin session — ok */
+  }
+  const session = await fetchBusinessSession(accessToken);
+  const businesses = session.businesses;
+  const activeId = businesses.length > 0 ? businesses[0].id : null;
+  const activeRole =
+    activeId != null
+      ? businesses.find((b) => b.id === activeId)?.role ?? null
+      : null;
+  const storedEnv = getStoredMerchantEnvironment();
+  dispatch(
+    hydrateMerchantSession({
+      sessionType: "merchant",
+      portalJwt: accessToken,
+      portalUserEmail: session.email,
+      portalUserDisplayName: session.portalDisplayName,
+      businesses,
+      activeBusinessId: activeId,
+      activeBusinessRole: activeRole,
+      merchantEnvironment: storedEnv ?? "LIVE",
+    })
+  );
+  if (activeId) {
+    setStoredActiveBusinessId(activeId);
+  }
+  if (!session.profileComplete) {
+    router.push("/business/signup?finishProfile=1");
+    router.refresh();
+    return;
   }
   router.push(safeReturnPath(returnTo));
+  router.refresh();
 }
 
 export function BusinessSigninFlow() {
@@ -349,15 +379,6 @@ export function BusinessSigninFlow() {
               sign in with a business account.
             </p>
           ) : null}
-
-          <p className="mt-8 text-center text-sm text-muted-foreground">
-            <a
-              href="/api/portal/role-sync-redirect"
-              className="font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
-            >
-              Platform / staff dashboard
-            </a>
-          </p>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             New to Morapay?{" "}

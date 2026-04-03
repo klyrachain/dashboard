@@ -18,6 +18,10 @@ export type MerchantSessionState = {
   sessionType: SessionPortalType;
   /** Portal JWT for Bearer auth on `/api/v1/merchant/*` — set after login */
   portalJwt: string | null;
+  /** Business portal user email (from GET /api/business-auth/session). */
+  portalUserEmail: string | null;
+  /** Business portal display name (from session). */
+  portalUserDisplayName: string | null;
   /** Active tenant scope */
   activeBusinessId: string | null;
   businesses: MerchantBusiness[];
@@ -30,6 +34,8 @@ export type MerchantSessionState = {
 const initialState: MerchantSessionState = {
   sessionType: "platform",
   portalJwt: null,
+  portalUserEmail: null,
+  portalUserDisplayName: null,
   activeBusinessId: null,
   businesses: [],
   merchantEnvironment: "LIVE",
@@ -47,6 +53,12 @@ export const merchantSessionSlice = createSlice({
       state.sessionType = action.payload.sessionType;
       if (action.payload.portalJwt !== undefined) {
         state.portalJwt = action.payload.portalJwt;
+      }
+      if (action.payload.portalUserEmail !== undefined) {
+        state.portalUserEmail = action.payload.portalUserEmail;
+      }
+      if (action.payload.portalUserDisplayName !== undefined) {
+        state.portalUserDisplayName = action.payload.portalUserDisplayName;
       }
       if (action.payload.businesses !== undefined) {
         state.businesses = action.payload.businesses;
@@ -108,6 +120,8 @@ export const merchantSessionSlice = createSlice({
     clearMerchantPortal(state) {
       state.sessionType = "platform";
       state.portalJwt = null;
+      state.portalUserEmail = null;
+      state.portalUserDisplayName = null;
       state.activeBusinessId = null;
       state.businesses = [];
       state.merchantEnvironment = "LIVE";

@@ -1,27 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAccessContext } from "@/lib/data-access";
+import { getSessionToken } from "@/lib/auth";
 
 const COOKIE = "klyra_portal_role";
 const MAX_AGE = 60 * 60 * 24 * 7;
-const MERCHANT_ROLE = "merchant";
-const PLATFORM_ROLE = "platform";
 
 /**
- * Sets portal role cookie from server Core access context and redirects home.
- * For staff/platform dashboards where the deployment API key maps to platform access.
+ * Sets `klyra_portal_role=platform` only when a platform admin session exists,
+ * then redirects home. Does not use server CORE_API_KEY to bypass login.
  */
 export async function GET(request: NextRequest) {
-  const access = await getAccessContext();
-  if (!access.ok || !access.context) {
+  const token = await getSessionToken();
+  if (!token) {
     const u = new URL("/login", request.url);
     u.searchParams.set("error", "platform_access");
     return NextResponse.redirect(u);
   }
-  const role =
-    access.context.type === "merchant" ? MERCHANT_ROLE : PLATFORM_ROLE;
   const home = new URL("/", request.url);
   const res = NextResponse.redirect(home);
-  res.cookies.set(COOKIE, role, {
+  res.cookies.set(COOKIE, "platform", {
     path: "/",
     sameSite: "lax",
     maxAge: MAX_AGE,

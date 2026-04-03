@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,20 @@ export function TeamSettingsContent({ initialAdmins }: TeamSettingsContentProps)
 
   return (
     <div className="space-y-6">
+      <Card className="bg-white">
+        <CardHeader>
+          <CardTitle>Verification</CardTitle>
+          <CardDescription>
+            Complete KYB/KYC before enabling higher limits and some payout rails.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="outline">
+            <Link href="/settings/verification">Open verification center</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card className="bg-white">
         <CardHeader>
           <CardTitle>Admin list</CardTitle>

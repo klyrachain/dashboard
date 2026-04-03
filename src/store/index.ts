@@ -69,6 +69,8 @@ export function makeStore(input?: MakeStoreInput): AppStore {
   const merchantSessionPreload: MerchantSessionState = {
     sessionType: ms?.sessionType ?? "platform",
     portalJwt: ms?.portalJwt ?? null,
+    portalUserEmail: ms?.portalUserEmail ?? null,
+    portalUserDisplayName: ms?.portalUserDisplayName ?? null,
     activeBusinessId: ms?.activeBusinessId ?? null,
     businesses: ms?.businesses ?? [],
     merchantEnvironment: ms?.merchantEnvironment ?? "LIVE",

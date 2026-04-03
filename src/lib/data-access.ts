@@ -8,7 +8,8 @@ import { cookies } from "next/headers";
 import { getSessionToken } from "@/lib/auth";
 import { getCoreAccess } from "@/lib/core-api";
 
-async function isMerchantPortalRoleCookie(): Promise<boolean> {
+/** True when HttpOnly cookie indicates business portal (merchant) session for SSR branching. */
+export async function isMerchantPortalRoleCookie(): Promise<boolean> {
   try {
     const c = await cookies();
     return c.get("klyra_portal_role")?.value === "merchant";

@@ -50,12 +50,60 @@ export const volumeLoadError =
   "Things are taking a little longer than usual. We're still trying to reach the network.";
 
 /** Invoice list load failure — map raw API error to sweet copy. */
+/** Portal / key cannot access invoices (Core 403). */
+export const invoiceAccessDenied =
+  "We cannot show invoices for this account with your current access. Ask a team admin if you need invoice access.";
+
+export const invoiceSignInRequired =
+  "Please sign in to your business account and select a business to see invoices.";
+
 export function mapInvoiceLoadError(raw: string | undefined | null): string {
   if (!raw || !raw.trim()) return serverError;
   const lower = raw.toLowerCase();
   if (lower.includes("timeout") || lower.includes("network")) return apiTimeout;
   if (lower.includes("500") || lower.includes("server")) return serverError;
   if (lower.includes("404") || lower.includes("not found")) return notFound;
+  if (lower.includes("sign in")) return invoiceSignInRequired;
+  if (
+    lower.includes("403") ||
+    lower.includes("forbidden") ||
+    lower.includes("does not allow") ||
+    lower.includes("permission")
+  ) {
+    return invoiceAccessDenied;
+  }
+  return serverError;
+}
+
+export const teamAccessDenied =
+  "You do not have access to team settings for this business right now. Ask a business owner or admin.";
+
+export const teamSignInRequired =
+  "Please sign in to your business account to manage team members.";
+
+export function mapTeamLoadError(raw: string | undefined | null): string {
+  if (!raw || !raw.trim()) return serverError;
+  const lower = raw.toLowerCase();
+  if (
+    lower.includes("core api base url is not configured") ||
+    lower.includes("core_not_configured")
+  ) {
+    return "Team settings are temporarily unavailable due to a configuration issue. Please try again shortly.";
+  }
+  if (lower.includes("timeout") || lower.includes("network")) return apiTimeout;
+  if (lower.includes("500") || lower.includes("server")) return serverError;
+  if (lower.includes("404") || lower.includes("not found")) return notFound;
+  if (
+    lower.includes("unauthorized") ||
+    lower.includes("auth") ||
+    lower.includes("token") ||
+    lower.includes("sign in")
+  ) {
+    return teamSignInRequired;
+  }
+  if (lower.includes("403") || lower.includes("forbidden") || lower.includes("permission")) {
+    return teamAccessDenied;
+  }
   return serverError;
 }
 

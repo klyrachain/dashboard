@@ -13,6 +13,7 @@ import {
   Shield,
   Users,
   Webhook,
+  Fuel,
 } from "lucide-react";
 
 const PLATFORM_TABS = [
@@ -20,12 +21,14 @@ const PLATFORM_TABS = [
   { href: "/settings/financials", label: "Financials", icon: DollarSign },
   { href: "/settings/providers", label: "Providers & Routing", icon: Route },
   { href: "/settings/risk", label: "Risk & Compliance", icon: Shield },
+  { href: "/settings/gas", label: "Gas sponsorship", icon: Fuel },
   { href: "/settings/team", label: "Team", icon: Users },
   { href: "/settings/api", label: "API & Webhooks", icon: Webhook },
 ] as const;
 
 const MERCHANT_TABS = [
   { href: "/settings/general", label: "Business & webhooks", icon: Building2 },
+  { href: "/settings/gas", label: "Gas sponsorship", icon: Fuel },
   { href: "/settings/team", label: "Team", icon: Users },
 ] as const;
 

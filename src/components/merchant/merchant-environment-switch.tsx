@@ -32,7 +32,9 @@ export function MerchantEnvironmentSwitch({
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <span className={cn("text-xs text-white/60", labelClassName)}>Test mode</span>
+      <span className={cn("text-xs text-white/60", labelClassName)}>
+        Merchant API mode
+      </span>
       <Switch
         checked={isTest}
         onCheckedChange={(v) => {

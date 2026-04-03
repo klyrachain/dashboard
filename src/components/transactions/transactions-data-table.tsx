@@ -65,11 +65,16 @@ function getStatusVariant(
 const PAGE_SIZE_PRESETS = [15, 50, 100, 150, 200] as const;
 const DEFAULT_PAGE_SIZE = 15;
 
+/** Visible border on filter controls (selects, date inputs) for scanability. */
+const FILTER_CONTROL_CLASS =
+  "border border-slate-300 bg-background dark:border-slate-600";
+
 /** localStorage key for persisting column visibility so it survives refresh. */
 const COLUMN_VISIBILITY_STORAGE_KEY = "klyra-transactions-column-visibility";
 
 /** Default visible columns: ID, Type, Status, amounts/fee, tokens/chains, providers, Created, Actions. */
 const defaultColumnVisibility: VisibilityState = {
+  paymentLinkPublicCode: true,
   fee: true,
   feeInUsd: true,
   fromChain: true,
@@ -77,8 +82,9 @@ const defaultColumnVisibility: VisibilityState = {
   exchangeRate: false,
   fTokenPriceUsd: false,
   tTokenPriceUsd: false,
-  fromIdentifier: false,
-  toIdentifier: false,
+  fromIdentifier: true,
+  toIdentifier: true,
+  referenceOrTxHash: true,
   fromType: false,
   toType: false,
   fromUserId: false,
@@ -105,6 +111,22 @@ const columns: ColumnDef<TransactionRow>[] = [
     },
   },
   {
+    accessorKey: "paymentLinkPublicCode",
+    header: "Link code",
+    meta: { headerLabel: "Payment link code" },
+    cell: ({ row }) => {
+      const code = row.original.paymentLinkPublicCode?.trim() ?? "";
+      if (!code) {
+        return <span className="text-muted-foreground">—</span>;
+      }
+      return (
+        <span className="font-mono text-xs text-muted-foreground" title={code}>
+          {code}
+        </span>
+      );
+    },
+  },
+  {
     accessorKey: "type",
     header: "Type",
     meta: { headerLabel: "Type" },
@@ -116,6 +138,31 @@ const columns: ColumnDef<TransactionRow>[] = [
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
       return <Badge variant={getStatusVariant(status)}>{status}</Badge>;
+    },
+  },
+  {
+    accessorKey: "referenceOrTxHash",
+    header: "Reference / tx hash",
+    meta: { headerLabel: "Reference / tx hash" },
+    cell: ({ row }) => {
+      const hash = row.original.cryptoSendTxHash?.trim() ?? "";
+      const ref = row.original.providerSessionId?.trim() ?? "";
+      const primary = hash || ref;
+      if (!primary) {
+        return <span className="text-muted-foreground">—</span>;
+      }
+      const label = hash ? "Tx hash" : "Paystack ref";
+      return (
+        <div className="flex items-center gap-2">
+          <span
+            className="max-w-[140px] truncate font-mono text-xs text-muted-foreground"
+            title={`${label}: ${primary}`}
+          >
+            {primary}
+          </span>
+          <CopyButton value={primary} label={`Copy ${label.toLowerCase()}`} hideWhenEmpty />
+        </div>
+      );
     },
   },
   {
@@ -236,8 +283,8 @@ const columns: ColumnDef<TransactionRow>[] = [
   },
   {
     accessorKey: "fromIdentifier",
-    header: "From identifier",
-    meta: { headerLabel: "From identifier" },
+    header: "Payer",
+    meta: { headerLabel: "Payer (email / id)" },
     cell: ({ row }) => {
       const val = row.original.fromIdentifier || "";
       return (
@@ -252,16 +299,27 @@ const columns: ColumnDef<TransactionRow>[] = [
   },
   {
     accessorKey: "toIdentifier",
-    header: "To identifier",
-    meta: { headerLabel: "To identifier" },
+    header: "Recipient",
+    meta: { headerLabel: "Recipient (business if set)" },
     cell: ({ row }) => {
-      const val = row.original.toIdentifier || "";
+      const direct = row.original.toIdentifier?.trim() ?? "";
+      const business = row.original.businessName?.trim() ?? "";
+      const val = direct || business;
       return (
         <div className="flex items-center gap-2">
-          <span className="max-w-[120px] truncate font-mono text-xs text-muted-foreground" title={val || undefined}>
-            {val || "—"}
+          <span
+            className="max-w-[160px] truncate text-xs text-muted-foreground"
+            title={val ? (business && !direct ? `Business: ${business}` : val) : undefined}
+          >
+            {val ? (
+              <span className={direct ? "font-mono" : "font-medium text-foreground/90"}>
+                {val}
+              </span>
+            ) : (
+              "—"
+            )}
           </span>
-          <CopyButton value={val} label="Copy to identifier" hideWhenEmpty />
+          <CopyButton value={val} label="Copy recipient" hideWhenEmpty />
         </div>
       );
     },
@@ -356,15 +414,41 @@ const columns: ColumnDef<TransactionRow>[] = [
 ];
 
 function columnsWithMerchantOptions(hideFailedRetry: boolean): ColumnDef<TransactionRow>[] {
-  if (!hideFailedRetry) return columns;
   return columns.map((c) =>
     c.id === "actions"
       ? {
           ...c,
-          cell: () => null,
+          cell: hideFailedRetry ? () => null : c.cell,
         }
       : c
   );
+}
+
+function columnsForViewerScope(
+  allColumns: ColumnDef<TransactionRow>[],
+  viewerScope: "platform" | "business"
+): ColumnDef<TransactionRow>[] {
+  if (viewerScope === "platform") return allColumns;
+  const blocked = new Set([
+    "type",
+    "fee",
+    "feeInUsd",
+    "fromProvider",
+    "toProvider",
+    "fromType",
+    "toType",
+    "fromUserId",
+    "toUserId",
+    "requestId",
+  ]);
+  return allColumns.filter((column) => {
+    const accessor =
+      "accessorKey" in column && typeof column.accessorKey === "string"
+        ? column.accessorKey
+        : "";
+    const id = column.id ?? accessor;
+    return !blocked.has(id);
+  });
 }
 
 const TRANSACTIONS_EXPORT_COLUMNS: ExportColumn[] = columns
@@ -444,6 +528,8 @@ export type TransactionsDataTableProps = {
   disableSearchTriggeredRefetch?: boolean;
   /** Hide failed-transaction retry (merchant API uses different retry semantics). */
   hideFailedRetry?: boolean;
+  /** Business view hides platform-sensitive columns and filters. */
+  viewerScope?: "platform" | "business";
 };
 
 export function TransactionsDataTable({
@@ -451,6 +537,7 @@ export function TransactionsDataTable({
   onRefresh,
   disableSearchTriggeredRefetch = false,
   hideFailedRetry = false,
+  viewerScope = "platform",
 }: TransactionsDataTableProps) {
   const [data, setData] = React.useState<TransactionRow[]>(initialData);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -509,8 +596,14 @@ export function TransactionsDataTable({
       list = list.filter(
         (r) =>
           (r.id && r.id.toLowerCase().includes(q)) ||
+          (r.paymentLinkPublicCode &&
+            r.paymentLinkPublicCode.toLowerCase().includes(q)) ||
           (r.fromIdentifier && r.fromIdentifier.toLowerCase().includes(q)) ||
           (r.toIdentifier && r.toIdentifier.toLowerCase().includes(q)) ||
+          (r.businessName && r.businessName.toLowerCase().includes(q)) ||
+          (r.referenceOrTxHash && r.referenceOrTxHash.toLowerCase().includes(q)) ||
+          (r.providerSessionId && r.providerSessionId.toLowerCase().includes(q)) ||
+          (r.cryptoSendTxHash && r.cryptoSendTxHash.toLowerCase().includes(q)) ||
           (r.fromUserId && r.fromUserId.toLowerCase().includes(q)) ||
           (r.toUserId && r.toUserId.toLowerCase().includes(q))
       );
@@ -553,10 +646,10 @@ export function TransactionsDataTable({
     dateTo,
   ]);
 
-  const tableColumns = React.useMemo(
-    () => columnsWithMerchantOptions(hideFailedRetry),
-    [hideFailedRetry]
-  );
+  const tableColumns = React.useMemo(() => {
+    const base = columnsWithMerchantOptions(hideFailedRetry);
+    return columnsForViewerScope(base, viewerScope);
+  }, [hideFailedRetry, viewerScope]);
 
   const table = useReactTable({
     data: filteredData,
@@ -666,16 +759,20 @@ export function TransactionsDataTable({
         />
         <Input
           type="search"
-          placeholder="Search by ID, identifier (to/from), or user ID…"
+          placeholder={
+            viewerScope === "business"
+              ? "Search by ID, link code, payer, business name, or reference…"
+              : "Search by ID, identifier (to/from), user ID, or link code…"
+          }
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 max-w-md border border-slate-200 bg-white"
+          className={`pl-9 max-w-md ${FILTER_CONTROL_CLASS}`}
           aria-label="Search transactions"
         />
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className={`w-[180px] ${FILTER_CONTROL_CLASS}`}>
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -687,22 +784,24 @@ export function TransactionsDataTable({
             <SelectItem value={TransactionStatus.CANCELLED}>Cancelled</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            <SelectItem value={TransactionType.BUY}>Buy</SelectItem>
-            <SelectItem value={TransactionType.SELL}>Sell</SelectItem>
-            <SelectItem value={TransactionType.TRANSFER}>Transfer</SelectItem>
-            <SelectItem value={TransactionType.REQUEST}>Request</SelectItem>
-            <SelectItem value={TransactionType.CLAIM}>Claim</SelectItem>
-          </SelectContent>
-        </Select>
-        {providerOptions.length > 0 && (
+        {viewerScope === "platform" ? (
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className={`w-[160px] ${FILTER_CONTROL_CLASS}`}>
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value={TransactionType.BUY}>Buy</SelectItem>
+              <SelectItem value={TransactionType.SELL}>Sell</SelectItem>
+              <SelectItem value={TransactionType.TRANSFER}>Transfer</SelectItem>
+              <SelectItem value={TransactionType.REQUEST}>Request</SelectItem>
+              <SelectItem value={TransactionType.CLAIM}>Claim</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : null}
+        {viewerScope === "platform" && providerOptions.length > 0 && (
           <Select value={providerFilter} onValueChange={setProviderFilter}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className={`w-[160px] ${FILTER_CONTROL_CLASS}`}>
               <SelectValue placeholder="Provider" />
             </SelectTrigger>
             <SelectContent>
@@ -718,7 +817,7 @@ export function TransactionsDataTable({
         {chainOptions.length > 0 && (
           <>
             <Select value={fromChainFilter} onValueChange={setFromChainFilter}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className={`w-[140px] ${FILTER_CONTROL_CLASS}`}>
                 <SelectValue placeholder="From chain" />
               </SelectTrigger>
               <SelectContent>
@@ -731,7 +830,7 @@ export function TransactionsDataTable({
               </SelectContent>
             </Select>
             <Select value={toChainFilter} onValueChange={setToChainFilter}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className={`w-[140px] ${FILTER_CONTROL_CLASS}`}>
                 <SelectValue placeholder="To chain" />
               </SelectTrigger>
               <SelectContent>
@@ -751,14 +850,14 @@ export function TransactionsDataTable({
             placeholder="From"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="w-[140px]"
+            className={`w-[140px] ${FILTER_CONTROL_CLASS}`}
           />
           <Input
             type="date"
             placeholder="To"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="w-[140px]"
+            className={`w-[140px] ${FILTER_CONTROL_CLASS}`}
           />
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -795,7 +894,14 @@ export function TransactionsDataTable({
             <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
               {table
                 .getAllColumns()
-                .filter((col) => col.getCanHide())
+                .filter((col) => {
+                  if (!col.getCanHide()) return false;
+                  if (viewerScope === "business") {
+                    const hid = col.id;
+                    if (hid === "fTokenPriceUsd" || hid === "tTokenPriceUsd") return false;
+                  }
+                  return true;
+                })
                 .map((col) => (
                   <DropdownMenuCheckboxItem
                     key={col.id}
@@ -868,7 +974,7 @@ export function TransactionsDataTable({
             }
             onValueChange={handlePresetPageSize}
           >
-            <SelectTrigger className="w-[90px]">
+            <SelectTrigger className={`w-[90px] ${FILTER_CONTROL_CLASS}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -891,7 +997,7 @@ export function TransactionsDataTable({
             onKeyDown={(e) => {
               if (e.key === "Enter") applyCustomPageSize();
             }}
-            className="w-[72px] tabular-nums"
+            className={`w-[72px] tabular-nums ${FILTER_CONTROL_CLASS}`}
             aria-label="Custom rows per page"
           />
         </div>

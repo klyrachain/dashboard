@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { useDispatch } from "react-redux";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,8 +16,12 @@ import {
   runPasskeyAuthentication,
 } from "@/lib/webauthn-client";
 import { isAuthSuccess } from "@/types/auth";
+import { clearBusinessAccessToken } from "@/lib/businessAuthStorage";
+import { clearMerchantPortalHttpOnlyCookie } from "@/lib/portal-auth-client";
+import { clearMerchantPortal } from "@/store/merchant-session-slice";
 
 export function LoginPasskeyStep({ email: initialEmail }: { email: string }) {
+  const dispatch = useDispatch();
   const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +70,13 @@ export function LoginPasskeyStep({ email: initialEmail }: { email: string }) {
           redirect: false,
         });
         if (result?.ok) {
+          try {
+            await clearMerchantPortalHttpOnlyCookie();
+          } catch {
+            /* non-fatal */
+          }
+          clearBusinessAccessToken();
+          dispatch(clearMerchantPortal());
           window.location.href = "/";
         } else {
           setError(result?.error ?? "Session sign-in failed");

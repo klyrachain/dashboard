@@ -1,4 +1,4 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { QuoteCurrency } from "@/lib/token-rates";
 
 type PreferencesState = {
@@ -14,7 +14,7 @@ export const preferencesSlice = createSlice({
   name: "preferences",
   initialState,
   reducers: {
-    setBaseCurrency: (state, action: { payload: QuoteCurrency | null }) => {
+    setBaseCurrency: (state, action: PayloadAction<QuoteCurrency | null>) => {
       state.baseCurrency = action.payload;
     },
   },

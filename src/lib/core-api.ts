@@ -20,7 +20,13 @@ const HEALTH_TIMEOUT_MS = 5000;
 const FETCH_TIMEOUT_MS = 15000;
 
 export function getCoreBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_CORE_URL!;
+  const fromPublic = process.env.NEXT_PUBLIC_CORE_URL?.trim();
+  const fromServer = process.env.CORE_URL?.trim();
+  const resolved = fromPublic || fromServer;
+  if (!resolved) {
+    throw new Error("Core API base URL is not configured. Set NEXT_PUBLIC_CORE_URL or CORE_URL.");
+  }
+  return resolved;
 }
 
 /** API key for protected routes (server-only; do not use NEXT_PUBLIC_). */
@@ -38,6 +44,15 @@ function isPublicPath(path: string): boolean {
   );
 }
 
+function requiresBearerForBusinessPath(path: string): boolean {
+  const pathname = path.replace(/\?.*$/, "").replace(/^\//, "").toLowerCase();
+  return (
+    pathname.startsWith("api/invoices") ||
+    pathname.startsWith("api/transactions") ||
+    pathname.startsWith("api/requests")
+  );
+}
+
 /** Optional session key for Core API. When set, use Authorization: Bearer; else x-api-key for non-public paths. */
 export type CoreAuthOptions = { bearerToken?: string | null };
 
@@ -50,6 +65,9 @@ function coreHeaders(path: string, bearerToken?: string | null, extra?: HeadersI
     if (bearerToken?.trim()) {
       headers["Authorization"] = `Bearer ${bearerToken.trim()}`;
     } else {
+      if (requiresBearerForBusinessPath(path)) {
+        return headers;
+      }
       const key = getCoreApiKey();
       if (key) headers["x-api-key"] = key;
     }
@@ -64,10 +82,10 @@ async function fetchCore<T>(
   const base = getCoreBaseUrl().replace(/\/$/, "");
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
   const timeout = options?.timeout ?? HEALTH_TIMEOUT_MS;
-  const { timeout: _t, ...rest } = options ?? {};
+  const { timeout: _t, bearerToken, headers: optionHeaders, ...rest } = options ?? {};
   const res = await fetch(url, {
     ...rest,
-    headers: coreHeaders(path, rest?.headers),
+    headers: coreHeaders(path, bearerToken, optionHeaders),
     signal: AbortSignal.timeout(timeout),
   });
   const data = (await res.json().catch(() => ({}))) as T;
@@ -1057,6 +1075,50 @@ export async function createOrder(
     const message = e instanceof Error ? e.message : "Network error";
     return { success: false, error: message };
   }
+}
+
+/** GET /api/platform/gas/settings */
+export async function getCorePlatformGasSettings(bearerToken?: string | null) {
+  return fetchCoreGet<unknown>("api/platform/gas/settings", undefined, bearerToken);
+}
+
+/** PATCH /api/platform/gas/settings */
+export async function patchCorePlatformGasSettings(
+  body: { sponsorshipEnabled?: boolean; maxUsdPerTx?: number | null; notes?: string | null },
+  bearerToken?: string | null
+) {
+  return fetchCorePatch<unknown>("api/platform/gas/settings", body as Record<string, unknown>, bearerToken);
+}
+
+/** GET /api/platform/gas/businesses — paginated business gas accounts. */
+export async function getCorePlatformGasBusinesses(
+  params?: { page?: number; limit?: number },
+  bearerToken?: string | null
+) {
+  return fetchCoreGet<unknown[]>("api/platform/gas/businesses", {
+    page: params?.page,
+    limit: params?.limit,
+  }, bearerToken);
+}
+
+/** GET /api/platform/gas/ledger — paginated ledger (optional reason e.g. SPONSORSHIP). */
+export async function getCorePlatformGasLedger(
+  params?: { page?: number; limit?: number; reason?: string },
+  bearerToken?: string | null
+) {
+  return fetchCoreGet<unknown[]>("api/platform/gas/ledger", {
+    page: params?.page,
+    limit: params?.limit,
+    reason: params?.reason,
+  }, bearerToken);
+}
+
+/** POST /api/platform/gas/credit — credit a business prepaid balance (admin). */
+export async function postCorePlatformGasCredit(
+  body: { businessId: string; amountUsd: number; idempotencyKey: string; reason?: string },
+  bearerToken?: string | null
+) {
+  return fetchCorePost<unknown>("api/platform/gas/credit", body as Record<string, unknown>, bearerToken);
 }
 
 /**

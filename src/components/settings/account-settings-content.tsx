@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { postLogout, postChangePassword, getPasskeyOptions, postPasskeyVerify } from "@/lib/auth-api";
+import { clearMerchantPortalHttpOnlyCookie } from "@/lib/portal-auth-client";
 import {
   formatWebAuthnClientError,
   isWebAuthnAvailable,
@@ -49,7 +50,11 @@ export function AccountSettingsContent() {
     } catch {
       // continue
     }
-    // Navigate to NextAuth signout so the session cookie is cleared, then redirect to /login
+    try {
+      await clearMerchantPortalHttpOnlyCookie();
+    } catch {
+      // non-fatal
+    }
     window.location.href = "/api/auth/signout?callbackUrl=" + encodeURIComponent("/login");
   };
 

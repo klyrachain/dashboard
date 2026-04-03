@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { setBaseCurrency } from "@/store/preferences-slice";
+import type { AppDispatch } from "@/store";
+import { setBaseCurrency as setPreferencesBaseCurrency } from "@/store/preferences-slice";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -33,13 +34,13 @@ function toNum(s: string): number {
 }
 
 export function FinancialsSettingsForm({ initialData }: FinancialsSettingsFormProps) {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const [baseFeePercent, setBaseFeePercent] = useState("1.00");
   const [fixedFee, setFixedFee] = useState("0.50");
   const [minTxSize, setMinTxSize] = useState("5.00");
   const [maxTxSize, setMaxTxSize] = useState("10000.00");
   const [lowBalanceAlert, setLowBalanceAlert] = useState("500.00");
-  const [baseCurrency, setBaseCurrency] = useState<QuoteCurrency>("usdc");
+  const [baseCurrency, setBaseCurrencyState] = useState<QuoteCurrency>("usdc");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -50,7 +51,7 @@ export function FinancialsSettingsForm({ initialData }: FinancialsSettingsFormPr
       setMinTxSize(toStr(initialData.minTransactionSize));
       setMaxTxSize(toStr(initialData.maxTransactionSize));
       setLowBalanceAlert(toStr(initialData.lowBalanceAlert));
-      setBaseCurrency(initialData.baseCurrency ?? "usdc");
+      setBaseCurrencyState(initialData.baseCurrency ?? "usdc");
     }
   }, [initialData]);
 
@@ -65,7 +66,7 @@ export function FinancialsSettingsForm({ initialData }: FinancialsSettingsFormPr
             <Label htmlFor="baseCurrency">Platform display currency</Label>
             <Select
               value={baseCurrency}
-              onValueChange={(v) => setBaseCurrency(v as QuoteCurrency)}
+              onValueChange={(v) => setBaseCurrencyState(v as QuoteCurrency)}
             >
               <SelectTrigger id="baseCurrency" className="w-34">
                 <SelectValue placeholder="Currency" />
@@ -186,7 +187,7 @@ export function FinancialsSettingsForm({ initialData }: FinancialsSettingsFormPr
           });
           setSaving(false);
           if (result.success) {
-            dispatch(setBaseCurrency(baseCurrency));
+            dispatch(setPreferencesBaseCurrency(baseCurrency));
             return;
           }
           setSaveError(result.error ?? "Save failed");

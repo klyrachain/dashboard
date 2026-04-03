@@ -18,6 +18,8 @@ import {
   AlertTriangle,
   UserCircle,
   UserPlus,
+  Fuel,
+  ShieldCheck,
 } from "lucide-react";
 import type { SessionPortalType } from "@/store/merchant-session-slice";
 
@@ -57,8 +59,9 @@ export const platformNavGroups: NavGroupConfig[] = [
     items: [
       { href: "/connect", label: "Overview", icon: BarChart3 },
       { href: "/connect/quotes", label: "Quotes", icon: LineChart },
-      { href: "/connect/merchants", label: "Merchants", icon: Store },
+      { href: "/connect/merchants", label: "Businesses", icon: Store },
       { href: "/connect/settlements", label: "Settlements", icon: Landmark },
+      { href: "/settings/gas", label: "Gas & sponsorship", icon: Fuel },
     ],
   },
   {
@@ -110,6 +113,11 @@ export const merchantNavGroups: NavGroupConfig[] = [
         href: "/settings/general",
         label: "Business profile & webhooks",
         icon: UserCircle,
+      },
+      {
+        href: "/settings/verification",
+        label: "Verification",
+        icon: ShieldCheck,
       },
       { href: "/settings/team", label: "Team", icon: UserPlus },
     ],

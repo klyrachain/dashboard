@@ -24,10 +24,10 @@ export default async function ConnectMerchantsPage({ searchParams }: MerchantsPa
     <div className="space-y-6 font-primary text-body">
       <div>
         <h1 className="text-display font-semibold tracking-tight">
-          Merchants
+          Businesses
         </h1>
         <p className="font-secondary text-caption text-muted-foreground mt-1">
-          Partners and businesses using your payment rails.
+          Partners and businesses on your payment rails (Connect).
         </p>
         {actingAs && (
           <p className="font-secondary text-caption text-slate-600 mt-1">

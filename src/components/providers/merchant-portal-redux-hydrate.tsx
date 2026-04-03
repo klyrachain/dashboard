@@ -71,6 +71,8 @@ export function MerchantPortalReduxHydrate({
           hydrateMerchantSession({
             sessionType: "merchant",
             portalJwt: token,
+            portalUserEmail: session.email,
+            portalUserDisplayName: session.portalDisplayName,
             businesses,
             activeBusinessId: activeId,
             merchantEnvironment: merged.merchantEnvironment ?? "LIVE",

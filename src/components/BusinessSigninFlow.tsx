@@ -82,6 +82,8 @@ async function completeBusinessPortalSignIn(
     hydrateMerchantSession({
       sessionType: "merchant",
       portalJwt: accessToken,
+      portalUserEmail: session.email,
+      portalUserDisplayName: session.portalDisplayName,
       businesses,
       activeBusinessId: activeId,
       activeBusinessRole: activeRole,

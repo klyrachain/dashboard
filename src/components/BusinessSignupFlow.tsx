@@ -214,6 +214,28 @@ export function BusinessSignupFlow() {
     void fetchBusinessSession(token)
       .then((session) => {
         if (cancelled) return;
+        const businesses = session.businesses;
+        const activeId = businesses.length > 0 ? businesses[0].id : null;
+        const activeRole =
+          activeId != null
+            ? businesses.find((b) => b.id === activeId)?.role ?? null
+            : null;
+        const storedEnv = getStoredMerchantEnvironment();
+        dispatch(
+          hydrateMerchantSession({
+            sessionType: "merchant",
+            portalJwt: token,
+            portalUserEmail: session.email,
+            portalUserDisplayName: session.portalDisplayName,
+            businesses,
+            activeBusinessId: activeId,
+            activeBusinessRole: activeRole,
+            merchantEnvironment: storedEnv ?? "LIVE",
+          })
+        );
+        if (activeId) {
+          setStoredActiveBusinessId(activeId);
+        }
         if (session.profileComplete) {
           router.replace("/");
           return;
@@ -229,7 +251,7 @@ export function BusinessSignupFlow() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams, router, magicTokenFromEmail]);
+  }, [searchParams, router, magicTokenFromEmail, dispatch]);
 
   /** Debounced email check while user types (step 1). */
   useEffect(() => {
@@ -511,6 +533,8 @@ export function BusinessSignupFlow() {
         hydrateMerchantSession({
           sessionType: "merchant",
           portalJwt: token,
+          portalUserEmail: session.email,
+          portalUserDisplayName: session.portalDisplayName,
           businesses,
           activeBusinessId: activeId,
           activeBusinessRole: activeRole,
@@ -541,15 +565,6 @@ export function BusinessSignupFlow() {
       setIsSubmitting(false);
     }
   };
-
-  const handleOptionalPasskeyInfo = useCallback(() => {
-    setPasskeyHint(
-      typeof window !== "undefined" &&
-        window.PublicKeyCredential !== undefined
-        ? "You can register Face ID, Touch ID, or a security key after signup under Settings → Security."
-        : "Passkeys work on supported browsers. Add one anytime from Settings → Security after signup."
-    );
-  }, []);
 
   const handleAddPasskey = useCallback(async () => {
     clearError();
@@ -1142,7 +1157,8 @@ export function BusinessSignupFlow() {
                 Set up your profile
               </h1>
               <p className="mt-3 text-lg text-zinc-600">
-                Name and password secure your account. Passkey is optional.
+                Name and password secure your account. You can add a passkey for
+                faster sign-in.
               </p>
 
               <form className="mt-10 space-y-6" onSubmit={handleStep4} noValidate>
@@ -1194,23 +1210,15 @@ export function BusinessSignupFlow() {
                       aria-hidden
                     />
                     <div className="min-w-0 flex-1 space-y-3">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-zinc-900">
-                          Passkey (optional)
-                        </p>
-                        <p className="text-sm text-zinc-600">
-                          Use Face ID, Touch ID, or a security key for faster
-                          sign-in next time. You can also set this up later in
-                          Settings → Security.
-                        </p>
-                      </div>
-
-                      {/* <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                      <p className="text-sm font-medium text-zinc-900">
+                        Passkey (optional)
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                         <div className="space-y-1">
                           <Label htmlFor={`${formId}-passkeyName`}>
-                            Passkey label{" "}
+                            Label{" "}
                             <span className="font-normal text-zinc-500">
-                              (optional)
+                              (e.g. this device)
                             </span>
                           </Label>
                           <Input
@@ -1233,7 +1241,7 @@ export function BusinessSignupFlow() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="mt-2 sm:mt-0 sm:h-11"
+                          className="mt-2 w-full sm:mt-0 sm:h-11 sm:w-auto"
                           onClick={() => void handleAddPasskey()}
                           disabled={isRegisteringPasskey || isSubmitting}
                         >
@@ -1249,17 +1257,7 @@ export function BusinessSignupFlow() {
                             "Add passkey"
                           )}
                         </Button>
-                      </div> */}
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="px-0 text-xs font-normal text-zinc-600 hover:text-zinc-900 hover:bg-transparent"
-                        onClick={handleOptionalPasskeyInfo}
-                      >
-                        Learn how passkeys work
-                      </Button>
+                      </div>
 
                       {passkeyHint ? (
                         <p
