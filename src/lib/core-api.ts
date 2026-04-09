@@ -1009,6 +1009,25 @@ export async function postCoreSettingsApiRotateWebhookSecret(bearerToken?: strin
   return { ok: res.ok, status: res.status, data };
 }
 
+/** GET /api/settings/quotes/fonbnk/supported — Fonbnk NETWORK_ASSET rows (admin). */
+export async function getCoreSettingsQuotesFonbnkSupported(
+  params?: { limit?: number; network?: string },
+  bearerToken?: string | null
+) {
+  return fetchCoreGet<unknown>("api/settings/quotes/fonbnk/supported", {
+    limit: params?.limit,
+    network: params?.network,
+  }, bearerToken);
+}
+
+/** GET /api/countries — optional ?supported=fonbnk|paystack|any */
+export async function getCoreCountries(
+  params?: { supported?: "fonbnk" | "paystack" | "any" },
+  bearerToken?: string | null
+) {
+  return fetchCoreGet<unknown>("api/countries", { supported: params?.supported }, bearerToken);
+}
+
 /**
  * GET /api/logs — request logs from Core (monitoring & filtering).
  * Query: method, path (substring), since (ISO), page, limit (default 50, max 100).

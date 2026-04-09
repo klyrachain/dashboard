@@ -14,12 +14,14 @@ import {
   Users,
   Webhook,
   Fuel,
+  Layers,
 } from "lucide-react";
 
 const PLATFORM_TABS = [
   { href: "/settings/general", label: "General", icon: Settings },
   { href: "/settings/financials", label: "Financials", icon: DollarSign },
   { href: "/settings/providers", label: "Providers & Routing", icon: Route },
+  { href: "/settings/provider-catalog", label: "Provider catalog", icon: Layers },
   { href: "/settings/risk", label: "Risk & Compliance", icon: Shield },
   { href: "/settings/gas", label: "Gas sponsorship", icon: Fuel },
   { href: "/settings/team", label: "Team", icon: Users },
