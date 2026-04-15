@@ -28,6 +28,7 @@ import {
 } from "@/lib/businessAuthStorage";
 import { setMerchantEnvironment } from "@/store/merchant-session-slice";
 import { setTestMode } from "@/store/layout-slice";
+import { useShellNav } from "@/hooks/use-shell-nav";
 
 export function Topbar({ className }: { className?: string }) {
   const dispatch = useDispatch();
@@ -43,9 +44,12 @@ export function Topbar({ className }: { className?: string }) {
   );
 
   const isMerchant = sessionType === "merchant";
-  const isSandbox = isMerchant
-    ? merchantEnvironment === "TEST"
-    : platformTestMode === true;
+  const { isUnauthedShell } = useShellNav();
+  const isSandbox = isUnauthedShell
+    ? false
+    : isMerchant
+      ? merchantEnvironment === "TEST"
+      : platformTestMode === true;
 
   const handleLogout = async () => {
     if (isMerchant) {
@@ -79,38 +83,42 @@ export function Topbar({ className }: { className?: string }) {
     window.location.href = "/api/auth/signout?callbackUrl=" + encodeURIComponent("/login");
   };
 
-  const triggerLabel = isMerchant
-    ? portalUserDisplayName?.trim() ||
-      portalUserEmail?.trim() ||
-      "Account"
-    : admin?.name?.trim() || admin?.email || "Account";
+  const triggerLabel = isUnauthedShell
+    ? "Sign in"
+    : isMerchant
+      ? portalUserDisplayName?.trim() ||
+        portalUserEmail?.trim() ||
+        "Account"
+      : admin?.name?.trim() || admin?.email || "Account";
 
   return (
     <>
-      {/* Sandbox banner */}
-      <div className="flex shrink-0 items-center justify-between gap-4 bg-platform-primary px-6 py-3 text-sm text-white">
-        <p className="text-slate-300">
-          {isSandbox
-            ? "You are currently in test mode. Actions are sandboxed."
-            : "You are currently in live mode."}
-        </p>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="shrink-0 bg-white/10 text-white hover:bg-white/20"
-          onClick={() => {
-            if (isMerchant) {
-              dispatch(setMerchantEnvironment("LIVE"));
-              setStoredMerchantEnvironment("LIVE");
-              return;
-            }
-            dispatch(setTestMode(false));
-          }}
-          disabled={!isSandbox}
-        >
-          {isSandbox ? "Switch to live account" : "Live mode active"}
-        </Button>
-      </div>
+      {/* Sandbox banner — hidden when not authenticated */}
+      {!isUnauthedShell ? (
+        <div className="flex shrink-0 items-center justify-between gap-4 bg-platform-primary px-6 py-3 text-sm text-white">
+          <p className="text-slate-300">
+            {isSandbox
+              ? "You are currently in test mode. Actions are sandboxed."
+              : "You are currently in live mode."}
+          </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="shrink-0 bg-white/10 text-white hover:bg-white/20"
+            onClick={() => {
+              if (isMerchant) {
+                dispatch(setMerchantEnvironment("LIVE"));
+                setStoredMerchantEnvironment("LIVE");
+                return;
+              }
+              dispatch(setTestMode(false));
+            }}
+            disabled={!isSandbox}
+          >
+            {isSandbox ? "Switch to live account" : "Live mode active"}
+          </Button>
+        </div>
+      ) : null}
 
       <header
         className={cn(
@@ -131,106 +139,114 @@ export function Topbar({ className }: { className?: string }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9 text-white/70 hover:bg-white/10 hover:text-white"
-            aria-label="Notifications"
-          >
-            <Bell className="size-4" />
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1 text-sm text-white/90 hover:bg-white/10 hover:text-white"
-                aria-label="Account menu"
-              >
-                {triggerLabel}
-                <ChevronDown className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              {isMerchant ? (
-                <>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col gap-0.5">
-                      {portalUserDisplayName?.trim() ? (
-                        <span className="font-medium text-foreground">
-                          {portalUserDisplayName.trim()}
+          {!isUnauthedShell ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9 text-white/70 hover:bg-white/10 hover:text-white"
+              aria-label="Notifications"
+            >
+              <Bell className="size-4" />
+            </Button>
+          ) : null}
+          {isUnauthedShell ? (
+            <Button variant="secondary" size="sm" className="bg-white/15 text-white hover:bg-white/25" asChild>
+              <Link href="/login">Sign in</Link>
+            </Button>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-sm text-white/90 hover:bg-white/10 hover:text-white"
+                  aria-label="Account menu"
+                >
+                  {triggerLabel}
+                  <ChevronDown className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {isMerchant ? (
+                  <>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col gap-0.5">
+                        {portalUserDisplayName?.trim() ? (
+                          <span className="font-medium text-foreground">
+                            {portalUserDisplayName.trim()}
+                          </span>
+                        ) : null}
+                        <span className="text-xs text-muted-foreground">
+                          {portalUserEmail?.trim() ?? "—"}
                         </span>
-                      ) : null}
-                      <span className="text-xs text-muted-foreground">
-                        {portalUserEmail?.trim() ?? "—"}
-                      </span>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/settings/general"
-                      prefetch={false}
-                      className="flex cursor-pointer items-center gap-2"
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/settings/general"
+                        prefetch={false}
+                        className="flex cursor-pointer items-center gap-2"
+                      >
+                        <Settings className="size-4" />
+                        Business settings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="cursor-pointer text-destructive focus:text-destructive"
+                      onClick={() => void handleLogout()}
                     >
-                      <Settings className="size-4" />
-                      Business settings
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="cursor-pointer text-destructive focus:text-destructive"
-                    onClick={() => void handleLogout()}
-                  >
-                    <LogOut className="size-4" />
-                    Log out
-                  </DropdownMenuItem>
-                </>
-              ) : (
-                <>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col gap-0.5">
-                      {admin?.name && (
-                        <span className="font-medium text-foreground">{admin.name}</span>
-                      )}
-                      <span className="text-xs text-muted-foreground">
-                        {admin?.email ?? "—"}
-                      </span>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/settings/account"
-                      prefetch={false}
-                      className="flex cursor-pointer items-center gap-2"
+                      <LogOut className="size-4" />
+                      Log out
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col gap-0.5">
+                        {admin?.name && (
+                          <span className="font-medium text-foreground">{admin.name}</span>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {admin?.email ?? "—"}
+                        </span>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/settings/account"
+                        prefetch={false}
+                        className="flex cursor-pointer items-center gap-2"
+                      >
+                        <User className="size-4" />
+                        Account & security
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/settings/general"
+                        prefetch={false}
+                        className="flex cursor-pointer items-center gap-2"
+                      >
+                        <Settings className="size-4" />
+                        Settings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="cursor-pointer text-destructive focus:text-destructive"
+                      onClick={() => void handleLogout()}
                     >
-                      <User className="size-4" />
-                      Account & security
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/settings/general"
-                      prefetch={false}
-                      className="flex cursor-pointer items-center gap-2"
-                    >
-                      <Settings className="size-4" />
-                      Settings
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="cursor-pointer text-destructive focus:text-destructive"
-                    onClick={() => void handleLogout()}
-                  >
-                    <LogOut className="size-4" />
-                    Log out
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                      <LogOut className="size-4" />
+                      Log out
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </header>
     </>

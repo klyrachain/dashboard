@@ -106,7 +106,7 @@ export async function middleware(request: NextRequest) {
       res.cookies.set("klyra_portal_role", "", cleared);
       return res;
     }
-    const signIn = new URL("/business/signin", request.url);
+    const signIn = new URL("/login", request.url);
     signIn.searchParams.set(
       "return_to",
       safeReturnToParam(pathname + request.nextUrl.search)

@@ -14,7 +14,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex h-screen flex-col overflow-hidden">
         <HeaderNoSidebar />
-        <main className="flex-1 overflow-auto bg-slate-50 p-6">{children}</main>
+        <main className="scrollbar-dashboard-main flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-slate-50 p-6">
+          {children}
+        </main>
         <StatusIndicator />
       </div>
     );
@@ -23,9 +25,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden">
       <AppSidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar />
-        <main className="flex-1 overflow-auto bg-slate-50 p-6">{children}</main>
+        <main className="scrollbar-dashboard-main flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden bg-slate-50 p-6">
+          {children}
+        </main>
       </div>
       <StatusIndicator />
     </div>

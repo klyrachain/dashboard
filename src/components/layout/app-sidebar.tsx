@@ -18,10 +18,13 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { getNavGroupsForSession } from "@/lib/nav-config";
+import { useShellNav } from "@/hooks/use-shell-nav";
 import { MerchantEnvironmentSwitch } from "@/components/merchant/merchant-environment-switch";
 import { setStoredActiveBusinessId } from "@/lib/businessAuthStorage";
-import { setActiveBusinessId, type MerchantBusiness } from "@/store/merchant-session-slice";
+import {
+  setActiveBusinessId,
+  type MerchantBusiness,
+} from "@/store/merchant-session-slice";
 
 function NavGroup({
   title,
@@ -83,66 +86,79 @@ export function AppSidebar() {
   const businesses = useSelector((s: RootState) => s.merchantSession.businesses);
   const activeBusinessId = useSelector((s: RootState) => s.merchantSession.activeBusinessId);
 
-  const navGroups = getNavGroupsForSession(sessionType);
+  const { navGroups, isUnauthedShell } = useShellNav();
   const activeBusiness =
     businesses.find((b: MerchantBusiness) => b.id === activeBusinessId) ?? businesses[0];
-  const workspaceLabel =
-    sessionType !== "merchant"
-      ? "Morapay platform"
-      : activeBusiness
+  const workspaceLabel = isUnauthedShell
+    ? "Not signed in"
+    : sessionType === "merchant"
+      ? activeBusiness
         ? activeBusiness.name?.trim() || "Your business"
-        : "Morapay platform";
+        : "Morapay platform"
+      : "Morapay platform";
 
   return (
-    <aside className="flex h-full w-64 flex-col bg-platform-primary text-white">
+    <aside
+      data-dashboard-sidebar
+      className="flex h-full min-h-0 w-64 shrink-0 flex-col bg-platform-primary text-white"
+    >
       {/* Workspace / business switcher */}
       <div className="px-3 py-3">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm font-medium text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-            >
-              <Avatar className="size-8 rounded-md">
-                <AvatarFallback className="rounded-md bg-indigo-500/80 text-white">
-                  {(activeBusiness?.name ?? "K").slice(0, 1).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="flex-1 truncate">{workspaceLabel}</span>
-              <ChevronDown className="size-4 shrink-0 text-white/60" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <div className="px-2 py-1.5 text-xs font-medium text-slate-500">
-              {sessionType === "merchant" ? "Business" : "Workspace"}
-            </div>
-            {sessionType === "merchant" && businesses.length > 0 ? (
-              <>
-                {businesses.map((b: MerchantBusiness) => (
-                  <DropdownMenuItem
-                    key={b.id}
-                    onClick={() => {
-                      dispatch(setActiveBusinessId(b.id));
-                      setStoredActiveBusinessId(b.id);
-                    }}
-                    className={b.id === activeBusinessId ? "bg-slate-100 font-medium" : ""}
-                  >
-                    {b.name?.trim() || "Your business"}
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-              </>
-            ) : null}
-            <div className="rounded-md bg-slate-50 px-2 py-1.5 text-sm text-slate-700">
-              {sessionType === "merchant"
-                ? activeBusiness?.name?.trim() || "Your business"
-                : "Platform admin"}
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {isUnauthedShell ? (
+          <div className="space-y-2">
+            <p className="px-2 text-sm text-white/80">{workspaceLabel}</p>
+            <Button variant="secondary" className="w-full bg-white/15 text-white hover:bg-white/25" asChild>
+              <Link href="/login">Sign in</Link>
+            </Button>
+          </div>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm font-medium text-white/90 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              >
+                <Avatar className="size-8 rounded-md">
+                  <AvatarFallback className="rounded-md bg-indigo-500/80 text-white">
+                    {(activeBusiness?.name ?? "K").slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="flex-1 truncate">{workspaceLabel}</span>
+                <ChevronDown className="size-4 shrink-0 text-white/60" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <div className="px-2 py-1.5 text-xs font-medium text-slate-500">
+                {sessionType === "merchant" ? "Business" : "Workspace"}
+              </div>
+              {sessionType === "merchant" && businesses.length > 0 ? (
+                <>
+                  {businesses.map((b: MerchantBusiness) => (
+                    <DropdownMenuItem
+                      key={b.id}
+                      onClick={() => {
+                        dispatch(setActiveBusinessId(b.id));
+                        setStoredActiveBusinessId(b.id);
+                      }}
+                      className={b.id === activeBusinessId ? "bg-slate-100 font-medium" : ""}
+                    >
+                      {b.name?.trim() || "Your business"}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
+              <div className="rounded-md bg-slate-50 px-2 py-1.5 text-sm text-slate-700">
+                {sessionType === "merchant"
+                  ? activeBusiness?.name?.trim() || "Your business"
+                  : "Platform admin"}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-4 overflow-auto p-3">
+      <nav className="scrollbar-dashboard-sidebar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden p-3">
         {navGroups.map((group) => (
           <NavGroup
             key={group.title}
@@ -154,7 +170,7 @@ export function AppSidebar() {
       </nav>
 
       <div className="space-y-1 p-3">
-        {sessionType === "platform" ? (
+        {sessionType === "platform" && !isUnauthedShell ? (
           <Link
             href="/settings"
             className={cn(
@@ -168,39 +184,41 @@ export function AppSidebar() {
             Settings
           </Link>
         ) : null}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 text-white/70 hover:bg-white/10 hover:text-white"
-            >
-              {theme === "sidebar" ? (
-                <LayoutPanelLeft className="size-4 shrink-0" aria-hidden />
-              ) : (
-                <LayoutDashboard className="size-4 shrink-0" aria-hidden />
-              )}
-              <span className="text-sm">
-                {theme === "sidebar" ? "Sidebar layout" : "Top nav layout"}
-              </span>
-              <ChevronDown className="size-4 shrink-0" aria-hidden />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuItem onClick={() => dispatch(setTheme("sidebar" as LayoutTheme))}>
-              <LayoutPanelLeft className="size-4" aria-hidden />
-              Sidebar layout
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => dispatch(setTheme("no-sidebar" as LayoutTheme))}>
-              <LayoutDashboard className="size-4" aria-hidden />
-              Top nav layout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {!isUnauthedShell ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 text-white/70 hover:bg-white/10 hover:text-white"
+              >
+                {theme === "sidebar" ? (
+                  <LayoutPanelLeft className="size-4 shrink-0" aria-hidden />
+                ) : (
+                  <LayoutDashboard className="size-4 shrink-0" aria-hidden />
+                )}
+                <span className="text-sm">
+                  {theme === "sidebar" ? "Sidebar layout" : "Top nav layout"}
+                </span>
+                <ChevronDown className="size-4 shrink-0" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuItem onClick={() => dispatch(setTheme("sidebar" as LayoutTheme))}>
+                <LayoutPanelLeft className="size-4" aria-hidden />
+                Sidebar layout
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => dispatch(setTheme("no-sidebar" as LayoutTheme))}>
+                <LayoutDashboard className="size-4" aria-hidden />
+                Top nav layout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
         {sessionType === "merchant" ? (
           <div className="flex items-center justify-between rounded-md px-3 py-2">
             <MerchantEnvironmentSwitch />
           </div>
-        ) : (
+        ) : sessionType === "platform" && !isUnauthedShell ? (
           <div className="flex items-center justify-between rounded-md px-3 py-2">
             <span className="text-sm font-normal text-white/60">
               Platform test mode
@@ -212,7 +230,7 @@ export function AppSidebar() {
               className="data-[state=checked]:bg-indigo-500"
             />
           </div>
-        )}
+        ) : null}
       </div>
     </aside>
   );

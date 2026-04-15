@@ -33,7 +33,8 @@ import {
   setActiveBusinessId,
   type MerchantBusiness,
 } from "@/store/merchant-session-slice";
-import { getNavGroupsForSession, type NavGroupConfig } from "@/lib/nav-config";
+import { type NavGroupConfig } from "@/lib/nav-config";
+import { useShellNav } from "@/hooks/use-shell-nav";
 import { PLATFORM_PRIMARY_HEX } from "@/lib/platform-theme";
 import { clearMerchantPortalHttpOnlyCookie } from "@/lib/portal-auth-client";
 import { Button } from "@/components/ui/button";
@@ -142,12 +143,13 @@ export function HeaderNoSidebar() {
     (s: RootState) => s.merchantSession.portalUserDisplayName
   );
 
-  const navGroups = getNavGroupsForSession(sessionType);
+  const { navGroups, isUnauthedShell } = useShellNav();
   const activeBusiness =
     businesses.find((b: MerchantBusiness) => b.id === activeBusinessId) ??
     businesses[0];
-  const workspaceLabel =
-    sessionType !== "merchant"
+  const workspaceLabel = isUnauthedShell
+    ? "Not signed in"
+    : sessionType !== "merchant"
       ? "Morapay platform"
       : activeBusiness
         ? activeBusiness.name?.trim() || "Your business"
@@ -184,7 +186,9 @@ export function HeaderNoSidebar() {
       "/api/auth/signout?callbackUrl=" + encodeURIComponent("/login");
   };
 
-  const displayName = admin?.name?.trim() || admin?.email || "Account";
+  const displayName = isUnauthedShell
+    ? "Sign in"
+    : admin?.name?.trim() || admin?.email || "Account";
 
   return (
     <header
@@ -205,72 +209,78 @@ export function HeaderNoSidebar() {
             <Image src="/logo.jpg" alt="morapay" width={32} height={32} />
             <span>morapay</span>
           </Link>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
-              >
-                {workspaceLabel}
-                <ChevronDown className="size-3.5" aria-hidden />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              <div className="px-2 py-1.5 text-xs font-medium text-slate-500">
-                {sessionType === "merchant" ? "Business" : "Workspace"}
-              </div>
-              {sessionType === "merchant" && businesses.length > 0 ? (
-                <>
-                  {businesses.map((b: MerchantBusiness) => (
-                    <DropdownMenuItem
-                      key={b.id}
-                      onClick={() => {
-                        dispatch(setActiveBusinessId(b.id));
-                        setStoredActiveBusinessId(b.id);
-                      }}
-                    >
-                      {b.name?.trim() || "Your business"}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                </>
-              ) : null}
-              <div className="rounded-md bg-slate-50 px-2 py-1.5 text-sm text-slate-700">
-                {sessionType === "merchant"
-                  ? activeBusiness?.name?.trim() || "Your business"
-                  : "Platform admin"}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
-              >
-                {theme === "sidebar" ? (
-                  <LayoutPanelLeft className="size-4" aria-hidden />
-                ) : (
-                  <LayoutDashboard className="size-4" aria-hidden />
-                )}
-                <span className="text-sm">
-                  {theme === "sidebar" ? "Sidebar" : "Topnav"}
-                </span>
-                <ChevronDown className="size-3.5" aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={handleThemeSelect("sidebar")}>
-                <LayoutPanelLeft className="size-4" aria-hidden />
-                Sidebar layout
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleThemeSelect("no-sidebar")}>
-                <LayoutDashboard className="size-4" aria-hidden />
-                Top nav layout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isUnauthedShell ? (
+            <span className="text-sm text-white/70">{workspaceLabel}</span>
+          ) : (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+                  >
+                    {workspaceLabel}
+                    <ChevronDown className="size-3.5" aria-hidden />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <div className="px-2 py-1.5 text-xs font-medium text-slate-500">
+                    {sessionType === "merchant" ? "Business" : "Workspace"}
+                  </div>
+                  {sessionType === "merchant" && businesses.length > 0 ? (
+                    <>
+                      {businesses.map((b: MerchantBusiness) => (
+                        <DropdownMenuItem
+                          key={b.id}
+                          onClick={() => {
+                            dispatch(setActiveBusinessId(b.id));
+                            setStoredActiveBusinessId(b.id);
+                          }}
+                        >
+                          {b.name?.trim() || "Your business"}
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                    </>
+                  ) : null}
+                  <div className="rounded-md bg-slate-50 px-2 py-1.5 text-sm text-slate-700">
+                    {sessionType === "merchant"
+                      ? activeBusiness?.name?.trim() || "Your business"
+                      : "Platform admin"}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+                  >
+                    {theme === "sidebar" ? (
+                      <LayoutPanelLeft className="size-4" aria-hidden />
+                    ) : (
+                      <LayoutDashboard className="size-4" aria-hidden />
+                    )}
+                    <span className="text-sm">
+                      {theme === "sidebar" ? "Sidebar" : "Topnav"}
+                    </span>
+                    <ChevronDown className="size-3.5" aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={handleThemeSelect("sidebar")}>
+                    <LayoutPanelLeft className="size-4" aria-hidden />
+                    Sidebar layout
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleThemeSelect("no-sidebar")}>
+                    <LayoutDashboard className="size-4" aria-hidden />
+                    Top nav layout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
         </div>
         <div className="flex flex-1 items-center justify-center px-8">
           <div className="relative w-full max-w-md">
@@ -284,61 +294,67 @@ export function HeaderNoSidebar() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
-            aria-label="Notifications"
-          >
-            <Bell className="size-4" aria-hidden />
-          </Button>
-          {sessionType === "platform" ? (
+          {!isUnauthedShell ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
+              aria-label="Notifications"
+            >
+              <Bell className="size-4" aria-hidden />
+            </Button>
+          ) : null}
+          {isUnauthedShell ? (
+            <Button variant="secondary" size="sm" className="bg-white/15 text-white hover:bg-white/25" asChild>
+              <Link href="/login">Sign in</Link>
+            </Button>
+          ) : sessionType === "platform" ? (
             <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="gap-1.5 text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
                   aria-label="Account menu"
                 >
-                {displayName}
+                  {displayName}
                   <ChevronDown className="size-3.5" aria-hidden />
                 </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col gap-0.5">
-                  {admin?.name && (
-                    <span className="font-medium text-foreground">{admin.name}</span>
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    {admin?.email ?? "—"}
-                  </span>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/settings/account" prefetch={false} className="flex items-center gap-2 cursor-pointer">
-                  <User className="size-4" />
-                  Account & security
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings/general" prefetch={false} className="flex items-center gap-2 cursor-pointer">
-                  <Settings className="size-4" />
-                  Settings
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col gap-0.5">
+                    {admin?.name && (
+                      <span className="font-medium text-foreground">{admin.name}</span>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {admin?.email ?? "—"}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/settings/account" prefetch={false} className="flex items-center gap-2 cursor-pointer">
+                    <User className="size-4" />
+                    Account & security
                   </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive cursor-pointer"
-                onClick={handleLogout}
-              >
-                <LogOut className="size-4" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings/general" prefetch={false} className="flex items-center gap-2 cursor-pointer">
+                    <Settings className="size-4" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive cursor-pointer"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="size-4" />
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -391,7 +407,7 @@ export function HeaderNoSidebar() {
           )}
           {sessionType === "merchant" ? (
             <MerchantEnvironmentSwitch className="pl-2" />
-          ) : (
+          ) : sessionType === "platform" && !isUnauthedShell ? (
             <div className="flex items-center gap-2 pl-2">
               <span className="text-xs text-white/60">
                 {testMode ? "Testnet" : "Live"}
@@ -403,7 +419,7 @@ export function HeaderNoSidebar() {
                 className="data-[state=checked]:bg-indigo-600 bg-slate-600"
               />
             </div>
-          )}
+          ) : null}
           <Button
             variant="ghost"
             size="icon"
@@ -421,10 +437,19 @@ export function HeaderNoSidebar() {
           {navGroups.map((group) => (
             <NavParentDropdown key={group.title} group={group} pathname={pathname} />
           ))}
-          {sessionType === "platform" ? (
+          {isUnauthedShell ? (
+            <Link
+              href="/login"
+              prefetch={false}
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white"
+            >
+              Sign in
+            </Link>
+          ) : null}
+          {sessionType === "platform" && !isUnauthedShell ? (
             <Link
               href="/settings"
-            prefetch={false}
+              prefetch={false}
               className={cn(
                 "rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 pathname === "/settings" || pathname.startsWith("/settings/")

@@ -403,16 +403,6 @@ export function BusinessSigninFlow() {
               Create a business account
             </Link>
           </p>
-
-          <p className="mt-6 text-center text-sm text-zinc-500">
-            Staff or platform user?{" "}
-            <Link
-              href="/login"
-              className="font-medium text-zinc-700 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
-            >
-              Platform sign in
-            </Link>
-          </p>
         </section>
       </div>
     </main>

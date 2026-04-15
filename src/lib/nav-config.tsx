@@ -61,6 +61,7 @@ export const platformNavGroups: NavGroupConfig[] = [
       { href: "/connect/quotes", label: "Quotes", icon: LineChart },
       { href: "/connect/merchants", label: "Businesses", icon: Store },
       { href: "/connect/settlements", label: "Settlements", icon: Landmark },
+      { href: "/connect/peer-ramp-kyc", label: "Peer Ramp KYC", icon: ShieldCheck },
       { href: "/settings/gas", label: "Gas & sponsorship", icon: Fuel },
     ],
   },
@@ -124,6 +125,7 @@ export const merchantNavGroups: NavGroupConfig[] = [
   },
 ];
 
+/** Raw IA for a portal mode — gate visibility with {@link useShellNav} / real auth, not sessionType alone. */
 export function getNavGroupsForSession(sessionType: SessionPortalType): NavGroupConfig[] {
   return sessionType === "merchant" ? merchantNavGroups : platformNavGroups;
 }
