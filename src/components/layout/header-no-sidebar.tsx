@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { businessSignInHref } from "@/lib/business-portal-urls";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Search,
@@ -130,6 +131,11 @@ function NavParentDropdown({
 
 export function HeaderNoSidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const returnPath =
+    (pathname || "/") +
+    (searchParams.toString() ? `?${searchParams.toString()}` : "");
+  const shellBusinessSignInHref = businessSignInHref(returnPath);
   const router = useRouter();
   const dispatch = useDispatch();
   const theme = useSelector((s: RootState) => s.layout.theme);
@@ -306,7 +312,7 @@ export function HeaderNoSidebar() {
           ) : null}
           {isUnauthedShell ? (
             <Button variant="secondary" size="sm" className="bg-white/15 text-white hover:bg-white/25" asChild>
-              <Link href="/login">Sign in</Link>
+              <Link href={shellBusinessSignInHref}>Sign in</Link>
             </Button>
           ) : sessionType === "platform" ? (
             <DropdownMenu>
@@ -439,7 +445,7 @@ export function HeaderNoSidebar() {
           ))}
           {isUnauthedShell ? (
             <Link
-              href="/login"
+              href={shellBusinessSignInHref}
               prefetch={false}
               className="rounded-md px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white"
             >

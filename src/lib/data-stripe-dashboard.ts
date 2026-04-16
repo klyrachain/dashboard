@@ -69,10 +69,8 @@ export function getNetVolumeChartData(): VolumeChartPoint[] {
 /** At a glance metrics; wire to Core/API when ready. Empty = no-data card. */
 export const stripeAtAGlance: AtAGlanceCard[] = [];
 
-export const stripeApiKeys: ApiKeyRow[] = [
-  { label: "Publishable key", value: "pk_test_51SVC0pABL4h...", masked: false },
-  { label: "Secret key", value: "sk_test_••••••••••••••••", masked: true },
-];
+/** Empty until wired to Core merchant keys — avoids showing fake Stripe-style keys to visitors. */
+export const stripeApiKeys: ApiKeyRow[] = [];
 
 export const stripeRecommendations: Recommendation[] = [
   {

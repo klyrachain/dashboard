@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
+import { businessSignInHref } from "@/lib/business-portal-urls";
 import { Search, Bell, ChevronDown, User, LogOut, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,12 @@ import { setTestMode } from "@/store/layout-slice";
 import { useShellNav } from "@/hooks/use-shell-nav";
 
 export function Topbar({ className }: { className?: string }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const returnPath =
+    (pathname || "/") +
+    (searchParams.toString() ? `?${searchParams.toString()}` : "");
+  const shellBusinessSignInHref = businessSignInHref(returnPath);
   const dispatch = useDispatch();
   const admin = useAdmin();
   const sessionType = useSelector((s: RootState) => s.merchantSession.sessionType);
@@ -151,7 +159,7 @@ export function Topbar({ className }: { className?: string }) {
           ) : null}
           {isUnauthedShell ? (
             <Button variant="secondary" size="sm" className="bg-white/15 text-white hover:bg-white/25" asChild>
-              <Link href="/login">Sign in</Link>
+              <Link href={shellBusinessSignInHref}>Sign in</Link>
             </Button>
           ) : (
             <DropdownMenu>
