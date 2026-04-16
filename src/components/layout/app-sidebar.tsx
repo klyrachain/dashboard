@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { businessSignInHref } from "@/lib/business-portal-urls";
 import { useDispatch, useSelector } from "react-redux";
 import { Settings, ChevronDown, ChevronRight, LayoutPanelLeft, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -79,6 +80,11 @@ function NavGroup({
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const returnPath =
+    (pathname || "/") +
+    (searchParams.toString() ? `?${searchParams.toString()}` : "");
+  const shellBusinessSignInHref = businessSignInHref(returnPath);
   const dispatch = useDispatch();
   const theme = useSelector((s: RootState) => s.layout.theme);
   const testMode = useSelector((s: RootState) => s.layout.testMode);
@@ -108,7 +114,7 @@ export function AppSidebar() {
           <div className="space-y-2">
             <p className="px-2 text-sm text-white/80">{workspaceLabel}</p>
             <Button variant="secondary" className="w-full bg-white/15 text-white hover:bg-white/25" asChild>
-              <Link href="/login">Sign in</Link>
+              <Link href={shellBusinessSignInHref}>Sign in</Link>
             </Button>
           </div>
         ) : (

@@ -187,6 +187,11 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    /**
+     * Include `/` explicitly. A single catch-all segment can skip the root path on some
+     * Next.js / Vercel builds, so unauthenticated visitors never hit middleware and saw the dashboard.
+     */
+    "/",
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|ico|png|jpg|jpeg|gif|webp|woff2)$).*)",
   ],
 };
