@@ -240,13 +240,13 @@ export function BalancesContentClient({
             {hasClaimable ? (
               <CardContent className="space-y-3">
                 <ul className="space-y-1.5 text-sm text-slate-600">
-                  {claimable.byCurrency.map((c) => (
+                  {claimable.byCurrency.map((currencyRow) => (
                     <li
-                      key={c.symbol}
+                      key={currencyRow.symbol}
                       className="flex justify-between font-mono"
                     >
-                      <span>{c.symbol}</span>
-                      <span>{formatTokenAmount(c.amount, c.symbol)}</span>
+                      <span>{currencyRow.symbol}</span>
+                      <span>{formatTokenAmount(currencyRow.amount, currencyRow.symbol)}</span>
                     </li>
                   ))}
                 </ul>

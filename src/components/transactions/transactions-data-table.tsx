@@ -414,13 +414,13 @@ const columns: ColumnDef<TransactionRow>[] = [
 ];
 
 function columnsWithMerchantOptions(hideFailedRetry: boolean): ColumnDef<TransactionRow>[] {
-  return columns.map((c) =>
-    c.id === "actions"
+  return columns.map((columnDef) =>
+    columnDef.id === "actions"
       ? {
-          ...c,
-          cell: hideFailedRetry ? () => null : c.cell,
+          ...columnDef,
+          cell: hideFailedRetry ? () => null : columnDef.cell,
         }
-      : c
+      : columnDef
   );
 }
 
@@ -453,13 +453,16 @@ function columnsForViewerScope(
 
 const TRANSACTIONS_EXPORT_COLUMNS: ExportColumn[] = columns
   .filter(
-    (c): c is ColumnDef<TransactionRow> & { accessorKey: string } =>
-      "accessorKey" in c && typeof (c as { accessorKey: string }).accessorKey === "string"
+    (columnDef): columnDef is ColumnDef<TransactionRow> & { accessorKey: string } =>
+      "accessorKey" in columnDef &&
+      typeof (columnDef as { accessorKey: string }).accessorKey === "string"
   )
-  .filter((c) => c.id !== "actions")
-  .map((c) => ({
-    id: c.accessorKey,
-    label: (c.meta as { headerLabel?: string } | undefined)?.headerLabel ?? c.accessorKey,
+  .filter((columnDef) => columnDef.id !== "actions")
+  .map((columnDef) => ({
+    id: columnDef.accessorKey,
+    label:
+      (columnDef.meta as { headerLabel?: string } | undefined)?.headerLabel ??
+      columnDef.accessorKey,
   }));
 
 function RetryButton({ transactionId }: { transactionId: string }) {
@@ -822,9 +825,9 @@ export function TransactionsDataTable({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All from chains</SelectItem>
-                {chainOptions.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
+                {chainOptions.map((chainCode) => (
+                  <SelectItem key={chainCode} value={chainCode}>
+                    {chainCode}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -835,9 +838,9 @@ export function TransactionsDataTable({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All to chains</SelectItem>
-                {chainOptions.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
+                {chainOptions.map((chainCode) => (
+                  <SelectItem key={chainCode} value={chainCode}>
+                    {chainCode}
                   </SelectItem>
                 ))}
               </SelectContent>

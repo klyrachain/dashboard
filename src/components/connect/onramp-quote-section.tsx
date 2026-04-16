@@ -49,7 +49,10 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
   const chainOptions = useMemo(() => {
     const list =
       chains.length > 0
-        ? chains.map((c) => ({ value: String(c.chainId), label: `${c.networkName} (${c.chainId})` }))
+        ? chains.map((chain) => ({
+            value: String(chain.chainId),
+            label: `${chain.networkName} (${chain.chainId})`,
+          }))
         : FALLBACK_CHAINS;
     return [...list].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
   }, [chains]);
@@ -68,21 +71,21 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
   }, [chainOptions, chainSearch]);
 
   const tokensOnChain = useMemo(
-    () => tokens.filter((t) => Number(t.chainId) === chainId),
+    () => tokens.filter((backendToken) => Number(backendToken.chainId) === chainId),
     [tokens, chainId]
   );
   const tokenOptions = useMemo(() => {
     const seen = new Set<string>();
     const list = tokensOnChain
-      .filter((t) => {
-        const s = (t.symbol || "").toUpperCase();
-        if (!s || seen.has(s)) return false;
-        seen.add(s);
+      .filter((backendToken) => {
+        const symbolUpper = (backendToken.symbol || "").toUpperCase();
+        if (!symbolUpper || seen.has(symbolUpper)) return false;
+        seen.add(symbolUpper);
         return true;
       })
-      .map((t) => ({
-        value: t.symbol,
-        label: `${t.symbol} (${truncateLabel(t.name || t.address.slice(0, 8), 35)})`,
+      .map((backendToken) => ({
+        value: backendToken.symbol,
+        label: `${backendToken.symbol} (${truncateLabel(backendToken.name || backendToken.address.slice(0, 8), 35)})`,
       }));
     return [...list].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
   }, [tokensOnChain]);
@@ -95,7 +98,10 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
   }, [tokenOptions, tokenSearch]);
   const [token, setToken] = useState("USDC");
   useEffect(() => {
-    if (tokenOptions.length > 0 && !tokenOptions.some((t) => t.value === token)) {
+    if (
+      tokenOptions.length > 0 &&
+      !tokenOptions.some((tokenOption) => tokenOption.value === token)
+    ) {
       setToken(tokenOptions[0].value);
     }
   }, [chainId, tokenOptions, token]);
@@ -150,9 +156,9 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {COUNTRIES.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.label}
+                {COUNTRIES.map((countryOption) => (
+                  <SelectItem key={countryOption.value} value={countryOption.value}>
+                    {countryOption.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -169,7 +175,8 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
                   className="h-9 w-full justify-between font-normal"
                 >
                   <span className="truncate">
-                    {chainOptions.find((c) => c.value === String(chainId))?.label ?? "Chain"}
+                    {chainOptions.find((option) => option.value === String(chainId))?.label ??
+                      "Chain"}
                   </span>
                   <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
                 </Button>
@@ -185,21 +192,21 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
                 </div>
                 <div className="max-h-[280px] overflow-y-auto p-1">
                   {filteredChainOptions.length > 0 ? (
-                    filteredChainOptions.map((c) => (
+                    filteredChainOptions.map((chainOption) => (
                       <button
-                        key={c.value}
+                        key={chainOption.value}
                         type="button"
                         className={cn(
                           "flex w-full cursor-pointer items-center rounded-sm py-1.5 pl-2 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                          c.value === String(chainId) && "bg-accent"
+                          chainOption.value === String(chainId) && "bg-accent"
                         )}
                         onClick={() => {
-                          setChainId(Number(c.value));
+                          setChainId(Number(chainOption.value));
                           setChainSearch("");
                           setChainOpen(false);
                         }}
                       >
-                        <span className="truncate">{c.label}</span>
+                        <span className="truncate">{chainOption.label}</span>
                       </button>
                     ))
                   ) : (
@@ -221,7 +228,9 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
                     className="h-9 w-full justify-between font-normal"
                   >
                     <span className="truncate">
-                      {tokenOptions.find((t) => t.value === token)?.label ?? token ?? "Token"}
+                      {tokenOptions.find((tokenOption) => tokenOption.value === token)?.label ??
+                        token ??
+                        "Token"}
                     </span>
                     <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
                   </Button>
@@ -237,22 +246,22 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
                   </div>
                   <div className="max-h-[280px] overflow-y-auto p-1">
                     {filteredTokenOptions.length > 0 ? (
-                      filteredTokenOptions.map((t) => (
+                      filteredTokenOptions.map((tokenOption) => (
                         <button
-                          key={t.value}
+                          key={tokenOption.value}
                           type="button"
                           className={cn(
                             "flex w-full cursor-pointer items-center rounded-sm py-1.5 pl-2 pr-2 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                            t.value === token && "bg-accent"
+                            tokenOption.value === token && "bg-accent"
                           )}
                           onClick={() => {
-                            setToken(t.value);
+                            setToken(tokenOption.value);
                             setTokenSearch("");
                             setTokenOpen(false);
                           }}
                         >
-                          <span className="truncate" title={t.label}>
-                            {t.label}
+                          <span className="truncate" title={tokenOption.label}>
+                            {tokenOption.label}
                           </span>
                         </button>
                       ))

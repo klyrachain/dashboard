@@ -55,10 +55,10 @@ export function ChainsTokensSection({ chains, tokens, compact }: ChainsTokensSec
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {chains.map((c) => (
-                    <TableRow key={c.chainId} className="border-b border-slate-100">
-                      <TableCell className={compact ? "font-mono text-xs py-1.5" : "font-mono text-sm"}>{c.chainId}</TableCell>
-                      <TableCell className={compact ? "text-xs font-medium py-1.5" : "font-medium"}>{c.name}</TableCell>
+                  {chains.map((chain) => (
+                    <TableRow key={chain.chainId} className="border-b border-slate-100">
+                      <TableCell className={compact ? "font-mono text-xs py-1.5" : "font-mono text-sm"}>{chain.chainId}</TableCell>
+                      <TableCell className={compact ? "text-xs font-medium py-1.5" : "font-medium"}>{chain.name}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -93,12 +93,15 @@ export function ChainsTokensSection({ chains, tokens, compact }: ChainsTokensSec
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tokens.map((t) => (
-                      <TableRow key={t.id ?? `${t.chainId}-${t.tokenAddress}`} className="border-b border-slate-100">
-                        <TableCell className={compact ? "font-mono text-xs py-1.5" : "font-mono text-xs"}>{t.chainId}</TableCell>
-                        <TableCell className={compact ? "text-xs font-medium py-1.5" : "font-medium"}>{t.symbol}</TableCell>
-                        <TableCell className={compact ? "max-w-[120px] truncate font-mono text-xs text-muted-foreground py-1.5" : "max-w-[200px] truncate font-mono text-xs text-muted-foreground"} title={t.tokenAddress}>
-                          {t.tokenAddress}
+                    {tokens.map((tokenRow) => (
+                      <TableRow
+                        key={tokenRow.id ?? `${tokenRow.chainId}-${tokenRow.tokenAddress}`}
+                        className="border-b border-slate-100"
+                      >
+                        <TableCell className={compact ? "font-mono text-xs py-1.5" : "font-mono text-xs"}>{tokenRow.chainId}</TableCell>
+                        <TableCell className={compact ? "text-xs font-medium py-1.5" : "font-medium"}>{tokenRow.symbol}</TableCell>
+                        <TableCell className={compact ? "max-w-[120px] truncate font-mono text-xs text-muted-foreground py-1.5" : "max-w-[200px] truncate font-mono text-xs text-muted-foreground"} title={tokenRow.tokenAddress}>
+                          {tokenRow.tokenAddress}
                         </TableCell>
                       </TableRow>
                     ))}
