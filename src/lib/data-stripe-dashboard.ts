@@ -33,36 +33,36 @@ export type Recommendation = {
 
 /** Mock curve: Jan 23–29, dips and rises. */
 export function getGrossVolumeChartData(): VolumeChartPoint[] {
-  const base = [
-    { d: "Jan 23", v: 320 },
-    { d: "Jan 24", v: 280 },
-    { d: "Jan 25", v: 450 },
-    { d: "Jan 26", v: 380 },
-    { d: "Jan 27", v: 410 },
-    { d: "Jan 28", v: 290 },
-    { d: "Jan 29", v: 340 },
+  const grossVolumeByDay = [
+    { dayLabel: "Jan 23", amountUsd: 320 },
+    { dayLabel: "Jan 24", amountUsd: 280 },
+    { dayLabel: "Jan 25", amountUsd: 450 },
+    { dayLabel: "Jan 26", amountUsd: 380 },
+    { dayLabel: "Jan 27", amountUsd: 410 },
+    { dayLabel: "Jan 28", amountUsd: 290 },
+    { dayLabel: "Jan 29", amountUsd: 340 },
   ];
-  return base.map(({ d, v }) => ({
-    date: d,
-    value: v,
-    label: `${d}, 2:00 PM: $${v.toFixed(2)}`,
+  return grossVolumeByDay.map(({ dayLabel, amountUsd }) => ({
+    date: dayLabel,
+    value: amountUsd,
+    label: `${dayLabel}, 2:00 PM: $${amountUsd.toFixed(2)}`,
   }));
 }
 
 export function getNetVolumeChartData(): VolumeChartPoint[] {
-  const base = [
-    { d: "Jan 23", v: 305 },
-    { d: "Jan 24", v: 268 },
-    { d: "Jan 25", v: 432 },
-    { d: "Jan 26", v: 362 },
-    { d: "Jan 27", v: 392 },
-    { d: "Jan 28", v: 278 },
-    { d: "Jan 29", v: 324 },
+  const netVolumeByDay = [
+    { dayLabel: "Jan 23", amountUsd: 305 },
+    { dayLabel: "Jan 24", amountUsd: 268 },
+    { dayLabel: "Jan 25", amountUsd: 432 },
+    { dayLabel: "Jan 26", amountUsd: 362 },
+    { dayLabel: "Jan 27", amountUsd: 392 },
+    { dayLabel: "Jan 28", amountUsd: 278 },
+    { dayLabel: "Jan 29", amountUsd: 324 },
   ];
-  return base.map(({ d, v }) => ({
-    date: d,
-    value: v,
-    label: `${d}, 2:00 PM: $${v.toFixed(2)}`,
+  return netVolumeByDay.map(({ dayLabel, amountUsd }) => ({
+    date: dayLabel,
+    value: amountUsd,
+    label: `${dayLabel}, 2:00 PM: $${amountUsd.toFixed(2)}`,
   }));
 }
 

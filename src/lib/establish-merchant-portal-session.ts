@@ -1,6 +1,6 @@
 /**
- * Sets HttpOnly `klyra_portal_role=merchant` after portal JWT is obtained.
- * Required so middleware allows merchant navigation.
+ * Sets HttpOnly merchant cookies (`klyra_portal_role` + `klyra_merchant_ssr`) after Core verifies the portal JWT.
+ * Middleware requires both before SSR dashboard routes.
  */
 export async function establishMerchantPortalSession(
   accessToken: string

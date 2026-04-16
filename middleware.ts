@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import {
+  MERCHANT_SSR_COOKIE,
+  MERCHANT_SSR_VALUE,
+} from "@/lib/portal-cookie-names";
 
 const MERCHANT_ROLE = "merchant";
 const PLATFORM_ROLE = "platform";
 
-function hasPortalAccess(role: string | undefined): boolean {
-  return role === PLATFORM_ROLE || role === MERCHANT_ROLE;
+/** True only after Core verified the portal JWT (POST /api/portal/merchant-session). */
+function merchantPortalReady(request: NextRequest): boolean {
+  const role = request.cookies.get("klyra_portal_role")?.value;
+  const ssr = request.cookies.get(MERCHANT_SSR_COOKIE)?.value;
+  return role === MERCHANT_ROLE && ssr === MERCHANT_SSR_VALUE;
 }
 
 function isPublicBusinessPortalPath(pathname: string): boolean {
@@ -62,6 +69,8 @@ function isAdminAuthPath(pathname: string): boolean {
   const p = pathname.replace(/\/$/, "") || "/";
   if (p === "/login" || p === "/signup" || p.startsWith("/setup-passkey")) return true;
   if (p.startsWith("/login/") || p.startsWith("/signup/")) return true;
+  /** Legacy entry that server-redirects to `/business/signin`. */
+  if (p === "/signin" || p.startsWith("/signin/")) return true;
   return false;
 }
 
@@ -88,6 +97,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const role = request.cookies.get("klyra_portal_role")?.value;
+  const merchantOk = merchantPortalReady(request);
 
   /**
    * `klyra_portal_role=platform` must only apply when a platform admin session exists.
@@ -137,21 +147,26 @@ export async function middleware(request: NextRequest) {
 
   const onHome = pathname === "/";
 
-  if (onHome && !hasPortalAccess(role)) {
+  /**
+   * Dashboard SSR must not run on `role=merchant` alone (cookie can outlive JWT).
+   * Require merchant SSR cookie set only after Core verified the portal session.
+   */
+  if (onHome) {
     if (homeAllowsWithoutPortalCookie(request.nextUrl)) {
       return NextResponse.next();
     }
-    url.pathname = "/business/signin";
-    url.search = "";
-    const full = pathname + request.nextUrl.search;
-    url.searchParams.set(
-      "return_to",
-      safeReturnToParam(full === "/" ? "/" : full)
-    );
-    return NextResponse.redirect(url);
+    if (!merchantOk) {
+      const signInUrl = new URL("/business/signin", request.url);
+      signInUrl.searchParams.set("session_bootstrap", "1");
+      signInUrl.searchParams.set(
+        "return_to",
+        safeReturnToParam(pathname + request.nextUrl.search)
+      );
+      return NextResponse.redirect(signInUrl);
+    }
   }
 
-  if (!onHome && !hasPortalAccess(role)) {
+  if (!onHome && !merchantOk) {
     const recover = new URL("/business/signin", request.url);
     recover.searchParams.set("session_bootstrap", "1");
     recover.searchParams.set(
@@ -161,7 +176,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(recover);
   }
 
-  if (role === MERCHANT_ROLE && isBlockedForMerchant(pathname)) {
+  if (role === MERCHANT_ROLE && merchantOk && isBlockedForMerchant(pathname)) {
     url.pathname = "/";
     url.search = "";
     return NextResponse.redirect(url);

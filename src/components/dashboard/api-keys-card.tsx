@@ -40,20 +40,22 @@ export function ApiKeysCard({ rows }: { rows: ApiKeyRow[] }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {hasData ? (
-          rows.map((row) => (
+          rows.map((apiKeyDisplayRow) => (
             <div
-              key={row.label}
+              key={apiKeyDisplayRow.label}
               className="flex items-center justify-between gap-4 rounded-md bg-slate-50 px-3 py-2"
             >
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-slate-500">{row.label}</p>
+                <p className="text-xs font-medium text-slate-500">
+                  {apiKeyDisplayRow.label}
+                </p>
                 <p className="truncate font-mono text-sm text-slate-900">
-                  {row.value}
+                  {apiKeyDisplayRow.value}
                 </p>
               </div>
               <CopyButton
-                value={row.value}
-                label={`Copy ${row.label}`}
+                value={apiKeyDisplayRow.value}
+                label={`Copy ${apiKeyDisplayRow.label}`}
                 className="text-slate-500 hover:text-slate-700"
               />
             </div>

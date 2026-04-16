@@ -14,11 +14,20 @@ import {
   stripeApiKeys,
   stripeRecommendations,
 } from "@/lib/data-stripe-dashboard";
-import { getAccessContext } from "@/lib/data-access";
+import {
+  getAccessContext,
+  isMerchantPortalSessionReady,
+} from "@/lib/data-access";
 
 export async function DashboardContent() {
   const access = await getAccessContext();
-  const isMerchant = Boolean(access.ok && access.context?.type === "merchant");
+  const merchantSessionReady = await isMerchantPortalSessionReady();
+  const isPlatform = access.ok && access.context?.type === "platform";
+  /** Merchant JWT is in localStorage; SSR uses cookies only after Core verified POST /api/portal/merchant-session. */
+  const isMerchant =
+    !isPlatform &&
+    (merchantSessionReady ||
+      Boolean(access.ok && access.context?.type === "merchant"));
 
   let recentTransactions: Awaited<ReturnType<typeof getRecentTransactions>> =
     [];
