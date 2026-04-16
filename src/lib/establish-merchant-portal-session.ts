@@ -3,7 +3,8 @@
  * Middleware requires both before SSR dashboard routes.
  */
 export async function establishMerchantPortalSession(
-  accessToken: string
+  accessToken: string,
+  options?: { signal?: AbortSignal }
 ): Promise<boolean> {
   const res = await fetch("/api/portal/merchant-session", {
     method: "POST",
@@ -12,6 +13,7 @@ export async function establishMerchantPortalSession(
       Accept: "application/json",
     },
     credentials: "include",
+    signal: options?.signal,
   });
   return res.ok;
 }

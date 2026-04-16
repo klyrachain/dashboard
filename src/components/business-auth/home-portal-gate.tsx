@@ -12,6 +12,20 @@ import { getBusinessAccessToken, setBusinessAccessToken } from "@/lib/businessAu
 import { setPortalJwt } from "@/store/merchant-session-slice";
 import { establishMerchantPortalSession } from "@/lib/establish-merchant-portal-session";
 
+const PORTAL_FETCH_MS = 15_000;
+
+function fetchWithTimeout(
+  input: RequestInfo,
+  init: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() =>
+    clearTimeout(id)
+  );
+}
+
 function adminCoreTokenFromSession(session: Session | null): string | undefined {
   const u = session?.user as SessionUser | undefined;
   const t = u?.token?.trim();
@@ -55,13 +69,13 @@ export function HomePortalGate() {
           : "/";
 
       void (async () => {
+        let portalTimer: ReturnType<typeof setTimeout> | undefined;
         try {
           const { accessToken } = await consumeBusinessLoginCode(loginCode);
           if (!setBusinessAccessToken(accessToken)) {
             setCodeError(
               "This sign-in link returned an invalid token. Request a new link from your email."
             );
-            setMode(null);
             handledRef.current = null;
             const u = new URL(window.location.href);
             u.searchParams.delete("login_code");
@@ -70,12 +84,15 @@ export function HomePortalGate() {
             return;
           }
           dispatch(setPortalJwt(accessToken));
-          const ok = await establishMerchantPortalSession(accessToken);
+          const portalCtrl = new AbortController();
+          portalTimer = setTimeout(() => portalCtrl.abort(), PORTAL_FETCH_MS);
+          const ok = await establishMerchantPortalSession(accessToken, {
+            signal: portalCtrl.signal,
+          });
           if (!ok) {
             setCodeError(
               "We could not verify your business session. Try again or use business login if you have a password."
             );
-            setMode(null);
             handledRef.current = null;
             const u = new URL(window.location.href);
             u.searchParams.delete("login_code");
@@ -99,12 +116,14 @@ export function HomePortalGate() {
           setCodeError(
             "This sign-in link is invalid or has expired. Request a new link from your email."
           );
-          setMode(null);
           handledRef.current = null;
           const u = new URL(window.location.href);
           u.searchParams.delete("login_code");
           u.searchParams.delete("return_to");
           router.replace(u.pathname + u.search);
+        } finally {
+          if (portalTimer !== undefined) clearTimeout(portalTimer);
+          startTransition(() => setMode(null));
         }
       })();
       return;
@@ -123,10 +142,15 @@ export function HomePortalGate() {
       });
 
       void (async () => {
+        let portalTimer: ReturnType<typeof setTimeout> | undefined;
         try {
           const token = getBusinessAccessToken();
           if (token) {
-            const ok = await establishMerchantPortalSession(token);
+            const ctrl = new AbortController();
+            portalTimer = setTimeout(() => ctrl.abort(), PORTAL_FETCH_MS);
+            const ok = await establishMerchantPortalSession(token, {
+              signal: ctrl.signal,
+            });
             if (ok) {
               dispatch(setPortalJwt(token));
               const safeTo =
@@ -139,10 +163,14 @@ export function HomePortalGate() {
               return;
             }
           }
-          await fetch("/api/portal/role-sync", {
-            method: "GET",
-            credentials: "include",
-          });
+          await fetchWithTimeout(
+            "/api/portal/role-sync",
+            {
+              method: "GET",
+              credentials: "include",
+            },
+            PORTAL_FETCH_MS
+          );
           const signInUrl = new URL("/business/signin", window.location.origin);
           signInUrl.searchParams.set(
             "return_to",
@@ -157,12 +185,15 @@ export function HomePortalGate() {
           setBootstrapError(
             "We could not restore your session. Open the sign-in link from your email again."
           );
-          setMode(null);
           handledRef.current = null;
           const u = new URL(window.location.href);
           u.searchParams.delete("session_bootstrap");
           u.searchParams.delete("return_to");
           router.replace(u.pathname + u.search);
+        } finally {
+          if (portalTimer !== undefined) clearTimeout(portalTimer);
+          startTransition(() => setMode(null));
+          handledRef.current = null;
         }
       })();
     }
