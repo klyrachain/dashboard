@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
+import {
+  MERCHANT_SSR_COOKIE,
+  MERCHANT_SSR_VALUE,
+  PORTAL_ROLE_COOKIE,
+} from "@/lib/portal-cookie-names";
 
-const COOKIE_ROLE = "klyra_portal_role";
 const MAX_AGE = 60 * 60 * 24 * 7;
+
+const httpOnlyCookieBase = {
+  path: "/" as const,
+  sameSite: "lax" as const,
+  maxAge: MAX_AGE,
+  httpOnly: true,
+};
 
 function getCoreBase(): string | null {
   const raw =
@@ -54,23 +65,24 @@ export async function POST(request: Request) {
   }
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(COOKIE_ROLE, "merchant", {
-    path: "/",
-    sameSite: "lax",
-    maxAge: MAX_AGE,
-    httpOnly: true,
-  });
+  res.cookies.set(PORTAL_ROLE_COOKIE, "merchant", httpOnlyCookieBase);
+  res.cookies.set(MERCHANT_SSR_COOKIE, MERCHANT_SSR_VALUE, httpOnlyCookieBase);
   return res;
 }
 
-/** Clears HttpOnly portal role cookie (business logout). */
-export async function DELETE() {
-  const res = NextResponse.json({ ok: true });
-  res.cookies.set(COOKIE_ROLE, "", {
+function clearCookie(res: NextResponse, name: string): void {
+  res.cookies.set(name, "", {
     path: "/",
     maxAge: 0,
     httpOnly: true,
     sameSite: "lax",
   });
+}
+
+/** Clears HttpOnly portal role + SSR cookies (business logout). */
+export async function DELETE() {
+  const res = NextResponse.json({ ok: true });
+  clearCookie(res, PORTAL_ROLE_COOKIE);
+  clearCookie(res, MERCHANT_SSR_COOKIE);
   return res;
 }

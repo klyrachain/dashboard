@@ -1,18 +1,26 @@
 /**
  * Access API data layer — current API key context (platform vs merchant).
- * Business portal users hold JWT in localStorage; server uses `klyra_portal_role=merchant` cookie to branch SSR.
- * @see md/access-api.integration.md
+ * Business portal: server sees NextAuth admin JWT and/or HttpOnly cookies set only after
+ * Core verifies the portal JWT (see POST /api/portal/merchant-session).
  */
 
 import { cookies } from "next/headers";
 import { getSessionToken } from "@/lib/auth";
 import { getCoreAccess } from "@/lib/core-api";
+import {
+  MERCHANT_SSR_COOKIE,
+  MERCHANT_SSR_VALUE,
+  PORTAL_ROLE_COOKIE,
+} from "@/lib/portal-cookie-names";
 
-/** True when HttpOnly cookie indicates business portal (merchant) session for SSR branching. */
-export async function isMerchantPortalRoleCookie(): Promise<boolean> {
+/** True when both merchant cookies are present (portal JWT was verified with Core). */
+export async function isMerchantPortalSessionReady(): Promise<boolean> {
   try {
     const c = await cookies();
-    return c.get("klyra_portal_role")?.value === "merchant";
+    return (
+      c.get(PORTAL_ROLE_COOKIE)?.value === "merchant" &&
+      c.get(MERCHANT_SSR_COOKIE)?.value === MERCHANT_SSR_VALUE
+    );
   } catch {
     return false;
   }
@@ -96,20 +104,6 @@ export async function getAccessContext(): Promise<AccessResult> {
       }
     }
 
-    if (await isMerchantPortalRoleCookie()) {
-      return {
-        ok: true,
-        context: {
-          type: "merchant",
-          key: {
-            id: "business_portal",
-            name: "Business portal",
-            permissions: [],
-          },
-        },
-      };
-    }
-
     const err =
       data && typeof data === "object" && "error" in data
         ? String((data as { error: string }).error)
@@ -118,19 +112,6 @@ export async function getAccessContext(): Promise<AccessResult> {
           : "Request failed";
     return { ok: false, context: null, error: err };
   } catch (e) {
-    if (await isMerchantPortalRoleCookie()) {
-      return {
-        ok: true,
-        context: {
-          type: "merchant",
-          key: {
-            id: "business_portal",
-            name: "Business portal",
-            permissions: [],
-          },
-        },
-      };
-    }
     const message = e instanceof Error ? e.message : "Network error";
     return { ok: false, context: null, error: message };
   }

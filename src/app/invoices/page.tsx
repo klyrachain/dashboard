@@ -1,6 +1,8 @@
 import { getInvoiceList } from "@/lib/data-invoices";
-import { isMerchantPortalRoleCookie } from "@/lib/data-access";
-import { getAccessContext } from "@/lib/data-access";
+import {
+  getAccessContext,
+  isMerchantPortalSessionReady,
+} from "@/lib/data-access";
 import { InvoicesTable } from "@/components/invoices/invoices-table";
 import { InvoicesPageClient } from "@/components/invoices/invoices-page-client";
 import { InvoicesMerchantList } from "@/components/invoices/invoices-merchant-list";
@@ -20,10 +22,11 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
       : undefined;
   const page = params.page ? Math.max(1, parseInt(params.page, 10)) : 1;
 
-  const hasMerchantCookie = await isMerchantPortalRoleCookie();
+  const merchantSessionReady = await isMerchantPortalSessionReady();
   const access = await getAccessContext();
   const shouldUseMerchantScopedView =
-    hasMerchantCookie && access.ok && access.context?.type === "merchant";
+    merchantSessionReady &&
+    (access.ok ? access.context?.type === "merchant" : true);
 
   if (shouldUseMerchantScopedView) {
     return (
