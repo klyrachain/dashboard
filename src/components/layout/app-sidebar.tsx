@@ -20,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useShellNav } from "@/hooks/use-shell-nav";
+import { longestMatchingNavHref } from "@/lib/nav-active";
 import { MerchantEnvironmentSwitch } from "@/components/merchant/merchant-environment-switch";
 import { setStoredActiveBusinessId } from "@/lib/businessAuthStorage";
 import {
@@ -51,11 +52,12 @@ function NavGroup({
       </button>
       {open && (
         <nav className="space-y-0.5">
-          {items.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/" && pathname.startsWith(item.href));
-            return (
+          {(() => {
+            const hrefs = items.map((i) => i.href);
+            const activeHref = longestMatchingNavHref(pathname, hrefs);
+            return items.map((item) => {
+              const isActive = activeHref === item.href;
+              return (
               <Link
                 key={item.href + item.label}
                 href={item.href}
@@ -71,7 +73,8 @@ function NavGroup({
                 {item.label}
               </Link>
             );
-          })}
+            });
+          })()}
         </nav>
       )}
     </div>

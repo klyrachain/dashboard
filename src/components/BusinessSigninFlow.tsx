@@ -24,6 +24,7 @@ import {
   setStoredActiveBusinessId,
 } from "@/lib/businessAuthStorage";
 import { establishMerchantPortalSession } from "@/lib/establish-merchant-portal-session";
+import { runPasskeyAuthentication } from "@/lib/webauthn-client";
 import type { AppDispatch } from "@/store";
 import { hydrateMerchantSession } from "@/store/merchant-session-slice";
 import { cn } from "@/lib/utils";
@@ -224,12 +225,8 @@ export function BusinessSigninFlow() {
     }
     setIsPasskeySigningIn(true);
     try {
-      const options = await fetchBusinessPasskeyLoginOptions(email);
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { startAuthentication } = require("@simplewebauthn/browser") as {
-        startAuthentication: (opts: unknown) => Promise<unknown>;
-      };
-      const response = await startAuthentication(options);
+      const optionsJSON = await fetchBusinessPasskeyLoginOptions(email);
+      const response = await runPasskeyAuthentication(optionsJSON);
       const { accessToken } = await verifyBusinessPasskeyLogin({
         email,
         response,
