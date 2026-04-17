@@ -35,6 +35,7 @@ import {
   type MerchantBusiness,
 } from "@/store/merchant-session-slice";
 import { type NavGroupConfig } from "@/lib/nav-config";
+import { longestMatchingNavHref } from "@/lib/nav-active";
 import { useShellNav } from "@/hooks/use-shell-nav";
 import { PLATFORM_PRIMARY_HEX } from "@/lib/platform-theme";
 import { clearMerchantPortalHttpOnlyCookie } from "@/lib/portal-auth-client";
@@ -71,11 +72,9 @@ function NavParentDropdown({
 
   useEffect(() => () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); }, []);
 
-  const isActive = group.items.some(
-    (item) =>
-      pathname === item.href ||
-      (item.href !== "/" && pathname.startsWith(item.href))
-  );
+  const groupHrefs = group.items.map((i) => i.href);
+  const activeInGroup = longestMatchingNavHref(pathname, groupHrefs);
+  const isActive = activeInGroup != null;
 
   return (
     <div
@@ -98,9 +97,7 @@ function NavParentDropdown({
       {open && (
         <div className="absolute left-0 top-full z-50 min-w-[180px] rounded-md border border-slate-200 bg-white py-1 shadow-lg">
           {group.items.map((item) => {
-            const itemActive =
-              pathname === item.href ||
-              (item.href !== "/" && pathname.startsWith(item.href));
+            const itemActive = activeInGroup === item.href;
             const Icon = item.icon;
             const resolvedClass = cn(
               "flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100",

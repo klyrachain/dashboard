@@ -1,3 +1,7 @@
+import type {
+  PublicKeyCredentialCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON,
+} from "@simplewebauthn/browser";
 import { getBusinessAuthOrigin } from "@/config/env";
 
 const JSON_POST_HEADERS = {
@@ -113,6 +117,18 @@ async function requestJson(
   return body;
 }
 
+/** Core `successEnvelope`: `{ success, data: { ... } }`. */
+function unwrapSuccessData(body: unknown): Record<string, unknown> | null {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const o = body as Record<string, unknown>;
+  if (o.success !== true) return null;
+  const data = o.data;
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    return data as Record<string, unknown>;
+  }
+  return null;
+}
+
 const ACCESS_TOKEN_KEYS = [
   "accessToken",
   "access_token",
@@ -205,11 +221,21 @@ export async function loginBusinessWithPassword(input: {
 
 export async function fetchBusinessPasskeyLoginOptions(
   email: string
-): Promise<unknown> {
-  return requestJson("/api/business-auth/login/passkey/options", {
+): Promise<PublicKeyCredentialRequestOptionsJSON> {
+  const body = await requestJson("/api/business-auth/login/passkey/options", {
     method: "POST",
     body: JSON.stringify({ email: email.trim().toLowerCase() }),
   });
+  const data = unwrapSuccessData(body);
+  const options = data?.options;
+  if (!options || typeof options !== "object") {
+    throw new BusinessAuthApiError(
+      "Invalid response: missing passkey authentication options",
+      500,
+      body
+    );
+  }
+  return options as PublicKeyCredentialRequestOptionsJSON;
 }
 
 export async function verifyBusinessPasskeyLogin(input: {
@@ -429,6 +455,14 @@ export type BusinessSessionBusiness = {
   role?: string;
 };
 
+/** Saved onboarding progress from Core (business not created until step 3 completes). */
+export type BusinessPortalOnboarding = {
+  companyName: string | null;
+  website: string | null;
+  signupRole: string | null;
+  primaryGoal: string | null;
+};
+
 export interface BusinessSession {
   /** Portal user email (Core `getBusinessPortalSession`). */
   email: string | null;
@@ -436,8 +470,20 @@ export interface BusinessSession {
   hasPassword: boolean;
   passkeyCount: number;
   profileComplete: boolean;
+  onboarding: BusinessPortalOnboarding | null;
   /** Active memberships — use first `id` as X-Business-Id when calling /api/v1/merchant/* */
   businesses: BusinessSessionBusiness[];
+}
+
+/** After magic link / portal token: resume correct signup step or treat as done. */
+export function resolveBusinessSignupResumeStep(
+  session: BusinessSession
+): 2 | 3 | 4 | "dashboard" {
+  if (session.profileComplete) return "dashboard";
+  const ob = session.onboarding;
+  if (!ob?.companyName?.trim()) return 2;
+  if (!ob.signupRole?.trim() || !ob.primaryGoal?.trim()) return 3;
+  return 4;
 }
 
 function unwrapSessionPayload(body: unknown): Record<string, unknown> {
@@ -511,6 +557,18 @@ export async function fetchBusinessSession(
         ? String(user.email).trim().toLowerCase()
         : null;
 
+  const rawOb = d.onboarding;
+  let onboarding: BusinessPortalOnboarding | null = null;
+  if (rawOb && typeof rawOb === "object" && !Array.isArray(rawOb)) {
+    const ob = rawOb as Record<string, unknown>;
+    onboarding = {
+      companyName: typeof ob.companyName === "string" ? ob.companyName : null,
+      website: typeof ob.website === "string" ? ob.website : null,
+      signupRole: typeof ob.signupRole === "string" ? ob.signupRole : null,
+      primaryGoal: typeof ob.primaryGoal === "string" ? ob.primaryGoal : null,
+    };
+  }
+
   return {
     email,
     portalDisplayName:
@@ -523,6 +581,7 @@ export async function fetchBusinessSession(
         ? d.passkeyCount
         : 0,
     profileComplete: d.profileComplete === true,
+    onboarding,
     businesses: parseBusinessesFromSession(d.businesses),
   };
 }
@@ -550,13 +609,23 @@ export async function submitBusinessProfileSetup(
 
 export async function fetchBusinessPasskeyRegistrationOptions(
   accessToken: string
-): Promise<unknown> {
-  return requestJson("/api/business-auth/passkey/registration-options", {
+): Promise<PublicKeyCredentialCreationOptionsJSON> {
+  const body = await requestJson("/api/business-auth/passkey/registration-options", {
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   });
+  const data = unwrapSuccessData(body);
+  const options = data?.options;
+  if (!options || typeof options !== "object") {
+    throw new BusinessAuthApiError(
+      "Invalid response: missing passkey registration options",
+      500,
+      body
+    );
+  }
+  return options as PublicKeyCredentialCreationOptionsJSON;
 }
 
 export async function registerBusinessPasskey(

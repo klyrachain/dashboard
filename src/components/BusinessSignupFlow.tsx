@@ -26,6 +26,7 @@ import {
   consumePortalOrMagicTokenOnce,
   fetchBusinessAuthConfig,
   fetchBusinessSession,
+  resolveBusinessSignupResumeStep,
   getGoogleOAuthStartUrl,
   requestBusinessMagicLink,
   fetchBusinessPasskeyRegistrationOptions,
@@ -43,6 +44,7 @@ import {
   setStoredActiveBusinessId,
 } from "@/lib/businessAuthStorage";
 import { establishMerchantPortalSession } from "@/lib/establish-merchant-portal-session";
+import { runPasskeyRegistration } from "@/lib/webauthn-client";
 import type { AppDispatch } from "@/store";
 import { hydrateMerchantSession } from "@/store/merchant-session-slice";
 
@@ -99,6 +101,28 @@ function formatMagicLinkConsumeError(error: unknown): string {
 const selectClassName =
   "border-input bg-background text-foreground focus-visible:border-ring focus-visible:ring-ring/50 h-11 w-full appearance-none rounded-md border px-3 py-2 text-base shadow-xs outline-none focus-visible:ring-[3px] md:text-sm pr-10";
 
+function mapApiSignupRoleToForm(api: string | null | undefined): BusinessRole | "" {
+  const map: Record<string, BusinessRole> = {
+    DEVELOPER: "developer",
+    FOUNDER_EXECUTIVE: "founder_executive",
+    FINANCE_OPS: "finance_ops",
+    PRODUCT: "product",
+  };
+  if (!api?.trim()) return "";
+  return map[api.trim()] ?? "";
+}
+
+function mapApiPrimaryGoalToForm(api: string | null | undefined): PrimaryGoal | "" {
+  const map: Record<string, PrimaryGoal> = {
+    ACCEPT_PAYMENTS: "accept_payments",
+    SEND_PAYOUTS: "send_payouts",
+    INTEGRATE_SDK: "integrate_sdk",
+    EXPLORING: "exploring",
+  };
+  if (!api?.trim()) return "";
+  return map[api.trim()] ?? "";
+}
+
 export function BusinessSignupFlow() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
@@ -138,6 +162,101 @@ export function BusinessSignupFlow() {
 
   const magicTokenFromEmail = searchParams.get("magic")?.trim() ?? "";
 
+  const applyPortalJwtHandoff = useCallback(
+    async (accessToken: string, surface: "magic" | "portal") => {
+      const setErr = surface === "magic" ? setMagicLinkError : setStepError;
+      setErr(null);
+      if (!setBusinessAccessToken(accessToken)) {
+        setErr(
+          surface === "magic"
+            ? "Invalid session token. Request a new magic link."
+            : "Invalid session token from server. Try signing in again."
+        );
+        return false;
+      }
+      try {
+        const session = await fetchBusinessSession(accessToken);
+        const businesses = session.businesses;
+        const activeId = businesses.length > 0 ? businesses[0].id : null;
+        const activeRole =
+          activeId != null
+            ? businesses.find((b) => b.id === activeId)?.role ?? null
+            : null;
+        const storedEnv = getStoredMerchantEnvironment();
+
+        dispatch(
+          hydrateMerchantSession({
+            sessionType: "merchant",
+            portalJwt: accessToken,
+            portalUserEmail: session.email,
+            portalUserDisplayName: session.portalDisplayName,
+            businesses,
+            activeBusinessId: activeId,
+            activeBusinessRole: activeRole,
+            merchantEnvironment: storedEnv ?? "LIVE",
+          })
+        );
+        if (activeId) {
+          setStoredActiveBusinessId(activeId);
+        }
+
+        if (session.profileComplete) {
+          const ok = await establishMerchantPortalSession(accessToken);
+          if (!ok) {
+            setErr(
+              "Could not start your dashboard session. Check that the API is running and try again."
+            );
+            return false;
+          }
+          router.replace("/");
+          router.refresh();
+          return true;
+        }
+
+        if (session.email) {
+          setEmail(session.email);
+        }
+        const ob = session.onboarding;
+        if (ob?.companyName) {
+          setCompanyName(ob.companyName);
+        }
+        if (ob?.website) {
+          setCompanyWebsite(ob.website);
+        }
+        const r = mapApiSignupRoleToForm(ob?.signupRole ?? null);
+        if (r) {
+          setRole(r);
+        }
+        const g = mapApiPrimaryGoalToForm(ob?.primaryGoal ?? null);
+        if (g) {
+          setPrimaryGoal(g);
+        }
+        if (session.portalDisplayName?.trim()) {
+          setDisplayName(session.portalDisplayName.trim());
+        }
+
+        const resume = resolveBusinessSignupResumeStep(session);
+        if (resume === "dashboard") {
+          return true;
+        }
+        if (resume === 4) {
+          setPostOnboardingPath("/");
+        } else {
+          setPostOnboardingPath(null);
+        }
+        setStep(resume);
+        router.replace("/business/signup", { scroll: false });
+        return true;
+      } catch (err: unknown) {
+        setErr(
+          surface === "magic" ? formatMagicLinkConsumeError(err) : formatApiError(err)
+        );
+        return false;
+      }
+    },
+    [dispatch, router]
+  );
+
   const magicLinkCooldownActive = magicLinkCooldownSeconds > 0;
   useEffect(() => {
     if (!magicLinkCooldownActive) return;
@@ -168,15 +287,9 @@ export function BusinessSignupFlow() {
     setStepError(null);
 
     void consumePortalOrMagicTokenOnce(portalToken)
-      .then(({ accessToken }) => {
+      .then(async ({ accessToken }) => {
         if (cancelled) return;
-        if (!setBusinessAccessToken(accessToken)) {
-          setStepError("Invalid session token from server. Try signing in again.");
-          router.replace("/business/signup", { scroll: false });
-          return;
-        }
-        setStep(2);
-        router.replace("/business/signup", { scroll: false });
+        await applyPortalJwtHandoff(accessToken, "portal");
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -190,7 +303,7 @@ export function BusinessSignupFlow() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams, router, magicTokenFromEmail]);
+  }, [searchParams, router, magicTokenFromEmail, applyPortalJwtHandoff]);
 
   /** After password/passkey sign-in when profile is incomplete (step 4). */
   useEffect(() => {
@@ -304,19 +417,14 @@ export function BusinessSignupFlow() {
     setMagicLinkError(null);
     setIsConsumingMagicLink(true);
     void consumePortalOrMagicTokenOnce(magicTokenFromEmail)
-      .then(({ accessToken }) => {
-        if (!setBusinessAccessToken(accessToken)) {
-          setMagicLinkError("Invalid session token. Request a new magic link.");
-          return;
-        }
-        setStep(2);
-        router.replace("/business/signup", { scroll: false });
+      .then(async ({ accessToken }) => {
+        await applyPortalJwtHandoff(accessToken, "magic");
       })
       .catch((err: unknown) => {
         setMagicLinkError(formatMagicLinkConsumeError(err));
       })
       .finally(() => setIsConsumingMagicLink(false));
-  }, [magicTokenFromEmail, router]);
+  }, [magicTokenFromEmail, router, applyPortalJwtHandoff]);
 
   const clearError = useCallback(() => setStepError(null), []);
 
@@ -609,14 +717,8 @@ export function BusinessSignupFlow() {
         password: profilePassword,
       });
 
-      const options = await fetchBusinessPasskeyRegistrationOptions(token);
-
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { startRegistration } = require("@simplewebauthn/browser") as {
-        startRegistration: (opts: unknown) => Promise<unknown>;
-      };
-
-      const credential = await startRegistration(options);
+      const optionsJSON = await fetchBusinessPasskeyRegistrationOptions(token);
+      const credential = await runPasskeyRegistration(optionsJSON);
 
       await registerBusinessPasskey(token, {
         response: credential,

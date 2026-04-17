@@ -67,6 +67,7 @@ function pickTxField(row: Record<string, unknown>, ...keys: string[]): string {
 }
 
 export function MerchantCustomersClient() {
+  const testMode = useSelector((s: RootState) => s.layout.testMode);
   const activeBusinessId = useSelector(
     (s: RootState) => s.merchantSession.activeBusinessId
   );
@@ -344,7 +345,13 @@ export function MerchantCustomersClient() {
                   {sortedPayers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center text-muted-foreground">
-                        No payers yet.
+                        <p>No payers yet for this environment.</p>
+                        {testMode ? (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Test mode only lists TEST checkouts. Switch to Live in the
+                            header if your payment links were paid in production.
+                          </p>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   ) : (
