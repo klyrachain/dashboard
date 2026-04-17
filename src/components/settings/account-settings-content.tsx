@@ -191,13 +191,10 @@ export function AccountSettingsContent() {
             <KeyRound className="size-4" />
             Passkey
           </CardTitle>
-          <CardDescription>
-            Add a passkey to sign in with your device or browser instead of a password.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {passkeySuccess ? (
-            <p className="text-sm text-muted-foreground">Passkey added. You can add another below if you like.</p>
+            <p className="text-sm text-muted-foreground">Passkey added.</p>
           ) : null}
           {passkeyError && (
             <p className="text-sm text-destructive mb-2" role="alert">

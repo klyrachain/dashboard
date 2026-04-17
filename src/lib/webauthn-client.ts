@@ -48,7 +48,7 @@ export function formatWebAuthnClientError(err: unknown): string {
       return "Passkeys are not supported in this browser.";
     }
     if (err.name === "SecurityError") {
-      return "Passkeys cannot be used on this origin. Check HTTPS and domain settings.";
+      return "Passkey origin mismatch: Core ADMIN_RP_ID must equal this hostname; ADMIN_ALLOWED_ORIGINS must include this page’s origin. Business portal: BUSINESS_WEBAUTHN_RP_ID / BUSINESS_WEBAUTHN_ORIGINS.";
     }
     return err.message || "Passkey operation failed.";
   }

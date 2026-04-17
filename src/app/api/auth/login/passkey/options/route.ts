@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { postCoreAuthLoginPasskeyOptions } from "@/lib/auth-api-server";
+import { getBrowserOriginForWebAuthn } from "@/lib/request-origin";
 
 export async function POST(request: NextRequest) {
   let body: { email?: string };
@@ -18,7 +19,8 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  const result = await postCoreAuthLoginPasskeyOptions({ email });
+  const origin = getBrowserOriginForWebAuthn(request);
+  const result = await postCoreAuthLoginPasskeyOptions({ email }, origin);
   const status = result.status >= 400 ? result.status : result.ok ? 200 : 502;
   return NextResponse.json(result.data, { status });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionToken } from "@/lib/auth";
 import { postCoreAuthPasskeyVerify } from "@/lib/auth-api-server";
+import { getBrowserOriginForWebAuthn } from "@/lib/request-origin";
 
 const UNAUTH_MESSAGE =
   "Not authenticated. Provide x-api-key (platform) or Authorization: Bearer <session>.";
@@ -28,10 +29,15 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  const result = await postCoreAuthPasskeyVerify(token, {
-    response: body.response,
-    name: typeof body.name === "string" ? body.name : undefined,
-  });
+  const origin = getBrowserOriginForWebAuthn(request);
+  const result = await postCoreAuthPasskeyVerify(
+    token,
+    {
+      response: body.response,
+      name: typeof body.name === "string" ? body.name : undefined,
+    },
+    origin
+  );
   const status = result.status >= 400 ? result.status : result.ok ? 200 : 502;
   return NextResponse.json(result.data, { status });
 }
