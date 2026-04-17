@@ -34,6 +34,17 @@ async function proxyToCore(
   if (auth) headers.set("Authorization", auth);
   const accept = request.headers.get("accept");
   headers.set("Accept", accept ?? "application/json");
+  const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+  let webauthnOrigin = origin;
+  if (!webauthnOrigin && referer) {
+    try {
+      webauthnOrigin = new URL(referer).origin;
+    } catch {
+      /* ignore */
+    }
+  }
+  if (webauthnOrigin) headers.set("X-WebAuthn-Origin", webauthnOrigin);
 
   const method = request.method.toUpperCase();
   let body: string | undefined;

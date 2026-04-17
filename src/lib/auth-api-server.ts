@@ -140,9 +140,15 @@ export async function postCoreAuthLogin(body: {
 }
 
 /** POST /api/auth/login/passkey/options */
-export async function postCoreAuthLoginPasskeyOptions(body: { email: string }) {
+export async function postCoreAuthLoginPasskeyOptions(
+  body: { email: string },
+  browserOrigin?: string
+) {
+  const headers: Record<string, string> = {};
+  if (browserOrigin) headers["X-WebAuthn-Origin"] = browserOrigin;
   return fetchAuth<unknown>("api/auth/login/passkey/options", {
     method: "POST",
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: JSON.stringify(body),
   });
 }
@@ -152,9 +158,12 @@ export async function postCoreAuthLoginPasskeyVerify(body: {
   email: string;
   response: unknown;
   sessionTtlMinutes?: 15 | 30;
-}) {
+}, browserOrigin?: string) {
+  const headers: Record<string, string> = {};
+  if (browserOrigin) headers["X-WebAuthn-Origin"] = browserOrigin;
   return fetchAuth<unknown>("api/auth/login/passkey/verify", {
     method: "POST",
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: JSON.stringify(body),
   });
 }
@@ -176,21 +185,29 @@ export async function postCoreAuthLogout(bearerToken: string) {
 }
 
 /** GET /api/auth/passkey/options — requires Bearer */
-export async function getCoreAuthPasskeyOptions(bearerToken: string) {
+export async function getCoreAuthPasskeyOptions(
+  bearerToken: string,
+  browserOrigin?: string
+) {
+  const headers: Record<string, string> = { Authorization: `Bearer ${bearerToken}` };
+  if (browserOrigin) headers["X-WebAuthn-Origin"] = browserOrigin;
   return fetchAuth<unknown>("api/auth/passkey/options", {
     method: "GET",
-    headers: { Authorization: `Bearer ${bearerToken}` },
+    headers,
   });
 }
 
 /** POST /api/auth/passkey/verify — requires Bearer */
 export async function postCoreAuthPasskeyVerify(
   bearerToken: string,
-  body: { response: unknown; name?: string }
+  body: { response: unknown; name?: string },
+  browserOrigin?: string
 ) {
+  const headers: Record<string, string> = { Authorization: `Bearer ${bearerToken}` };
+  if (browserOrigin) headers["X-WebAuthn-Origin"] = browserOrigin;
   return fetchAuth<unknown>("api/auth/passkey/verify", {
     method: "POST",
-    headers: { Authorization: `Bearer ${bearerToken}` },
+    headers,
     body: JSON.stringify(body),
   });
 }

@@ -15,9 +15,11 @@ import {
   Webhook,
   Fuel,
   Layers,
+  UserCircle,
 } from "lucide-react";
 
 const PLATFORM_TABS = [
+  { href: "/settings/account", label: "Account", icon: UserCircle },
   { href: "/settings/general", label: "General", icon: Settings },
   { href: "/settings/financials", label: "Financials", icon: DollarSign },
   { href: "/settings/providers", label: "Providers & Routing", icon: Route },

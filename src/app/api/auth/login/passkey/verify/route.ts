@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { postCoreAuthLoginPasskeyVerify } from "@/lib/auth-api-server";
+import { getBrowserOriginForWebAuthn } from "@/lib/request-origin";
 
 export async function POST(request: NextRequest) {
   let body: { email?: string; response?: unknown; sessionTtlMinutes?: unknown };
@@ -21,11 +22,15 @@ export async function POST(request: NextRequest) {
   const rawTtl = body.sessionTtlMinutes;
   const sessionTtlMinutes =
     rawTtl === 15 || rawTtl === 30 ? rawTtl : undefined;
-  const result = await postCoreAuthLoginPasskeyVerify({
-    email,
-    response: body.response,
-    sessionTtlMinutes,
-  });
+  const origin = getBrowserOriginForWebAuthn(request);
+  const result = await postCoreAuthLoginPasskeyVerify(
+    {
+      email,
+      response: body.response,
+      sessionTtlMinutes,
+    },
+    origin
+  );
   const status = result.status >= 400 ? result.status : result.ok ? 200 : 502;
   return NextResponse.json(result.data, { status });
 }
