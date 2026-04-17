@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,21 +12,24 @@ type Props = {
   rows: PeerRampKycUserRow[];
 };
 
-export function PeerRampKycClient({ initialQ, rows }: Props) {
+export function KycAdminClient({ initialQ, rows }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [q, setQ] = useState(initialQ);
   const [banner, setBanner] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
   function applySearch(e: React.FormEvent) {
     e.preventDefault();
-    const params = new URLSearchParams();
-    if (q.trim()) params.set("q", q.trim());
-    router.push(`/connect/peer-ramp-kyc${params.toString() ? `?${params}` : ""}`);
+    const next = new URLSearchParams(searchParams.toString());
+    if (q.trim()) next.set("q", q.trim());
+    else next.delete("q");
+    router.push(`/connect/kyc${next.toString() ? `?${next}` : ""}`);
   }
 
   return (
     <div className="space-y-4 font-primary text-body">
+      <h2 className="text-lg font-semibold tracking-tight">KYC (person)</h2>
       {banner ? (
         <div
           className={`rounded-lg px-4 py-3 font-secondary text-caption ${
@@ -58,9 +61,10 @@ export function PeerRampKycClient({ initialQ, rows }: Props) {
       </form>
 
       <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[800px] border-collapse text-left text-sm">
           <thead className="border-b border-border bg-muted/40 font-secondary text-caption uppercase tracking-wide text-muted-foreground">
             <tr>
+              <th className="px-3 py-2">Source</th>
               <th className="px-3 py-2">Email</th>
               <th className="px-3 py-2">KYC status</th>
               <th className="px-3 py-2">Provider</th>
@@ -72,13 +76,16 @@ export function PeerRampKycClient({ initialQ, rows }: Props) {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
-                  No Peer Ramp users match this search.
+                <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
+                  No matches.
                 </td>
               </tr>
             ) : (
               rows.map((r) => (
-                <tr key={r.email} className="border-b border-border/80 last:border-0">
+                <tr key={`${r.source}-${r.email}`} className="border-b border-border/80 last:border-0">
+                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                    {r.source === "portal" ? "Portal" : "Peer Ramp"}
+                  </td>
                   <td className="px-3 py-2 font-mono text-xs">{r.email}</td>
                   <td className="px-3 py-2">{r.kycStatus ?? "—"}</td>
                   <td className="px-3 py-2 text-xs">{r.kycProvider ?? "—"}</td>
@@ -98,7 +105,7 @@ export function PeerRampKycClient({ initialQ, rows }: Props) {
                         size="sm"
                         disabled={pending}
                         onClick={() => {
-                          if (!window.confirm(`Reset KYC for ${r.email}? They can redo verification.`)) return;
+                          if (!window.confirm(`Reset KYC for ${r.email}?`)) return;
                           startTransition(async () => {
                             setBanner(null);
                             const out = await resetPeerRampKycByEmail(r.email);
@@ -118,7 +125,7 @@ export function PeerRampKycClient({ initialQ, rows }: Props) {
                         size="sm"
                         disabled={pending}
                         onClick={() => {
-                          if (!window.confirm(`Mark ${r.email} approved in our database only?`)) return;
+                          if (!window.confirm(`Approve KYC (database only) for ${r.email}?`)) return;
                           startTransition(async () => {
                             setBanner(null);
                             const out = await overridePeerRampKycByEmail(r.email, "approved");
@@ -130,7 +137,7 @@ export function PeerRampKycClient({ initialQ, rows }: Props) {
                           });
                         }}
                       >
-                        Approve (DB)
+                        Approve
                       </Button>
                       <Button
                         type="button"
@@ -138,7 +145,7 @@ export function PeerRampKycClient({ initialQ, rows }: Props) {
                         size="sm"
                         disabled={pending}
                         onClick={() => {
-                          if (!window.confirm(`Mark ${r.email} declined in our database only?`)) return;
+                          if (!window.confirm(`Decline KYC (database only) for ${r.email}?`)) return;
                           startTransition(async () => {
                             setBanner(null);
                             const out = await overridePeerRampKycByEmail(r.email, "declined");
@@ -150,7 +157,7 @@ export function PeerRampKycClient({ initialQ, rows }: Props) {
                           });
                         }}
                       >
-                        Decline (DB)
+                        Decline
                       </Button>
                     </div>
                   </td>

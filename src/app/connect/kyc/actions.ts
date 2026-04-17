@@ -7,6 +7,8 @@ import {
   postCoreAdminPeerRampKycReset,
 } from "@/lib/core-api";
 
+const KYC_PATH = "/connect/kyc";
+
 function readMessage(data: unknown): string | undefined {
   if (data && typeof data === "object" && "error" in data) {
     const e = (data as { error?: unknown }).error;
@@ -22,11 +24,11 @@ export async function resetPeerRampKycByEmail(
   if (!trimmed) return { ok: false, message: "Missing email" };
   const token = await getSessionToken();
   const res = await postCoreAdminPeerRampKycReset({ email: trimmed }, token ?? undefined);
-  revalidatePath("/connect/peer-ramp-kyc");
+  revalidatePath(KYC_PATH);
   if (!res.ok) {
     return { ok: false, message: readMessage(res.data) ?? `Request failed (${res.status})` };
   }
-  return { ok: true, message: "KYC reset — user can start verification again." };
+  return { ok: true };
 }
 
 export async function overridePeerRampKycByEmail(
@@ -37,12 +39,9 @@ export async function overridePeerRampKycByEmail(
   if (!trimmed) return { ok: false, message: "Missing email" };
   const token = await getSessionToken();
   const res = await postCoreAdminPeerRampKycOverride({ email: trimmed, status }, token ?? undefined);
-  revalidatePath("/connect/peer-ramp-kyc");
+  revalidatePath(KYC_PATH);
   if (!res.ok) {
     return { ok: false, message: readMessage(res.data) ?? `Request failed (${res.status})` };
   }
-  return {
-    ok: true,
-    message: `Marked ${status} in platform database (Didit is unchanged).`,
-  };
+  return { ok: true };
 }
