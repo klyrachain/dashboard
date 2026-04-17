@@ -51,27 +51,16 @@ export default async function SettingsVerificationPage() {
     <div className="space-y-6 font-primary text-body">
       <header className="space-y-1">
         <h1 className="text-display font-semibold tracking-tight">Verification</h1>
-        <p className="font-secondary text-caption text-muted-foreground max-w-prose">
-          Start or continue KYB/KYC review for your business account.
-        </p>
       </header>
 
       <Card className="bg-white">
         <CardHeader>
-          <CardTitle>KYB and KYC review</CardTitle>
-          <CardDescription>
-            Submit your business profile and owner information to unlock higher
-            limits and additional payout rails.
-          </CardDescription>
+          <CardTitle>KYB / KYC</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Use this center to manage business verification status and unlock
-            higher limits with more payout rails.
-          </p>
           <div className="flex flex-wrap gap-2">
             <Button asChild type="button">
-              <Link href="/settings/general">Start or continue verification</Link>
+              <Link href="/settings/general">Continue</Link>
             </Button>
             <Button asChild type="button" variant="outline">
               <Link href="/settings/team">Open team settings</Link>

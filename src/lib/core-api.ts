@@ -920,6 +920,33 @@ export async function postCoreAdminPeerRampKycOverride(
   return fetchCorePost<unknown>("api/admin/peer-ramp-app/kyc/override", body, bearerToken);
 }
 
+/** GET /api/admin/businesses/kyb */
+export async function getCoreAdminBusinessesKyb(
+  params?: { q?: string; limit?: number },
+  bearerToken?: string | null
+) {
+  return fetchCoreGet<unknown>("api/admin/businesses/kyb", {
+    q: params?.q,
+    limit: params?.limit,
+  }, bearerToken);
+}
+
+/** POST /api/admin/businesses/kyb/reset */
+export async function postCoreAdminBusinessKybReset(
+  body: { businessId: string },
+  bearerToken?: string | null
+) {
+  return fetchCorePost<unknown>("api/admin/businesses/kyb/reset", body, bearerToken);
+}
+
+/** POST /api/admin/businesses/kyb/override */
+export async function postCoreAdminBusinessKybOverride(
+  body: { businessId: string; status: "approved" | "declined" },
+  bearerToken?: string | null
+) {
+  return fetchCorePost<unknown>("api/admin/businesses/kyb/override", body, bearerToken);
+}
+
 // ——— Platform Settings API ———
 
 async function fetchCorePatch<T>(

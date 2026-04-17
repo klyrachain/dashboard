@@ -246,10 +246,7 @@ export function DashboardMerchantOverview() {
           role="alert"
         >
           <p className="font-semibold">Summary unavailable</p>
-          <p className="mt-1 text-destructive/90">
-            We could not load your full summary. Showing basic counts instead.
-            Check that your backend exposes merchant summary for this business.
-          </p>
+          <p className="mt-1 text-destructive/90">Showing basic counts.</p>
         </div>
         <MerchantOverviewFallback />
       </div>
@@ -284,7 +281,7 @@ export function DashboardMerchantOverview() {
           </p>
           {!isKybVerified(data.business.kybStatus) ? (
             <Button variant="outline" size="sm" className="mt-2" asChild>
-              <Link href="/settings/verification">Complete verification</Link>
+              <Link href="/settings/verification">KYB</Link>
             </Button>
           ) : null}
           <p className="text-xs text-muted-foreground">
