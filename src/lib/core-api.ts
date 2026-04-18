@@ -66,6 +66,9 @@ function coreHeaders(path: string, bearerToken?: string | null, extra?: HeadersI
       headers["Authorization"] = `Bearer ${bearerToken.trim()}`;
     } else {
       if (requiresBearerForBusinessPath(path)) {
+        // Server-side dashboard calls (e.g. RSC) may have CORE_API_KEY but no session; still allow platform key.
+        const key = getCoreApiKey();
+        if (key) headers["x-api-key"] = key;
         return headers;
       }
       const key = getCoreApiKey();
@@ -97,7 +100,8 @@ async function fetchCore<T>(
 async function fetchCoreGet<T>(
   path: string,
   params?: Record<string, string | number | undefined>,
-  bearerToken?: string | null
+  bearerToken?: string | null,
+  extraHeaders?: HeadersInit
 ): Promise<{
   status: number; ok: boolean; data: CoreFetchSuccess<T> | CoreApiError
 }> {
@@ -111,7 +115,7 @@ async function fetchCoreGet<T>(
   const fullPath = qs ? `${path}?${qs}` : path;
   const { ok, status, data } = await fetchCore<CoreFetchSuccess<T> | CoreApiError>(
     fullPath,
-    { timeout: FETCH_TIMEOUT_MS, bearerToken }
+    { timeout: FETCH_TIMEOUT_MS, bearerToken, headers: extraHeaders }
   );
   return { ok, status, data: data as CoreFetchSuccess<T> | CoreApiError };
 }
@@ -299,11 +303,20 @@ export async function getCoreTransaction(id: string, bearerToken?: string | null
   return fetchCoreGet<unknown>(`api/transactions/${encodeURIComponent(id)}`, undefined, bearerToken);
 }
 
-export async function getCoreRequests(params?: { page?: number; limit?: number }, bearerToken?: string | null) {
-  return fetchCoreGet<unknown[]>("api/requests", {
-    page: params?.page,
-    limit: params?.limit,
-  }, bearerToken);
+export async function getCoreRequests(
+  params?: { page?: number; limit?: number },
+  bearerToken?: string | null,
+  extraHeaders?: HeadersInit
+) {
+  return fetchCoreGet<unknown[]>(
+    "api/requests",
+    {
+      page: params?.page,
+      limit: params?.limit,
+    },
+    bearerToken,
+    extraHeaders
+  );
 }
 
 export async function getCoreRequest(id: string, bearerToken?: string | null) {

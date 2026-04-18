@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import {
   MERCHANT_SSR_COOKIE,
   MERCHANT_SSR_VALUE,
+  PORTAL_BUSINESS_ID_COOKIE,
+  PORTAL_JWT_COOKIE,
+  PORTAL_MERCHANT_ENV_COOKIE,
   PORTAL_ROLE_COOKIE,
 } from "@/lib/portal-cookie-names";
 
@@ -14,6 +17,9 @@ const httpOnlyCookieBase = {
   httpOnly: true,
 };
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function getCoreBase(): string | null {
   const raw =
     process.env.NEXT_PUBLIC_CORE_URL?.trim() || process.env.CORE_URL?.trim();
@@ -21,11 +27,12 @@ function getCoreBase(): string | null {
   return raw.replace(/\/$/, "");
 }
 
-/** Valid portal JWT — works before user has completed onboarding / merchant business. */
-async function verifyPortalSession(
+type PortalSessionPayload = { businesses: { id: string }[] };
+
+async function fetchPortalSession(
   coreBase: string,
   token: string
-): Promise<boolean> {
+): Promise<PortalSessionPayload | null> {
   const res = await fetch(`${coreBase}/api/business-auth/session`, {
     method: "GET",
     headers: {
@@ -34,7 +41,15 @@ async function verifyPortalSession(
     },
     signal: AbortSignal.timeout(15_000),
   });
-  return res.ok;
+  if (!res.ok) return null;
+  const body = (await res.json().catch(() => null)) as {
+    success?: boolean;
+    data?: { businesses?: { id: string }[] };
+  } | null;
+  if (!body?.success || !body.data || !Array.isArray(body.data.businesses)) {
+    return null;
+  }
+  return { businesses: body.data.businesses };
 }
 
 export async function POST(request: Request) {
@@ -56,17 +71,40 @@ export async function POST(request: Request) {
     );
   }
 
-  const valid = await verifyPortalSession(coreBase, token);
-  if (!valid) {
+  const session = await fetchPortalSession(coreBase, token);
+  if (!session) {
     return NextResponse.json(
       { ok: false, error: "Invalid or expired portal session" },
       { status: 401 }
     );
   }
 
+  const desiredBid = request.headers.get("x-business-id")?.trim() ?? "";
+  const envHdr = request.headers.get("x-merchant-environment")?.trim().toUpperCase();
+  const merchantEnv =
+    envHdr === "TEST" || envHdr === "LIVE" ? envHdr : "LIVE";
+
+  let businessId: string | undefined;
+  if (
+    desiredBid &&
+    UUID_RE.test(desiredBid) &&
+    session.businesses.some((b) => b.id === desiredBid)
+  ) {
+    businessId = desiredBid;
+  } else if (session.businesses.length === 1) {
+    businessId = session.businesses[0].id;
+  }
+
   const res = NextResponse.json({ ok: true });
   res.cookies.set(PORTAL_ROLE_COOKIE, "merchant", httpOnlyCookieBase);
   res.cookies.set(MERCHANT_SSR_COOKIE, MERCHANT_SSR_VALUE, httpOnlyCookieBase);
+  res.cookies.set(PORTAL_JWT_COOKIE, token, httpOnlyCookieBase);
+  res.cookies.set(PORTAL_MERCHANT_ENV_COOKIE, merchantEnv, httpOnlyCookieBase);
+  if (businessId) {
+    res.cookies.set(PORTAL_BUSINESS_ID_COOKIE, businessId, httpOnlyCookieBase);
+  } else {
+    clearCookie(res, PORTAL_BUSINESS_ID_COOKIE);
+  }
   return res;
 }
 
@@ -79,10 +117,13 @@ function clearCookie(res: NextResponse, name: string): void {
   });
 }
 
-/** Clears HttpOnly portal role + SSR cookies (business logout). */
+/** Clears HttpOnly portal cookies (business logout / switch to platform). */
 export async function DELETE() {
   const res = NextResponse.json({ ok: true });
   clearCookie(res, PORTAL_ROLE_COOKIE);
   clearCookie(res, MERCHANT_SSR_COOKIE);
+  clearCookie(res, PORTAL_JWT_COOKIE);
+  clearCookie(res, PORTAL_BUSINESS_ID_COOKIE);
+  clearCookie(res, PORTAL_MERCHANT_ENV_COOKIE);
   return res;
 }

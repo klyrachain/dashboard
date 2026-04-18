@@ -752,7 +752,7 @@ export function BusinessSignupFlow() {
         >
           <h1
             id={`${formId}-magic-gate-title`}
-            className="text-3xl font-semibold tracking-tight [font-family:var(--font-inter-tight),ui-sans-serif,sans-serif] sm:text-4xl"
+            className="text-3xl font-semibold tracking-tight font-inter-tight-stack sm:text-4xl"
           >
             You&apos;re all set.
           </h1>
@@ -863,7 +863,7 @@ export function BusinessSignupFlow() {
               exit={{ opacity: 0 }}
               className="w-full max-w-lg text-center"
             >
-              <p className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl [font-family:var(--font-inter-tight),ui-sans-serif,sans-serif]">
+              <p className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl font-inter-tight-stack">
                 You&apos;re in sandbox mode
               </p>
               <p className="mt-3 text-zinc-600">Opening your workspace…</p>
@@ -880,7 +880,7 @@ export function BusinessSignupFlow() {
             >
               <h1
                 id={`${formId}-step1-title`}
-                className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl [font-family:var(--font-inter-tight),ui-sans-serif,sans-serif]"
+                className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl font-inter-tight-stack"
               >
                 Create your business account
               </h1>
@@ -1063,7 +1063,7 @@ export function BusinessSignupFlow() {
             >
               <h1
                 id={`${formId}-step2-title`}
-                className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl [font-family:var(--font-inter-tight),ui-sans-serif,sans-serif]"
+                className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl font-inter-tight-stack"
               >
                 Great to meet you.
                 <br />
@@ -1147,7 +1147,7 @@ export function BusinessSignupFlow() {
             >
               <h1
                 id={`${formId}-step3-title`}
-                className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl [font-family:var(--font-inter-tight),ui-sans-serif,sans-serif]"
+                className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl font-inter-tight-stack"
               >
                 Let&apos;s customize your experience
               </h1>
@@ -1254,7 +1254,7 @@ export function BusinessSignupFlow() {
             >
               <h1
                 id={`${formId}-step4-title`}
-                className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl [font-family:var(--font-inter-tight),ui-sans-serif,sans-serif]"
+                className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl font-inter-tight-stack"
               >
                 Set up your profile
               </h1>

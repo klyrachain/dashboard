@@ -66,7 +66,7 @@ export function UsersPageClient({ initialUsers, allTransactions }: UsersPageClie
 
       <section ref={detailRef}>
         <h2 className="mb-4 text-sm font-medium text-slate-500">
-          User details & transactions
+          Customer details & payment history
         </h2>
         <UserDetailSection
           user={selectedUser}

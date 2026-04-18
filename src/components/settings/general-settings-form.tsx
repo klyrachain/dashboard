@@ -66,6 +66,7 @@ export function GeneralSettingsForm({ initialData }: GeneralSettingsFormProps) {
             <Input
               id="publicName"
               value={publicName}
+              className="border-none"
               onChange={(e) => setPublicName(e.target.value)}
               placeholder=""
             />

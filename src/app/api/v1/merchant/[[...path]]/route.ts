@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 const MERCHANT_PROXY_TIMEOUT_MS = 60_000;
 
 function getCoreBase(): string | null {
-  const raw = process.env.NEXT_PUBLIC_CORE_URL?.trim();
+  const raw =
+    process.env.NEXT_PUBLIC_CORE_URL?.trim() || process.env.CORE_URL?.trim();
   if (!raw) return null;
   return raw.replace(/\/$/, "");
 }
@@ -15,7 +16,11 @@ async function proxyToCore(
   const base = getCoreBase();
   if (!base) {
     return NextResponse.json(
-      { success: false, error: "Core API URL not configured" },
+      {
+        success: false,
+        error:
+          "Core API URL not configured. Set NEXT_PUBLIC_CORE_URL or CORE_URL on the dashboard server.",
+      },
       { status: 503 }
     );
   }

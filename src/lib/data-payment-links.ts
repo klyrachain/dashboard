@@ -3,6 +3,7 @@
  */
 import { getSessionToken } from "@/lib/auth";
 import { getCoreRequests } from "@/lib/core-api";
+import { getPortalSsrAuthForCore } from "@/lib/portal-server-auth";
 
 export type PaymentLinkStatus =
   | "Pending"
@@ -26,6 +27,23 @@ export type PaymentLinksResult = {
   items: PaymentLinkRow[];
   error?: string;
 };
+
+function formatCoreListFailure(
+  status: number,
+  data: unknown,
+  fallback: string
+): string {
+  const parts: string[] = [];
+  if (status > 0) parts.push(`HTTP ${status}`);
+  if (data && typeof data === "object") {
+    const o = data as { error?: unknown; code?: unknown; message?: unknown };
+    if (typeof o.error === "string" && o.error.trim()) parts.push(o.error.trim());
+    else if (typeof o.message === "string" && o.message.trim()) parts.push(o.message.trim());
+    if (typeof o.code === "string" && o.code.trim()) parts.push(`(${o.code.trim()})`);
+  }
+  if (parts.length === 0) return fallback;
+  return `${fallback}: ${parts.join(" — ")}`;
+}
 
 type CoreRequestRow = {
   id?: string;
@@ -79,26 +97,42 @@ export async function getPaymentLinks(params?: {
   const page = params?.page ?? 1;
   const limit = params?.limit ?? 100;
   try {
-    const token = await getSessionToken();
+    const sessionBearer = await getSessionToken();
+    const portal = await getPortalSsrAuthForCore();
+    const bearer = sessionBearer ?? portal?.bearerToken ?? undefined;
+    const extraHeaders =
+      !sessionBearer && portal && Object.keys(portal.extraHeaders).length > 0
+        ? portal.extraHeaders
+        : undefined;
     const { ok, status, data } = await getCoreRequests(
       { page, limit },
-      token ?? undefined
+      bearer,
+      extraHeaders
     );
     if (!ok || !data || typeof data !== "object") {
       return {
         items: [],
-        error: status === 404 ? "Not Found" : "Unable to load payment links",
+        error:
+          status === 404
+            ? formatCoreListFailure(status, data, "Not Found")
+            : formatCoreListFailure(status, data, "Unable to load payment links"),
       };
     }
     const envelope = data as {
       success?: boolean;
       data?: unknown[];
       error?: string;
+      code?: string;
     };
     if (envelope.success === false) {
+      const base = envelope.error ?? "Unable to load payment links";
+      const withCode =
+        envelope.code && envelope.code.trim()
+          ? `${base} (${envelope.code.trim()})`
+          : base;
       return {
         items: [],
-        error: envelope.error ?? "Unable to load payment links",
+        error: withCode,
       };
     }
     const list = Array.isArray(envelope.data) ? envelope.data : [];
