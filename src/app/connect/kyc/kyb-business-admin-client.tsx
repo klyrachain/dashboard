@@ -29,7 +29,12 @@ export function KybBusinessAdminClient({ initialBq, rows }: Props) {
 
   return (
     <div className="space-y-4 font-primary text-body">
-      <h2 className="text-lg font-semibold tracking-tight">KYB (business)</h2>
+      <h2 className="text-lg font-semibold tracking-tight">KYB state (merchants)</h2>
+      <p className="max-w-3xl text-caption text-muted-foreground leading-relaxed">
+        Businesses complete company KYB on the dashboard (founding member). This table is for{" "}
+        <strong>support and compliance oversight</strong> — reset or DB-only approve/decline — not the merchant KYB
+        flow itself.
+      </p>
       {banner ? (
         <div
           className={`rounded-lg px-4 py-3 font-secondary text-caption ${

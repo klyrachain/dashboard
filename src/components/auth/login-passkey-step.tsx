@@ -14,6 +14,7 @@ import {
   formatWebAuthnClientError,
   isWebAuthnAvailable,
   runPasskeyAuthentication,
+  sanitizePasskeyApiError,
 } from "@/lib/webauthn-client";
 import { isAuthSuccess } from "@/types/auth";
 import { clearBusinessAccessToken } from "@/lib/businessAuthStorage";
@@ -83,7 +84,7 @@ export function LoginPasskeyStep({ email: initialEmail }: { email: string }) {
         }
         return;
       }
-      setError((verifyRes as { error: string }).error ?? "Verification failed");
+      setError(sanitizePasskeyApiError((verifyRes as { error?: string }).error));
     } catch (err) {
       setLoading(false);
       setError(formatWebAuthnClientError(err));

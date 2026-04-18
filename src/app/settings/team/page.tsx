@@ -16,7 +16,7 @@ export default async function SettingsTeamPage() {
         </p>
         <div className="pt-2">
           <Button asChild size="sm" variant="outline">
-            <Link href="/settings/verification">Open KYB/KYC verification</Link>
+            <Link href="/settings/verification">Verification hub</Link>
           </Button>
         </div>
       </header>

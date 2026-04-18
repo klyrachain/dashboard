@@ -29,7 +29,12 @@ export function KycAdminClient({ initialQ, rows }: Props) {
 
   return (
     <div className="space-y-4 font-primary text-body">
-      <h2 className="text-lg font-semibold tracking-tight">KYC (person)</h2>
+      <h2 className="text-lg font-semibold tracking-tight">Person verification queue</h2>
+      <p className="max-w-3xl text-caption text-muted-foreground leading-relaxed">
+        In the business product, <strong>each member</strong> completes their own user KYC on the dashboard when
+        required. <strong>Ramp consumer</strong> rows are separate: they use the Peer Ramp app only. This queue is
+        for <strong>platform operators</strong> (search, reset, DB overrides) — not where end users file KYC.
+      </p>
       {banner ? (
         <div
           className={`rounded-lg px-4 py-3 font-secondary text-caption ${
@@ -64,7 +69,7 @@ export function KycAdminClient({ initialQ, rows }: Props) {
         <table className="w-full min-w-[800px] border-collapse text-left text-sm">
           <thead className="border-b border-border bg-muted/40 font-secondary text-caption uppercase tracking-wide text-muted-foreground">
             <tr>
-              <th className="px-3 py-2">Source</th>
+              <th className="px-3 py-2">Product</th>
               <th className="px-3 py-2">Email</th>
               <th className="px-3 py-2">KYC status</th>
               <th className="px-3 py-2">Provider</th>
@@ -84,7 +89,7 @@ export function KycAdminClient({ initialQ, rows }: Props) {
               rows.map((r) => (
                 <tr key={`${r.source}-${r.email}`} className="border-b border-border/80 last:border-0">
                   <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {r.source === "portal" ? "Portal" : "Peer Ramp"}
+                    {r.source === "portal" ? "Business portal" : "Ramp consumer"}
                   </td>
                   <td className="px-3 py-2 font-mono text-xs">{r.email}</td>
                   <td className="px-3 py-2">{r.kycStatus ?? "—"}</td>

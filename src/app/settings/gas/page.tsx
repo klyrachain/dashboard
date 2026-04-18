@@ -45,8 +45,7 @@ export default async function SettingsGasPage({ searchParams }: SettingsGasPageP
       <div>
         <h1 className="text-display font-semibold tracking-tight">Gas sponsorship</h1>
         <p className="font-secondary text-caption text-muted-foreground mt-1 max-w-prose">
-          Platform-wide sponsorship policy, business prepaid balances, and reconciliation. Dynamic /
-          ZeroDev handles execution on the payer app; Core stores balances and ledger entries.
+          Platform-wide sponsorship policy, business prepaid balances, and reconciliation.
         </p>
       </div>
       {err && (

@@ -13,6 +13,7 @@ import {
   formatWebAuthnClientError,
   isWebAuthnAvailable,
   runPasskeyRegistration,
+  sanitizePasskeyApiError,
 } from "@/lib/webauthn-client";
 import { isAuthSuccess } from "@/types/auth";
 
@@ -47,7 +48,7 @@ export function SetupPasskeyClient() {
       setError(
         optionsRes.success
           ? "Could not get passkey options from the server."
-          : (optionsRes as { error: string }).error
+          : sanitizePasskeyApiError((optionsRes as { error?: string }).error)
       );
       return;
     }
@@ -65,7 +66,7 @@ export function SetupPasskeyClient() {
           router.replace("/");
         }, 1000);
       } else {
-        setError((verifyRes as { error: string }).error ?? "Verification failed");
+        setError(sanitizePasskeyApiError((verifyRes as { error?: string }).error));
       }
     } catch (err) {
       setLoading(false);
