@@ -134,7 +134,7 @@ export function BusinessSigninFlow() {
       setMagicCooldown((s) => (s <= 1 ? 0 : s - 1));
     }, 1000);
     return () => window.clearInterval(id);
-  }, [magicCooldown > 0]);
+  }, [magicCooldown]);
 
   const clearError = useCallback(() => setFormError(null), []);
 

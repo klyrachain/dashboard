@@ -111,7 +111,9 @@ export function BalancesContentClient({
   }, [assets]);
 
   useEffect(() => {
-    fetchRates();
+    queueMicrotask(() => {
+      void fetchRates();
+    });
   }, [fetchRates]);
 
   const { chains, aggregated } = useMemo(

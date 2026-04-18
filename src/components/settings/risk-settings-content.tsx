@@ -20,11 +20,12 @@ export function RiskSettingsContent({ initialData }: RiskSettingsContentProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialData) {
+    if (!initialData) return;
+    queueMicrotask(() => {
       setEnforceKycOver1000(initialData.enforceKycOver1000);
       setBlockHighRiskIp(initialData.blockHighRiskIp);
       setBlacklistText(initialData.blacklist?.length ? initialData.blacklist.join("\n") : "");
-    }
+    });
   }, [initialData]);
 
   return (

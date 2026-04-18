@@ -17,6 +17,7 @@ import {
   usePostMerchantCrmCustomerMutation,
 } from "@/store/merchant-api";
 import type { RootState } from "@/store";
+import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 import type { MerchantDerivedCustomerRow } from "@/types/merchant-api";
 import { isForbiddenMerchantRole } from "@/lib/merchant-api-error";
 import { parsePrice } from "@/lib/merchant-commerce-helpers";
@@ -68,9 +69,7 @@ function pickTxField(row: Record<string, unknown>, ...keys: string[]): string {
 
 export function MerchantCustomersClient() {
   const testMode = useSelector((s: RootState) => s.layout.testMode);
-  const activeBusinessId = useSelector(
-    (s: RootState) => s.merchantSession.activeBusinessId
-  );
+  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
   const [page] = useState(1);
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<"payers" | "crm">("payers");
@@ -95,14 +94,14 @@ export function MerchantCustomersClient() {
   );
 
   const derived = useGetMerchantCustomersQuery(listParams, {
-    skip: !activeBusinessId,
+    skip: skipMerchantApi,
   });
   const crm = useGetMerchantCrmCustomersQuery(listParams, {
-    skip: !activeBusinessId,
+    skip: skipMerchantApi,
   });
   const { data: summary } = useGetMerchantSummaryQuery(
     { days: 365, seriesDays: 30 },
-    { skip: !activeBusinessId }
+    { skip: skipMerchantApi }
   );
   const [postCrm, { isLoading: crmPosting, error: crmPostErr }] =
     usePostMerchantCrmCustomerMutation();
@@ -115,18 +114,21 @@ export function MerchantCustomersClient() {
         ? { q: selectedPayer.identifier }
         : {}),
     }),
-    [selectedPayer?.identifier]
+    [selectedPayer]
   );
 
   const payerTx = useGetMerchantTransactionsQuery(txQueryParams, {
-    skip: !activeBusinessId || !detailOpen || !selectedPayer?.identifier,
+    skip: skipMerchantApi || !detailOpen || !selectedPayer?.identifier,
   });
 
   const derivedForbidden = isForbiddenMerchantRole(derived.error);
   const crmForbidden =
     isForbiddenMerchantRole(crm.error) || isForbiddenMerchantRole(crmPostErr);
 
-  const derivedItems = derived.data?.items ?? [];
+  const derivedItems = useMemo(
+    () => derived.data?.items ?? [],
+    [derived.data?.items]
+  );
 
   const sortedPayers = useMemo(() => {
     const list = [...derivedItems];
@@ -190,7 +192,7 @@ export function MerchantCustomersClient() {
     setDetailOpen(true);
   };
 
-  if (!activeBusinessId) {
+  if (!effectiveBusinessId) {
     return (
       <p className="text-sm text-muted-foreground" role="status">
         Select a business in the header to view customers.

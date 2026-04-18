@@ -41,6 +41,8 @@ const REQUEST_CLAIM_FEE_PERCENT = 0.5;
  */
 export function getFeeForOrder(input: FeeOrderInput): FeeQuoteResult {
   const { action, f_amount, t_amount, f_price, t_price } = input;
+  const impliedCrossRate =
+    t_price > 0 && f_price > 0 ? f_price / t_price : f_price;
   const feePercent =
     action === "buy" || action === "sell"
       ? BUY_SELL_FEE_PERCENT
@@ -75,7 +77,7 @@ export function getFeeForOrder(input: FeeOrderInput): FeeQuoteResult {
     feePercent,
     totalCost,
     totalReceived,
-    rate: f_price,
+    rate: impliedCrossRate,
     grossValue,
     profit: feeAmount,
   };

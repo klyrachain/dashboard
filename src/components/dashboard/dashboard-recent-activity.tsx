@@ -102,6 +102,7 @@ export function DashboardRecentActivity({
       <CardHeader className="flex flex-col gap-4 space-y-0 pb-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center justify-between gap-2 sm:justify-start">
           <div className="flex items-center gap-2">
+            <Activity className="size-4 text-slate-500" aria-hidden />
             <h3 className="text-base font-medium text-slate-900">
               Recent Activity
             </h3>

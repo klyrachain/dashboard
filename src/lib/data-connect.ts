@@ -366,7 +366,12 @@ export async function getConnectSettlements(params?: {
         data && typeof data === "object" && "error" in data
           ? String((data as { error: string }).error)
           : "Request failed";
-      return { ok: false, items: [], meta: defaultMeta, error: err };
+      return {
+        ok: false,
+        items: [],
+        meta: defaultMeta,
+        error: status ? `${err} (HTTP ${status})` : err,
+      };
     }
     const envelope = data as { success?: boolean; data?: unknown[]; meta?: { page: number; limit: number; total: number } };
     const list = Array.isArray(envelope?.data) ? envelope.data : [];

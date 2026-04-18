@@ -69,17 +69,21 @@ export function ConnectSettlementsClient({
   const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
-    if (!selectedId) {
-      setDetail(null);
-      return;
-    }
     let cancelled = false;
-    setDetailLoading(true);
-    setDetail(null);
-    getConnectSettlementByIdAction(selectedId).then((result) => {
+    queueMicrotask(() => {
       if (cancelled) return;
-      setDetailLoading(false);
-      if (result.ok && result.data) setDetail(result.data);
+      if (!selectedId) {
+        setDetail(null);
+        setDetailLoading(false);
+        return;
+      }
+      setDetailLoading(true);
+      setDetail(null);
+      void getConnectSettlementByIdAction(selectedId).then((result) => {
+        if (cancelled) return;
+        setDetailLoading(false);
+        if (result.ok && result.data) setDetail(result.data);
+      });
     });
     return () => {
       cancelled = true;

@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { format, parseISO } from "date-fns";
-import { useSelector } from "react-redux";
 import {
   Bar,
   BarChart,
@@ -31,8 +30,8 @@ import {
   useGetMerchantSettlementsQuery,
   useGetMerchantTransactionsQuery,
 } from "@/store/merchant-api";
-import type { RootState } from "@/store";
 import type { MerchantSummary } from "@/types/merchant-api";
+import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 
 const PERIOD_OPTIONS = [
   { value: "7", label: "Last 7 days" },
@@ -94,6 +93,12 @@ function isKybVerified(value: string | undefined): boolean {
   return normalized === "approved" || normalized === "verified";
 }
 
+const noopSubscribe = () => () => {};
+
+function useClientReady(): boolean {
+  return useSyncExternalStore(noopSubscribe, () => true, () => false);
+}
+
 /** Matches loading UI; used for SSR + first client paint to avoid hydration mismatch when Redux hydrates after mount. */
 function MerchantOverviewLoadingSkeleton() {
   return (
@@ -118,16 +123,14 @@ function MerchantOverviewLoadingSkeleton() {
 }
 
 function MerchantOverviewFallback() {
-  const activeBusinessId = useSelector(
-    (s: RootState) => s.merchantSession.activeBusinessId
-  );
+  const { skipMerchantApi } = useMerchantTenantScope();
   const txQ = useGetMerchantTransactionsQuery(
     { page: 1, limit: 1 },
-    { skip: !activeBusinessId }
+    { skip: skipMerchantApi }
   );
   const stQ = useGetMerchantSettlementsQuery(
     { page: 1, limit: 1 },
-    { skip: !activeBusinessId }
+    { skip: skipMerchantApi }
   );
 
   if (txQ.isLoading || stQ.isLoading) {
@@ -175,14 +178,9 @@ function MerchantOverviewFallback() {
 }
 
 export function DashboardMerchantOverview() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useClientReady();
 
-  const activeBusinessId = useSelector(
-    (s: RootState) => s.merchantSession.activeBusinessId
-  );
+  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
   const [periodDays, setPeriodDays] = useState(30);
   const [seriesDays, setSeriesDays] = useState(14);
 
@@ -192,11 +190,11 @@ export function DashboardMerchantOverview() {
   );
 
   const summaryQ = useGetMerchantSummaryQuery(summaryArgs, {
-    skip: !activeBusinessId,
+    skip: skipMerchantApi,
   });
 
   const showFallback =
-    Boolean(activeBusinessId) &&
+    Boolean(effectiveBusinessId) &&
     !summaryQ.isLoading &&
     !summaryQ.isFetching &&
     (summaryQ.isError || summaryQ.data == null);
@@ -217,7 +215,7 @@ export function DashboardMerchantOverview() {
     return <MerchantOverviewLoadingSkeleton />;
   }
 
-  if (!activeBusinessId) {
+  if (!effectiveBusinessId) {
     return (
       <Card>
         <CardHeader>

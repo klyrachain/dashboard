@@ -70,11 +70,23 @@ function buildQuery(
   return q ? `?${q}` : "";
 }
 
-function EmptyHistoryState() {
+function EmptyHistoryState({ onRefresh }: { onRefresh?: () => void }) {
   return (
     <Card className="bg-white">
-      <CardHeader>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
         <CardTitle>Inventory History</CardTitle>
+        {onRefresh ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRefresh}
+            className="gap-2"
+            aria-label="Refresh history"
+          >
+            <Loader2 className="size-4" aria-hidden />
+            Refresh
+          </Button>
+        ) : null}
       </CardHeader>
       <CardContent>
         <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
@@ -143,31 +155,7 @@ export function InventoryHistoryTable({
   }, [filteredItems]);
 
   if (items.length === 0 && currentPage === 1) {
-    return (
-      <Card className="bg-white">
-        <CardHeader>
-          <CardTitle>Inventory History</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.refresh()}
-            className="gap-2"
-            aria-label="Refresh history"
-          >
-            <Loader2 className="size-4" aria-hidden />
-            Refresh
-          </Button>
-          <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-            <p className="text-sm font-medium text-slate-600">No history records</p>
-            <p className="text-xs text-slate-500">
-              History will appear here when data is available from Core.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <EmptyHistoryState onRefresh={() => router.refresh()} />;
   }
 
   return (

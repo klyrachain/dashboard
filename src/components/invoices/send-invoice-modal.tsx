@@ -38,10 +38,11 @@ export function SendInvoiceModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    queueMicrotask(() => {
       setEmail(initialEmail);
       setError(null);
-    }
+    });
   }, [open, initialEmail]);
 
   const handleSubmit = async (e: React.FormEvent) => {

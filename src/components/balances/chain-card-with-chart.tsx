@@ -43,6 +43,7 @@ function ChainIcon({
     <span
       className={`flex size-8 items-center justify-center rounded-md text-xs font-medium w-full px-2 bg-slate-100 text-slate-600
 } `}
+      title={isOffchain ? "Off-chain / fiat rail" : "On-chain"}
       aria-hidden
     >
       {labels[chainId] ?? chainId.slice(0, 2).toUpperCase()}

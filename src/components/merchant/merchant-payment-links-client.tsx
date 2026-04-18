@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
-import { useSelector } from "react-redux";
 import { Copy, Loader2, Plus, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -15,7 +14,7 @@ import {
   usePostMerchantFiatQuoteMutation,
   usePostMerchantPayPageMutation,
 } from "@/store/merchant-api";
-import type { RootState } from "@/store";
+import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 import type { MerchantPayPageRow } from "@/types/merchant-api";
 import { isForbiddenMerchantRole } from "@/lib/merchant-api-error";
 import { buildPaymentLinkPublicUrl } from "@/lib/merchant-commerce-helpers";
@@ -66,6 +65,12 @@ const EMPTY_PAY_PAGE_ROWS: MerchantPayPageRow[] = [];
 const FILTER_CONTROL_CLASS =
   "border border-slate-300 bg-background dark:border-slate-600";
 
+const subscribeNoop = () => () => {};
+
+function useClientReady(): boolean {
+  return useSyncExternalStore(subscribeNoop, () => true, () => false);
+}
+
 function usdMapsEqual(
   a: Record<string, string>,
   b: Record<string, string>
@@ -81,9 +86,7 @@ function usdMapsEqual(
 
 export function MerchantPaymentLinksClient() {
   const searchParams = useSearchParams();
-  const activeBusinessId = useSelector(
-    (s: RootState) => s.merchantSession.activeBusinessId
-  );
+  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -116,24 +119,26 @@ export function MerchantPaymentLinksClient() {
   }, [page, pageSize, q, statusFilter, amountFilter]);
 
   useEffect(() => {
-    setPage(1);
+    queueMicrotask(() => {
+      setPage(1);
+    });
   }, [q, statusFilter, amountFilter]);
 
   const { data: checkoutMeta } = useGetCheckoutBaseUrlQuery();
   const { data, isLoading, isError, error, refetch } = useGetMerchantPayPagesQuery(
     params,
-    { skip: !activeBusinessId }
+    { skip: skipMerchantApi }
   );
   const { data: productsData } = useGetMerchantProductsQuery(
     { page: 1, limit: 200, includeArchived: 1 },
-    { skip: !activeBusinessId }
+    { skip: skipMerchantApi }
   );
   const { data: summary } = useGetMerchantSummaryQuery(
     { days: 30, seriesDays: 7 },
-    { skip: !activeBusinessId }
+    { skip: skipMerchantApi }
   );
   const { data: gasAccount } = useGetMerchantGasAccountQuery(undefined, {
-    skip: !activeBusinessId,
+    skip: skipMerchantApi,
   });
   const globalGasToggleOn = gasAccount?.sponsorshipEnabled === true;
 
@@ -146,18 +151,16 @@ export function MerchantPaymentLinksClient() {
     postFiatQuoteRef.current = postFiatQuote;
   }, [postFiatQuote]);
   const [usdByRowId, setUsdByRowId] = useState<Record<string, string>>({});
-  const [clientReady, setClientReady] = useState(false);
-
-  useEffect(() => {
-    setClientReady(true);
-  }, []);
+  const clientReady = useClientReady();
 
   const meta = data?.meta;
   const totalLinks = meta?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalLinks / pageSize));
 
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
+    queueMicrotask(() => {
+      if (page > totalPages) setPage(totalPages);
+    });
   }, [page, totalPages]);
 
   const productNameById = useMemo(() => {
@@ -169,13 +172,15 @@ export function MerchantPaymentLinksClient() {
   }, [productsData?.items]);
 
   useEffect(() => {
-    const pid = searchParams.get("productId")?.trim();
-    const pname = searchParams.get("productName")?.trim();
-    if (pid) {
-      setProductId(pid);
-      setOpen(true);
-      if (pname) setTitle(pname);
-    }
+    queueMicrotask(() => {
+      const pid = searchParams.get("productId")?.trim();
+      const pname = searchParams.get("productName")?.trim();
+      if (pid) {
+        setProductId(pid);
+        setOpen(true);
+        if (pname) setTitle(pname);
+      }
+    });
   }, [searchParams]);
 
   const rows = data?.items ?? EMPTY_PAY_PAGE_ROWS;
@@ -347,7 +352,7 @@ export function MerchantPaymentLinksClient() {
     );
   }
 
-  if (!activeBusinessId) {
+  if (!effectiveBusinessId) {
     return (
       <p className="text-sm text-muted-foreground" role="status">
         Select a business in the header to manage payment links.

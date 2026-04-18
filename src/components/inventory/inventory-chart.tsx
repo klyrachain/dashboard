@@ -27,7 +27,7 @@ function EmptyHistoryState() {
           </div>
           <p className="text-sm font-medium text-slate-600">No data</p>
           <p className="text-xs text-slate-500">
-            No history data yet. Once you have activity, it'll show up here.
+            No history data yet. Once you have activity, it will show up here.
           </p>
         </div>
       </CardContent>

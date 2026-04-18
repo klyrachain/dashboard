@@ -11,6 +11,12 @@ export interface MerchantBusinessProfile {
   webhookUrl: string | null;
   country?: string | null;
   createdAt?: string;
+  /** Present for business-portal JWT; null for merchant API keys. */
+  portalKycStatus?: string | null;
+  portalKycProvider?: string | null;
+  portalKycVerifiedAt?: string | null;
+  /** Earliest active member by `joinedAt` — eligible to drive KYB. */
+  isFirstActiveMember?: boolean;
 }
 
 export type MerchantBusinessPatchBody = {

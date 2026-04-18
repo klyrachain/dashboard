@@ -16,7 +16,6 @@ import {
   BarChart3,
   Store,
   AlertTriangle,
-  UserCircle,
   UserPlus,
   Fuel,
   ShieldCheck,
@@ -112,9 +111,10 @@ export const merchantNavGroups: NavGroupConfig[] = [
     items: [
       {
         href: "/settings/general",
-        label: "Business profile & webhooks",
-        icon: UserCircle,
+        label: "Business & webhooks",
+        icon: Building2,
       },
+      { href: "/settings/gas", label: "Gas sponsorship", icon: Fuel },
       {
         href: "/settings/verification",
         label: "Verification",

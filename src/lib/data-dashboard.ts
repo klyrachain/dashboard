@@ -351,7 +351,7 @@ function parseUsd(s: string): number {
  */
 export async function getVolumeChartDataFromPlatformOverview(
   range: VolumeDateRange,
-  _granularity: VolumeGranularity
+  granularity: VolumeGranularity
 ): Promise<VolumeChartResult> {
   const now = Date.now();
   const todayUtc = new Date(now);
@@ -368,6 +368,14 @@ export async function getVolumeChartDataFromPlatformOverview(
 
   const formatDay = (dateStr: string) => {
     const d = new Date(dateStr + "T00:00:00Z");
+    if (granularity === "hourly" && range === "24h") {
+      return d.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        timeZone: "UTC",
+      });
+    }
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
@@ -399,7 +407,7 @@ export async function getVolumeChartDataFromPlatformOverview(
     grossSeries.push({
       date: formatDay(dateStr),
       value: gross,
-      label: `${formatDay(dateStr)}: $${gross.toFixed(2)}`,
+      label,
     });
     feeSeries.push({
       date: formatDay(dateStr),

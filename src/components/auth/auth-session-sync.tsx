@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { useSession, signOut } from "next-auth/react";
-import { setSession, clearSession, setAdmin } from "@/store/auth-slice";
+import { setSession, clearSession, setAdmin, setSessionExpiresAt } from "@/store/auth-slice";
 import { getMe } from "@/lib/auth-api";
 import { isAuthSuccess } from "@/types/auth";
 import type { SessionUser } from "@/lib/auth";
@@ -69,7 +69,7 @@ export function AuthSessionSync({ children }: { children: React.ReactNode }) {
                 ? (raw.data as Record<string, unknown>)
                 : raw;
             const meData = inner as Record<string, unknown> & { expiresAt?: string };
-            const { expiresAt: _e, ...admin } = meData;
+            const { expiresAt, ...admin } = meData;
             const id = (admin?.id ?? admin?.adminId) != null ? String(admin.id ?? admin.adminId) : "";
             const email = admin?.email != null ? String(admin.email) : "";
             if (id && email) {
@@ -80,6 +80,9 @@ export function AuthSessionSync({ children }: { children: React.ReactNode }) {
                 role: (admin?.role as "super_admin" | "support" | "developer" | "viewer") ?? "viewer",
               };
               dispatch(setAdmin(payload));
+              dispatch(
+                setSessionExpiresAt(typeof expiresAt === "string" && expiresAt.trim() ? expiresAt : null)
+              );
             } else {
               unauthenticatedMeDidTry = false;
               dispatch(clearSession());

@@ -312,12 +312,22 @@ export function serializeInvoice(inv: Invoice): SerializedInvoice {
   };
 }
 
-function formatCurrency(amount: number, _currency: string): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "decimal",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+function formatCurrency(amount: number, currency: string): string {
+  const code = /^[A-Za-z]{3}$/.test(currency) ? currency.toUpperCase() : "USD";
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return new Intl.NumberFormat("en-US", {
+      style: "decimal",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }
 }
 
 export { formatCurrency as formatInvoiceCurrency };

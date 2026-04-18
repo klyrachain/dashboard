@@ -21,7 +21,7 @@ type GeneralSettingsFormProps = {
 };
 
 const defaults: SettingsGeneral = {
-  publicName: "MyCryptoApp",
+  publicName: "",
   supportEmail: "",
   supportPhone: "",
   defaultCurrency: "USD",
@@ -40,14 +40,15 @@ export function GeneralSettingsForm({ initialData }: GeneralSettingsFormProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialData) {
+    if (!initialData) return;
+    queueMicrotask(() => {
       setPublicName(initialData.publicName);
       setSupportEmail(initialData.supportEmail);
       setSupportPhone(initialData.supportPhone ?? "");
       setDefaultCurrency(initialData.defaultCurrency);
       setTimezone(initialData.timezone);
       setMaintenanceMode(initialData.maintenanceMode);
-    }
+    });
   }, [initialData]);
 
   return (
@@ -66,7 +67,7 @@ export function GeneralSettingsForm({ initialData }: GeneralSettingsFormProps) {
               id="publicName"
               value={publicName}
               onChange={(e) => setPublicName(e.target.value)}
-              placeholder="MyCryptoApp"
+              placeholder=""
             />
           </div>
           <div className="space-y-2">

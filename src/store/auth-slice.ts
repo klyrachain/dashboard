@@ -43,10 +43,14 @@ export const authSlice = createSlice({
     setAdmin: (state, action: { payload: AuthAdmin | null }) => {
       state.admin = action.payload;
     },
+    /** Optional platform session expiry from `/me` (NextAuth JWT metadata). */
+    setSessionExpiresAt: (state, action: { payload: string | null }) => {
+      state.expiresAt = action.payload;
+    },
   },
 });
 
-export const { setSession, clearSession, setAdmin } = authSlice.actions;
+export const { setSession, clearSession, setAdmin, setSessionExpiresAt } = authSlice.actions;
 
 export function getStoredToken(): string | null {
   if (typeof window === "undefined") return null;

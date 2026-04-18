@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useSelector } from "react-redux";
 import { Link2, Pencil, Plus } from "lucide-react";
 import {
   useGetMerchantProductsQuery,
@@ -11,7 +10,7 @@ import {
   usePatchMerchantProductMutation,
   usePostMerchantProductMutation,
 } from "@/store/merchant-api";
-import type { RootState } from "@/store";
+import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 import type { MerchantProductRow } from "@/types/merchant-api";
 import { isForbiddenMerchantRole } from "@/lib/merchant-api-error";
 import {
@@ -69,9 +68,7 @@ function descPreview(desc: string | null | undefined, max = 48): string {
 }
 
 export function MerchantProductsClient() {
-  const activeBusinessId = useSelector(
-    (s: RootState) => s.merchantSession.activeBusinessId
-  );
+  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -109,27 +106,29 @@ export function MerchantProductsClient() {
   }, [page, pageSize, q, statusFilter, typeFilter]);
 
   useEffect(() => {
-    setPage(1);
+    queueMicrotask(() => {
+      setPage(1);
+    });
   }, [q, statusFilter, typeFilter]);
 
   const { data, isLoading, isError, error, refetch } = useGetMerchantProductsQuery(
     params,
-    { skip: !activeBusinessId }
+    { skip: skipMerchantApi }
   );
   const { data: summary } = useGetMerchantSummaryQuery(
     { days: 30, seriesDays: 7 },
-    { skip: !activeBusinessId }
+    { skip: skipMerchantApi }
   );
   const { data: txData } = useGetMerchantTransactionsQuery(
     { page: 1, limit: 200 },
-    { skip: !activeBusinessId }
+    { skip: skipMerchantApi }
   );
 
   const [postProduct, { isLoading: posting, error: postErr }] =
     usePostMerchantProductMutation();
   const [patchProduct, { error: patchErr }] = usePatchMerchantProductMutation();
 
-  const rawRows = data?.items ?? [];
+  const rawRows = useMemo(() => data?.items ?? [], [data?.items]);
   const purchaseByProduct = useMemo(
     () => aggregateProductPurchaseCounts(txData?.items ?? []),
     [txData?.items]
@@ -140,7 +139,9 @@ export function MerchantProductsClient() {
   const totalPages = Math.max(1, Math.ceil(totalProducts / pageSize));
 
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
+    queueMicrotask(() => {
+      if (page > totalPages) setPage(totalPages);
+    });
   }, [page, totalPages]);
 
   const sortedRows = useMemo(() => {
@@ -236,7 +237,7 @@ export function MerchantProductsClient() {
     }).unwrap();
   };
 
-  if (!activeBusinessId) {
+  if (!effectiveBusinessId) {
     return (
       <p className="text-sm text-muted-foreground" role="status">
         Select a business in the header to manage products.

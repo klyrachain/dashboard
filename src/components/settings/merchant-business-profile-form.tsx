@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -10,16 +9,14 @@ import {
   useGetMerchantBusinessQuery,
   usePatchMerchantBusinessMutation,
 } from "@/store/merchant-api";
-import type { RootState } from "@/store";
+import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 
 export function MerchantBusinessProfileForm() {
-  const activeBusinessId = useSelector(
-    (s: RootState) => s.merchantSession.activeBusinessId
-  );
+  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
   const { data, isLoading, isError } = useGetMerchantBusinessQuery(undefined, {
-    skip: !activeBusinessId,
+    skip: skipMerchantApi,
   });
   const [patch, { isLoading: saving }] = usePatchMerchantBusinessMutation();
   const [formMessage, setFormMessage] = useState<{
@@ -35,14 +32,16 @@ export function MerchantBusinessProfileForm() {
 
   useEffect(() => {
     if (!data) return;
-    setName(data.name ?? "");
-    setWebsite(data.website ?? "");
-    setLogoUrl(data.logoUrl ?? "");
-    setSupportEmail(data.supportEmail ?? "");
-    setWebhookUrl(data.webhookUrl ?? "");
+    queueMicrotask(() => {
+      setName(data.name ?? "");
+      setWebsite(data.website ?? "");
+      setLogoUrl(data.logoUrl ?? "");
+      setSupportEmail(data.supportEmail ?? "");
+      setWebhookUrl(data.webhookUrl ?? "");
+    });
   }, [data]);
 
-  if (!activeBusinessId) {
+  if (!effectiveBusinessId) {
     return (
       <p className="text-sm text-muted-foreground" role="status">
         Select a business in the header to edit its profile.

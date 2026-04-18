@@ -58,7 +58,7 @@ export type SettingsGeneral = {
 };
 
 const defaultGeneral: SettingsGeneral = {
-  publicName: "MyCryptoApp",
+  publicName: "",
   supportEmail: "",
   supportPhone: "",
   defaultCurrency: "USD",

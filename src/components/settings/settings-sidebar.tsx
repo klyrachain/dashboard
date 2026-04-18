@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  Settings,
   Building2,
   DollarSign,
   Route,
@@ -16,7 +15,7 @@ import {
 
 const SETTINGS_TABS = [
   { href: "/settings/account", label: "Account", icon: UserCircle },
-  { href: "/settings/general", label: "General", icon: Settings },
+  { href: "/settings/general", label: "General", icon: Building2 },
   { href: "/settings/financials", label: "Financials", icon: DollarSign },
   { href: "/settings/providers", label: "Providers & Routing", icon: Route },
   { href: "/settings/risk", label: "Risk & Compliance", icon: Shield },

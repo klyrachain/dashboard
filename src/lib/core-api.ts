@@ -81,8 +81,9 @@ async function fetchCore<T>(
 ): Promise<{ ok: boolean; status: number; data: T }> {
   const base = getCoreBaseUrl().replace(/\/$/, "");
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
-  const timeout = options?.timeout ?? HEALTH_TIMEOUT_MS;
-  const { timeout: _t, bearerToken, headers: optionHeaders, ...rest } = options ?? {};
+  const { timeout: optsTimeout, bearerToken, headers: optionHeaders, ...rest } =
+    options ?? {};
+  const timeout = optsTimeout ?? HEALTH_TIMEOUT_MS;
   const res = await fetch(url, {
     ...rest,
     headers: coreHeaders(path, bearerToken, optionHeaders),
@@ -250,7 +251,8 @@ export async function checkCoreHealth(): Promise<CoreHealthResponse> {
  */
 export async function checkCoreReady(): Promise<CoreHealthResponse> {
   try {
-    const { ok, data } = await fetchCore<CoreHealthResponse>("/ready");
+    const { ok: httpOk, data } = await fetchCore<CoreHealthResponse>("/ready");
+    if (!httpOk) return { ok: false, error: "Core not reachable" };
     if (data) return data as CoreHealthResponse;
     return { ok: false, error: "Invalid response" };
   } catch (e) {
@@ -764,7 +766,14 @@ export async function getCoreInvoiceExport(
   const contentType = res.headers.get("content-type") ?? "";
   const disposition = res.headers.get("content-disposition") ?? "";
   const filenameMatch = disposition.match(/filename="?([^";\n]+)"?/);
-  const filename = filenameMatch ? filenameMatch[1].trim() : undefined;
+  const filenameFromHeader = filenameMatch ? filenameMatch[1].trim() : undefined;
+  const filename =
+    filenameFromHeader ??
+    (contentType.includes("pdf")
+      ? `invoice-${id}.pdf`
+      : contentType.includes("csv") || contentType.includes("text/")
+        ? `invoice-${id}.csv`
+        : undefined);
   const blob = await res.blob();
   return { ok: res.ok, status: res.status, blob, filename };
 }

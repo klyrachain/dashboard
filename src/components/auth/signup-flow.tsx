@@ -37,8 +37,10 @@ export function SignupFlow({ token, step: stepParam }: SignupFlowProps) {
   useEffect(() => {
     if (!token?.trim()) return;
     if (step !== "invite") return;
-    setLoading(true);
-    setError(null);
+    queueMicrotask(() => {
+      setLoading(true);
+      setError(null);
+    });
     getInvite(token).then((res) => {
       setLoading(false);
       if (isAuthSuccess(res)) {
@@ -55,15 +57,17 @@ export function SignupFlow({ token, step: stepParam }: SignupFlowProps) {
 
   useEffect(() => {
     if (step !== "totp" || !token) return;
-    try {
-      const raw = sessionStorage.getItem(SETUP_STORAGE_KEY);
-      if (raw) {
-        const data = JSON.parse(raw) as SetupData;
-        if (data.adminId) setSetupData(data);
+    queueMicrotask(() => {
+      try {
+        const raw = sessionStorage.getItem(SETUP_STORAGE_KEY);
+        if (raw) {
+          const data = JSON.parse(raw) as SetupData;
+          if (data.adminId) setSetupData(data);
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
-    }
+    });
   }, [step, token]);
 
   const goTo = (s: Step) => {
