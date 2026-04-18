@@ -6,7 +6,6 @@ import { AppSidebar } from "./app-sidebar";
 import { Topbar } from "./topbar";
 import { HeaderNoSidebar } from "./header-no-sidebar";
 import { StatusIndicator } from "@/components/status-indicator";
-import { SingleLineFooter } from "../footer/singleLineFooter";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const theme = useSelector((state: RootState) => state.layout.theme);
@@ -18,7 +17,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50">
           <main className="scrollbar-dashboard-main min-h-0 w-full min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-6">
             {children}
-            <SingleLineFooter />
           </main>
         </div>
         <StatusIndicator />
@@ -34,7 +32,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-slate-50">
           <main className="scrollbar-dashboard-main min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-6">
             {children}
-            <SingleLineFooter />
           </main>
         </div>
       </div>

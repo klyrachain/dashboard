@@ -66,6 +66,7 @@ const NATIVE_ETH_ADDRESS_LC = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
 function isValidQuoteTokenAddress(s: string): boolean {
   const t = String(s).trim().toLowerCase();
+  if (t === ZERO_ADDRESS.toLowerCase()) return false;
   return EVM_ADDRESS_REGEX.test(t) || t === NATIVE_ETH_ADDRESS_LC;
 }
 

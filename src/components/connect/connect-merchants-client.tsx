@@ -23,6 +23,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -244,6 +245,11 @@ export function ConnectMerchantsClient({
               )}
             </div>
           )}
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => setDetailOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

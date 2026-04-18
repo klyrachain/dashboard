@@ -45,14 +45,15 @@ export function FinancialsSettingsForm({ initialData }: FinancialsSettingsFormPr
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialData) {
+    if (!initialData) return;
+    queueMicrotask(() => {
       setBaseFeePercent(toStr(initialData.baseFeePercent));
       setFixedFee(toStr(initialData.fixedFee));
       setMinTxSize(toStr(initialData.minTransactionSize));
       setMaxTxSize(toStr(initialData.maxTransactionSize));
       setLowBalanceAlert(toStr(initialData.lowBalanceAlert));
       setBaseCurrencyState(initialData.baseCurrency ?? "usdc");
-    }
+    });
   }, [initialData]);
 
   return (

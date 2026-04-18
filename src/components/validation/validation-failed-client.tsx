@@ -42,7 +42,8 @@ function ReportKpis({ days = 7 }: { days?: number }) {
   if (error || !report) {
     return (
       <Card className="border-amber-200 bg-amber-50">
-        <CardContent className="py-6">
+        <CardContent className="flex gap-3 py-6">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden />
           <p className="text-sm text-amber-800">
             Failed to load validation report. Ensure Core API is up and x-api-key is set.
           </p>
@@ -240,7 +241,8 @@ function RecentFailedList() {
   if (error) {
     return (
       <Card className="border-amber-200 bg-amber-50">
-        <CardContent className="py-6">
+        <CardContent className="flex gap-3 py-6">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden />
           <p className="text-sm text-amber-800">Failed to load recent failures.</p>
         </CardContent>
       </Card>
@@ -352,7 +354,8 @@ function FailedValidationsTable() {
   if (error || !data) {
     return (
       <Card className="border-amber-200 bg-amber-50">
-        <CardContent className="py-6">
+        <CardContent className="flex gap-3 py-6">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden />
           <p className="text-sm text-amber-800">Failed to load list.</p>
         </CardContent>
       </Card>

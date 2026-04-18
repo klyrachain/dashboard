@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSelector } from "react-redux";
 import { cn } from "@/lib/utils";
-import type { RootState } from "@/store";
 import {
   Settings,
-  Building2,
   DollarSign,
   Route,
   Shield,
@@ -30,24 +27,17 @@ const PLATFORM_TABS = [
   { href: "/settings/api", label: "API & Webhooks", icon: Webhook },
 ] as const;
 
-const MERCHANT_TABS = [
-  { href: "/settings/general", label: "Business & webhooks", icon: Building2 },
-  { href: "/settings/gas", label: "Gas sponsorship", icon: Fuel },
-  { href: "/settings/team", label: "Team", icon: Users },
-] as const;
-
+/** Platform backoffice only; merchant settings use the main app sidebar (`merchantNavGroups`). */
 export function SettingsSidebarClient() {
   const pathname = usePathname();
-  const sessionType = useSelector((s: RootState) => s.merchantSession.sessionType);
-  const tabs = sessionType === "merchant" ? MERCHANT_TABS : PLATFORM_TABS;
 
   return (
     <aside className="w-56 shrink-0 border-r border-slate-200 bg-slate-50/50">
       <nav className="flex flex-col gap-0.5 p-3" aria-label="Settings sections">
         <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-          {sessionType === "merchant" ? "Business" : "Platform control"}
+          Platform control
         </p>
-        {tabs.map((tab) => {
+        {PLATFORM_TABS.map((tab) => {
           const isActive = pathname === tab.href;
           return (
             <Link

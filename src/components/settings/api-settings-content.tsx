@@ -22,11 +22,12 @@ export function ApiSettingsContent({ initialData }: ApiSettingsContentProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialData) {
+    if (!initialData) return;
+    queueMicrotask(() => {
       setWebhookSecretMasked(initialData.webhookSigningSecretMasked);
       setSlackWebhookUrl(initialData.slackWebhookUrl ?? "");
       setAlertEmails(initialData.alertEmails ?? "");
-    }
+    });
   }, [initialData]);
 
   return (

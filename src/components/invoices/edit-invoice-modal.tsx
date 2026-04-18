@@ -41,14 +41,15 @@ export function EditInvoiceModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    queueMicrotask(() => {
       setSubject(invoice.subject);
       setDueDate(format(new Date(invoice.dueDate), "yyyy-MM-dd"));
       setBilledTo(invoice.billedTo);
       setBillingDetails(invoice.billingDetails);
       setTermsAndConditions(invoice.termsAndConditions);
       setError(null);
-    }
+    });
   }, [open, invoice]);
 
   const handleSubmit = async (e: React.FormEvent) => {

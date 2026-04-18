@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { getCoreBaseUrl } from "@/lib/core-api";
 import { getAccessContext } from "@/lib/data-access";
+import { MerchantVerificationPanel } from "@/components/settings/merchant-verification-panel";
 
 type ProviderRailMetadata = {
   providerCode: string;
@@ -48,6 +49,7 @@ async function getProviderRails(): Promise<ProviderRailMetadata[]> {
 export default async function SettingsVerificationPage() {
   const [rails, access] = await Promise.all([getProviderRails(), getAccessContext()]);
   const isPlatform = access.ok && access.context?.type === "platform";
+  const isMerchant = access.ok && access.context?.type === "merchant";
 
   return (
     <div className="space-y-6 font-primary text-body">
@@ -55,31 +57,29 @@ export default async function SettingsVerificationPage() {
         <h1 className="text-display font-semibold tracking-tight">Verification</h1>
       </header>
 
-      <Card className="bg-white">
-        <CardHeader>
-          <CardTitle>KYB / KYC</CardTitle>
-          <CardDescription>
-            {isPlatform
-              ? "Connect lists verification for support — merchants complete user KYC (every member) and KYB (founding member, on the dashboard when ready) themselves."
-              : "Every team member completes user KYC when required. The founding member completes company KYB later on the dashboard (not immediately after signup). Use Business profile and Team; Connect tools are for platform staff only."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {isPlatform ? (
-              <Button asChild type="button">
-                <Link href="/connect/kyc">Open verification queue</Link>
-              </Button>
-            ) : null}
-            <Button asChild type="button" variant="outline">
-              <Link href="/settings/general">Business profile</Link>
-            </Button>
-            <Button asChild type="button" variant="outline">
-              <Link href="/settings/team">Team</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {isMerchant ? (
+        <MerchantVerificationPanel />
+      ) : (
+        <Card className="bg-white">
+          <CardHeader>
+            <CardTitle>KYB / KYC</CardTitle>
+            <CardDescription>
+              {isPlatform
+                ? "Connect lists verification for support — merchants complete user KYC (every member) and KYB (founding member, on the dashboard when ready) themselves."
+                : "Sign in with a business account to see your verification status."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {isPlatform ? (
+                <Button asChild type="button">
+                  <Link href="/connect/kyc">Open verification queue</Link>
+                </Button>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="bg-white">
         <CardHeader>

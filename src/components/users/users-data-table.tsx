@@ -181,6 +181,7 @@ export function UsersDataTable({
     React.useState<VisibilityState>(defaultColumnVisibility);
   const [globalFilter, setGlobalFilter] = React.useState("");
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table returns unstable function refs; safe here
   const table = useReactTable({
     data: initialData,
     columns,

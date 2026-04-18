@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useSelector } from "react-redux";
 import { useGetMerchantTransactionsQuery } from "@/store/merchant-api";
-import type { RootState } from "@/store";
+import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TransactionsChartClient } from "@/components/transactions/transactions-chart-client";
 import { TransactionsDataTable } from "@/components/transactions/transactions-data-table";
@@ -23,9 +22,7 @@ function MerchantChartsSkeleton() {
 }
 
 export function TransactionsMerchantRtkPanel() {
-  const activeBusinessId = useSelector(
-    (s: RootState) => s.merchantSession.activeBusinessId
-  );
+  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
 
   const params = useMemo(
     () => ({
@@ -37,7 +34,7 @@ export function TransactionsMerchantRtkPanel() {
 
   const { data, isLoading, isError, error, isFetching, refetch } =
     useGetMerchantTransactionsQuery(params, {
-      skip: !activeBusinessId,
+      skip: skipMerchantApi,
     });
 
   const rows: TransactionRow[] = useMemo(() => {
@@ -47,7 +44,7 @@ export function TransactionsMerchantRtkPanel() {
       .filter((r): r is TransactionRow => r !== null);
   }, [data?.items]);
 
-  if (!activeBusinessId) {
+  if (!effectiveBusinessId) {
     return (
       <section
         className="rounded-md border border-dashed border-slate-200 bg-slate-50/50 px-4 py-12 text-center"

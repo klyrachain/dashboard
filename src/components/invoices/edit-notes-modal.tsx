@@ -32,10 +32,11 @@ export function EditNotesModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    queueMicrotask(() => {
       setNotes(notesContent);
       setError(null);
-    }
+    });
   }, [open, notesContent]);
 
   const handleSubmit = async (e: React.FormEvent) => {

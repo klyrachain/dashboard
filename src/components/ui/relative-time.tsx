@@ -19,17 +19,19 @@ const ONE_MINUTE_MS = 60_000;
  */
 export function RelativeTime({ date, prefix = "", className }: RelativeTimeProps) {
   const resolved = typeof date === "string" ? new Date(date) : date;
+  const resolvedMs = resolved.getTime();
   const [label, setLabel] = useState(() =>
     formatDistanceToNow(resolved, { addSuffix: true })
   );
 
   useEffect(() => {
+    const anchor = new Date(resolvedMs);
     const update = () =>
-      setLabel(formatDistanceToNow(resolved, { addSuffix: true }));
+      setLabel(formatDistanceToNow(anchor, { addSuffix: true }));
     update();
     const id = setInterval(update, ONE_MINUTE_MS);
     return () => clearInterval(id);
-  }, [resolved.getTime()]);
+  }, [resolvedMs]);
 
   return (
     <span className={className}>

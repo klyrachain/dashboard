@@ -151,11 +151,7 @@ export async function getRiskAction() {
   return getSettingsRisk();
 }
 
-export async function saveRiskAction(body: {
-  enforceKycOver1000?: boolean;
-  blockHighRiskIp?: boolean;
-  blacklist?: string[];
-}): Promise<SettingsActionResult> {
+export async function saveRiskAction(body: Partial<SettingsRisk>): Promise<SettingsActionResult> {
   const result = await patchSettingsRisk(body);
   if (result.ok) {
     SETTINGS_PATHS.forEach((p) => revalidatePath(p));

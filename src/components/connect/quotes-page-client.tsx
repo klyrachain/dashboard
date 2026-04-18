@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -41,12 +41,26 @@ type QuotesPageClientProps = {
 };
 
 export function QuotesPageClient({ pairs }: QuotesPageClientProps) {
+  const pairsRef = useRef(pairs);
+  pairsRef.current = pairs;
+
   const [order, setOrder] = useState<string[]>(() =>
     pairs.map((p) => p.label)
   );
   const [results, setResults] = useState<QuoteResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [provider, setProvider] = useState<SwapQuoteProvider>("squid");
+
+  const pairSignature = useMemo(
+    () =>
+      pairs
+        .map(
+          (p) =>
+            `${p.label}:${p.fromChainId}:${p.toChainId}:${p.fromToken}:${p.toToken}`
+        )
+        .join("|"),
+    [pairs]
+  );
 
   const orderedPairs = useMemo(() => {
     const byLabel = new Map(pairs.map((p) => [p.label, p]));
@@ -61,19 +75,19 @@ export function QuotesPageClient({ pairs }: QuotesPageClientProps) {
     return m;
   }, [results]);
 
-  const fetchQuotes = async () => {
+  const fetchQuotes = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getQuotesAction(pairs, provider);
+      const data = await getQuotesAction(pairsRef.current, provider);
       setResults(data);
     } finally {
       setLoading(false);
     }
-  };
+  }, [provider]);
 
   useEffect(() => {
-    if (pairs.length > 0) fetchQuotes();
-  }, [pairs.length]);
+    if (pairs.length > 0) void fetchQuotes();
+  }, [pairs.length, pairSignature, provider, fetchQuotes]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

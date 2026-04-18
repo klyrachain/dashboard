@@ -28,11 +28,12 @@ export function PlatformGasSettingsForm({
   const [creditBusy, setCreditBusy] = useState(false);
 
   useEffect(() => {
-    if (initialSettings) {
+    if (!initialSettings) return;
+    queueMicrotask(() => {
       setSponsorshipEnabled(initialSettings.sponsorshipEnabled);
       setMaxUsdPerTx(initialSettings.maxUsdPerTx ?? "");
       setNotes(initialSettings.notes ?? "");
-    }
+    });
   }, [initialSettings]);
 
   async function onSave(e: React.FormEvent) {

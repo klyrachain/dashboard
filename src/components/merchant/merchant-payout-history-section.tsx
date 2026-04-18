@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGetMerchantSettlementByIdQuery } from "@/store/merchant-api";
+import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 import type { MerchantListMeta } from "@/types/merchant-api";
 import {
   destinationFromRow,
@@ -66,7 +67,6 @@ type MerchantPayoutHistorySectionProps = {
   isLoading: boolean;
   onStatusChange: (value: string) => void;
   onPageChange: (nextPage: number) => void;
-  activeBusinessId: string | null;
 };
 
 export function MerchantPayoutHistorySection({
@@ -77,13 +77,13 @@ export function MerchantPayoutHistorySection({
   isLoading,
   onStatusChange,
   onPageChange,
-  activeBusinessId,
 }: MerchantPayoutHistorySectionProps) {
   const [detailId, setDetailId] = useState<string | null>(null);
+  const { skipMerchantApi } = useMerchantTenantScope();
 
   const { data: detailRaw, isFetching: detailLoading } =
     useGetMerchantSettlementByIdQuery(detailId ?? "", {
-      skip: !activeBusinessId || !detailId,
+      skip: skipMerchantApi || !detailId,
     });
 
   const detail =

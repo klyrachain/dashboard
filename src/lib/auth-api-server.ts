@@ -30,8 +30,8 @@ async function fetchAuth<T>(
     };
   }
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
-  const timeout = options?.timeout ?? AUTH_TIMEOUT_MS;
-  const { timeout: _t, ...rest } = options ?? {};
+  const { timeout: optsTimeout, ...rest } = options ?? {};
+  const timeout = optsTimeout ?? AUTH_TIMEOUT_MS;
   try {
     const res = await fetch(url, {
       ...rest,

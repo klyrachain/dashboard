@@ -10,8 +10,9 @@ type SettlementsPageProps = {
 
 /** Merchant payouts via `GET /api/v1/merchant/settlements`. Platform: /connect/settlements. */
 export default async function MerchantSettlementsPage({
-  searchParams: _searchParams,
+  searchParams,
 }: SettlementsPageProps) {
+  const sp = await searchParams;
   const access = await getAccessContext();
   if (!access.ok || access.context?.type !== "merchant") {
     redirect("/connect/settlements");
@@ -29,6 +30,11 @@ export default async function MerchantSettlementsPage({
         {businessName ? (
           <p className="font-secondary text-caption text-muted-foreground">
             <span className="font-medium text-foreground">{businessName}</span>
+          </p>
+        ) : null}
+        {sp.status && sp.status !== "all" ? (
+          <p className="font-secondary text-caption text-muted-foreground" role="status">
+            Filtered by status: <span className="font-mono">{sp.status}</span>
           </p>
         ) : null}
       </header>

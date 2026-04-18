@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useState } from "react";
 import { Provider } from "react-redux";
 import { makeStore } from "@/store";
 import type { LayoutPreference } from "@/lib/layout-preference-cookie";
@@ -17,15 +17,14 @@ export function ReduxProvider({
   /** Hydrated from server GET /api/access (platform vs merchant, businesses). */
   initialMerchantSession?: Partial<MerchantSessionState> | null;
 }) {
-  const storeRef = useRef<ReturnType<typeof makeStore> | null>(null);
-  if (storeRef.current === null) {
-    storeRef.current = makeStore({
+  const [store] = useState(() =>
+    makeStore({
       layout: initialLayoutPreference ?? null,
       merchantSession: initialMerchantSession ?? null,
-    });
-  }
+    })
+  );
   return (
-    <Provider store={storeRef.current}>
+    <Provider store={store}>
       <MerchantPortalReduxHydrate serverSnapshot={initialMerchantSession ?? null} />
       {children}
     </Provider>

@@ -62,9 +62,11 @@ export function AtAGlanceCards({
             <p className="text-2xl font-semibold text-slate-900">
               {card.value}
             </p>
-            {/* {isUpdatingRates && card.title === "Total balance" && (
-              <p className="text-xs text-slate-400">Updating…</p>
-            )} */}
+            {isUpdatingRates && card.title === "Total balance" ? (
+              <p className="text-xs text-slate-400" aria-live="polite">
+                Updating…
+              </p>
+            ) : null}
             {card.sub && (
               <p className="text-xs text-slate-500">{card.sub}</p>
             )}

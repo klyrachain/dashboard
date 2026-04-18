@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useSelector } from "react-redux";
 import { useMerchantRole } from "@/hooks/use-merchant-role";
 import { canManagePayoutMethods } from "@/lib/merchant-rbac";
 import {
@@ -10,7 +9,7 @@ import {
   useGetMerchantSettlementsQuery,
   useGetMerchantSummaryQuery,
 } from "@/store/merchant-api";
-import type { RootState } from "@/store";
+import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MerchantPayoutDestinationsSection } from "./merchant-payout-destinations-section";
 import { MerchantPayoutHistorySection } from "./merchant-payout-history-section";
@@ -21,9 +20,7 @@ import { MerchantWithdrawFundsDialog } from "./merchant-withdraw-funds-dialog";
 export function MerchantSettlementsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeBusinessId = useSelector(
-    (s: RootState) => s.merchantSession.activeBusinessId
-  );
+  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
   const role = useMerchantRole();
   const canFinance = canManagePayoutMethods(role);
 
@@ -34,11 +31,11 @@ export function MerchantSettlementsClient() {
 
   const summaryQ = useGetMerchantSummaryQuery(
     { days: 90, seriesDays: 14 },
-    { skip: !activeBusinessId }
+    { skip: skipMerchantApi }
   );
 
   const payoutMethodsQ = useGetMerchantPayoutMethodsQuery(undefined, {
-    skip: !activeBusinessId,
+    skip: skipMerchantApi,
   });
 
   const listQ = useGetMerchantSettlementsQuery(
@@ -47,7 +44,7 @@ export function MerchantSettlementsClient() {
       limit: 20,
       ...(statusFilter !== "all" ? { status: statusFilter } : {}),
     },
-    { skip: !activeBusinessId }
+    { skip: skipMerchantApi }
   );
 
   const pushParams = (next: Record<string, string | undefined>) => {
@@ -73,7 +70,7 @@ export function MerchantSettlementsClient() {
 
   const maxAvailableByCurrency = figures.availableByCurrency;
 
-  if (!activeBusinessId) {
+  if (!effectiveBusinessId) {
     return (
       <p className="text-sm text-muted-foreground" role="status">
         Select a business in the header to view payouts for that tenant.
@@ -152,7 +149,6 @@ export function MerchantSettlementsClient() {
         onPageChange={(nextPage) => {
           pushParams({ page: String(nextPage) });
         }}
-        activeBusinessId={activeBusinessId}
       />
 
       <MerchantWithdrawFundsDialog

@@ -52,14 +52,16 @@ function filterByRange(
   range: TypeChartRangeKey
 ): TransactionRow[] {
   const now = Date.now();
+  const anchor = new Date(now);
   const cutoff =
     range === "today"
-      ? startOfDay(new Date()).getTime()
-      : subDays(new Date(), Number(range)).getTime();
+      ? startOfDay(anchor).getTime()
+      : subDays(anchor, Number(range)).getTime();
 
   return transactions.filter((t) => {
     const created = t.createdAt instanceof Date ? t.createdAt : new Date(t.createdAt);
-    return created.getTime() >= cutoff;
+    const tMs = created.getTime();
+    return tMs >= cutoff && tMs <= now;
   });
 }
 

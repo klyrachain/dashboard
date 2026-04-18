@@ -37,10 +37,20 @@ function getStatusVariant(
   }
 }
 
-export function InvoicesTable({ data, meta: _meta, statusFilter: _statusFilter }: InvoicesTableProps) {
+export function InvoicesTable({ data, meta, statusFilter }: InvoicesTableProps) {
   const router = useRouter();
+  const totalLabel =
+    meta != null ? `${meta.total} invoice${meta.total === 1 ? "" : "s"}` : null;
+  const filterLabel =
+    statusFilter && statusFilter !== "all" ? `Status: ${statusFilter}` : null;
 
   return (
+    <div className="space-y-2">
+      {(totalLabel || filterLabel) && (
+        <p className="text-xs text-muted-foreground" aria-live="polite">
+          {[filterLabel, totalLabel].filter(Boolean).join(" · ")}
+        </p>
+      )}
     <Table>
       <TableHeader>
         <TableRow>
@@ -81,5 +91,6 @@ export function InvoicesTable({ data, meta: _meta, statusFilter: _statusFilter }
         ))}
       </TableBody>
     </Table>
+    </div>
   );
 }

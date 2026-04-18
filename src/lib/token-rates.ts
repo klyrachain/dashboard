@@ -278,7 +278,9 @@ export async function fetchRates(
  * Returns USD price per 1 unit (sync fallback).
  * For accurate (chain, token) rates use fetchRates or /api/rates.
  */
-export function getTokenUsdRate(_symbol: string): number {
+export function getTokenUsdRate(symbol: string): number {
+  const s = symbol.trim().toUpperCase();
+  if (s === "USD" || s === "USDC" || s === "USDT" || s === "DAI") return 1;
   return 0;
 }
 
@@ -288,7 +290,10 @@ export function getTokenUsdRate(_symbol: string): number {
 export function toQuote(
   amount: number,
   rateInQuote: number,
-  _quote: QuoteCurrency
+  quote: QuoteCurrency
 ): number {
-  return amount * rateInQuote;
+  const raw = amount * rateInQuote;
+  const decimals = quote === "ghs" ? 2 : 6;
+  const factor = 10 ** decimals;
+  return Math.round(raw * factor) / factor;
 }

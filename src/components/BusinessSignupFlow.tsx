@@ -424,7 +424,7 @@ export function BusinessSignupFlow() {
         setMagicLinkError(formatMagicLinkConsumeError(err));
       })
       .finally(() => setIsConsumingMagicLink(false));
-  }, [magicTokenFromEmail, router, applyPortalJwtHandoff]);
+  }, [magicTokenFromEmail, applyPortalJwtHandoff]);
 
   const clearError = useCallback(() => setStepError(null), []);
 

@@ -30,6 +30,7 @@ function createBaseQueryForRequest(args: RequestArgs | string) {
   const urlSnapshot = requestUrl(args);
   return fetchBaseQuery({
     baseUrl: "",
+    credentials: "include",
     prepareHeaders: (headers, { getState }) => {
       headers.set("Content-Type", "application/json");
       if (urlSnapshot.includes(MERCHANT_API_SEGMENT)) {
@@ -53,14 +54,6 @@ function createBaseQueryForRequest(args: RequestArgs | string) {
     },
   });
 }
-const defaultBaseQuery = fetchBaseQuery({
-  baseUrl: "",
-  credentials: "include",
-  prepareHeaders: (headers) => {
-    headers.set("Content-Type", "application/json");
-    return headers;
-  },
-});
 
 function getMethod(args: RequestArgs | string): string {
   if (typeof args === "string") return "GET";

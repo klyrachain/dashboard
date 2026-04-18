@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { ExternalLink } from "lucide-react";
-import { useSelector } from "react-redux";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +16,7 @@ import {
   useGetMerchantApiKeysQuery,
   useCreateMerchantApiKeyMutation,
 } from "@/store/merchant-api";
-import type { RootState } from "@/store";
+import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 
 function merchantApiBaseDisplay(): string {
   if (typeof window === "undefined") return "";
@@ -31,12 +30,10 @@ type ManageMerchantApiContentProps = {
 export function ManageMerchantApiContent({
   docsHref = "#",
 }: ManageMerchantApiContentProps) {
-  const activeBusinessId = useSelector(
-    (s: RootState) => s.merchantSession.activeBusinessId
-  );
+  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
   const { data: keys, isLoading, isError } = useGetMerchantApiKeysQuery(
     undefined,
-    { skip: !activeBusinessId }
+    { skip: skipMerchantApi }
   );
   const [createKey, { isLoading: creating }] = useCreateMerchantApiKeyMutation();
   const [name, setName] = React.useState("Dashboard");
@@ -70,7 +67,7 @@ export function ManageMerchantApiContent({
 
   const cardSurface = "border border-border bg-card text-card-foreground shadow-sm";
 
-  if (!activeBusinessId) {
+  if (!effectiveBusinessId) {
     return (
       <p className="font-secondary text-caption text-muted-foreground" role="status">
         Select a business to manage API keys.
