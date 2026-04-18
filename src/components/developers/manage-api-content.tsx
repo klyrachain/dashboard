@@ -38,20 +38,23 @@ export function ManageApiContent({
 
   return (
     <div className="space-y-8">
-      {!rotationNotice ? (
-            <div
-              className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/30"
-              role="alert"
-            >
-              <div>
-                <p className="font-semibold text-amber-900 dark:text-amber-200">Key rotation scheduled</p>
-                <p className="text-caption text-amber-800 dark:text-amber-100/90">{rotationNotice.message}</p>
-              </div>
-              <Badge variant="secondary" className="shrink-0 bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
-                Notice
-              </Badge>
-            </div>
-          ) : null}
+      {rotationNotice ? (
+        <div
+          className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/30"
+          role="alert"
+        >
+          <div>
+            <p className="font-semibold text-amber-900 dark:text-amber-200">Key rotation scheduled</p>
+            <p className="text-caption text-amber-800 dark:text-amber-100/90">{rotationNotice.message}</p>
+          </div>
+          <Badge
+            variant="secondary"
+            className="shrink-0 bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
+          >
+            Notice
+          </Badge>
+        </div>
+      ) : null}
       <section
         aria-labelledby="platform-keys-tiers"
         className="rounded-lg text-card-foreground transition-colors duration-300 ease-out space-y-6"
