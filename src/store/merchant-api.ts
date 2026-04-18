@@ -443,6 +443,7 @@ export const merchantApi = createApi({
         businessId: string;
         hasAccount: boolean;
         prepaidBalanceUsd: string;
+        clearingBalanceUsd?: string;
         sponsorshipEnabled: boolean;
         lowBalanceWarnUsd: string | null;
         businessName?: string;
@@ -453,6 +454,57 @@ export const merchantApi = createApi({
       query: () => `${PREFIX}/gas/account`,
       transformResponse: (raw: unknown) => unwrapData(raw),
       providesTags: ["MerchantGas"],
+    }),
+    postMerchantGasTopupFromClearing: builder.mutation<
+      { prepaidBalanceUsd: string; clearingBalanceUsd: string } | null,
+      { amountUsd: number; idempotencyKey: string }
+    >({
+      query: (body) => ({
+        url: `${PREFIX}/gas/topup/from-clearing`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (raw: unknown) => unwrapData(raw),
+      invalidatesTags: ["MerchantGas"],
+    }),
+    postMerchantGasTopupPrepare: builder.mutation<
+      {
+        paymentLinkId: string;
+        publicCode: string;
+        checkoutPath: string;
+        checkoutAbsoluteUrl: string;
+      } | null,
+      { amountUsd: number; purpose: "GAS_TOPUP_FIAT" | "GAS_TOPUP_CRYPTO" }
+    >({
+      query: (body) => ({
+        url: `${PREFIX}/gas/topup/prepare`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (raw: unknown) => unwrapData(raw),
+      invalidatesTags: ["MerchantGas"],
+    }),
+    postMerchantGasPaystackInitialize: builder.mutation<
+      {
+        authorization_url: string;
+        access_code: string;
+        reference: string;
+        transaction_id: string;
+      } | null,
+      {
+        paymentLinkId: string;
+        payer_email?: string;
+        payer_wallet?: string;
+        callback_url?: string;
+      }
+    >({
+      query: (body) => ({
+        url: `${PREFIX}/gas/topup/paystack/initialize`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (raw: unknown) => unwrapData(raw),
+      invalidatesTags: ["MerchantGas"],
     }),
     patchMerchantGasAccount: builder.mutation<
       unknown | null,
@@ -502,4 +554,7 @@ export const {
   usePostMerchantFiatQuoteMutation,
   useGetMerchantGasAccountQuery,
   usePatchMerchantGasAccountMutation,
+  usePostMerchantGasTopupFromClearingMutation,
+  usePostMerchantGasTopupPrepareMutation,
+  usePostMerchantGasPaystackInitializeMutation,
 } = merchantApi;
