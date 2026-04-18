@@ -111,6 +111,15 @@ export async function middleware(request: NextRequest) {
       httpOnly: true,
       sameSite: "lax" as const,
     };
+    /**
+     * Stale `klyra_portal_role=platform` (e.g. after admin NextAuth sign-out) must not block
+     * `/business/*` — otherwise users bounce between `/login` and "try business sign-in" forever.
+     */
+    if (isPublicBusinessPortalPath(pathname)) {
+      const res = NextResponse.next();
+      res.cookies.set("klyra_portal_role", "", cleared);
+      return res;
+    }
     if (isAdminAuthPath(pathname)) {
       const res = NextResponse.next();
       res.cookies.set("klyra_portal_role", "", cleared);

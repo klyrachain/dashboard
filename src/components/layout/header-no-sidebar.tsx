@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { RootState } from "@/store";
 import { useAdmin } from "@/hooks/use-admin";
+import { signOut } from "next-auth/react";
 import { postLogout } from "@/lib/auth-api";
 import { clearSession } from "@/store/auth-slice";
 import { resetAuthSessionSyncRef } from "@/components/auth/auth-session-sync";
@@ -185,8 +186,7 @@ export function HeaderNoSidebar() {
     } catch {
       // non-fatal
     }
-    window.location.href =
-      "/api/auth/signout?callbackUrl=" + encodeURIComponent("/login");
+    await signOut({ callbackUrl: "/business/signin", redirect: true });
   };
 
   const displayName = isUnauthedShell

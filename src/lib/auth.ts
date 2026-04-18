@@ -132,6 +132,7 @@ export async function getSessionToken(): Promise<string | null> {
     const ms = parseExpiresAtMs(expiresAt);
     if (ms > 0 && Date.now() > ms) return null;
   }
-  const token = session?.token ?? (session?.user as SessionUser | undefined)?.token ?? null;
-  return token ?? null;
+  const raw = session?.token ?? (session?.user as SessionUser | undefined)?.token ?? null;
+  const trimmed = typeof raw === "string" ? raw.trim() : "";
+  return trimmed.length > 0 ? trimmed : null;
 }

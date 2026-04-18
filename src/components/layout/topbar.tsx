@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { signOut } from "next-auth/react";
 import { useAdmin } from "@/hooks/use-admin";
 import { postLogout } from "@/lib/auth-api";
 import { clearSession } from "@/store/auth-slice";
@@ -88,7 +89,8 @@ export function Topbar({ className }: { className?: string }) {
     } catch {
       // non-fatal — NextAuth sign-out still runs
     }
-    window.location.href = "/api/auth/signout?callbackUrl=" + encodeURIComponent("/login");
+    /** Avoid GET `/api/auth/signout` (NextAuth interstitial); go straight to business portal sign-in. */
+    await signOut({ callbackUrl: "/business/signin", redirect: true });
   };
 
   const triggerLabel = isUnauthedShell

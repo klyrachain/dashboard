@@ -51,7 +51,6 @@ export function MerchantPortalReduxHydrate({
     if (sessionType !== "merchant" || !token) return;
 
     void (async () => {
-      const cookieOk = await establishMerchantPortalSession(token);
       try {
         const session = await fetchBusinessSession(token);
         const businesses = session.businesses;
@@ -82,11 +81,21 @@ export function MerchantPortalReduxHydrate({
         if (activeId) {
           setStoredActiveBusinessId(activeId);
         }
+        const cookieOk = await establishMerchantPortalSession(token, {
+          businessId: activeId,
+          merchantEnvironment: merged.merchantEnvironment ?? "LIVE",
+        });
+        if (cookieOk) {
+          router.refresh();
+        }
       } catch {
         /* keep JWT merge; user may need to sign in again */
-      }
-      if (cookieOk) {
-        router.refresh();
+        const cookieOk = await establishMerchantPortalSession(token, {
+          merchantEnvironment: merged.merchantEnvironment ?? "LIVE",
+        });
+        if (cookieOk) {
+          router.refresh();
+        }
       }
     })();
   }, [dispatch, router, serverSnapshot]);

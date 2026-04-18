@@ -120,9 +120,9 @@ export function UserDetailSection({ user, transactions: userTransactions, onAnal
             <User className="size-6 text-slate-400" aria-hidden />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-600">No user selected</p>
+            <p className="text-sm font-medium text-slate-600">No customer selected</p>
             <p className="text-xs text-slate-500">
-              Select a row in the table above to view transactions, overview, and details.
+              Select a row in the table above to view payment history, overview, and details.
             </p>
           </div>
         </CardContent>

@@ -1,14 +1,18 @@
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
-import { getAccessContext } from "@/lib/data-access";
+import { getAccessContext, isMerchantPortalSessionReady } from "@/lib/data-access";
 import { getPaymentLinks } from "@/lib/data-payment-links";
 import { PaymentLinksTable } from "@/components/payment-links/payment-links-table";
 import { MerchantPaymentLinksClient } from "@/components/merchant/merchant-payment-links-client";
 
 export default async function PaymentLinksPage() {
   const access = await getAccessContext();
+  const merchantPortalCookies = await isMerchantPortalSessionReady();
 
-  if (access.ok && access.context?.type === "merchant") {
+  if (
+    merchantPortalCookies ||
+    (access.ok && access.context?.type === "merchant")
+  ) {
     return (
       <div className="space-y-6 font-primary text-body">
         <header className="space-y-1">

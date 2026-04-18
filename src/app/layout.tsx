@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { PLATFORM_PRIMARY_HEX } from "@/lib/platform-theme";
 import { cookies } from "next/headers";
 import localFont from "next/font/local";
+import { Inter_Tight } from "next/font/google";
 import "./globals.css";
 import { ReduxProvider } from "@/components/providers/redux-provider";
 import { SessionProvider } from "@/components/providers/session-provider";
@@ -42,6 +43,13 @@ const ranade = localFont({
   weight: "100 700",
 });
 
+/** Tight tracking for marketing / business auth headings (see `.font-inter-tight-stack`). */
+const interTight = Inter_Tight({
+  subsets: ["latin"],
+  variable: "--font-inter-tight",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Morapay Backoffice | Payment Control Center",
   description: "Morapay control center for payments and operations",
@@ -68,7 +76,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${alpino.variable} ${ranade.variable} font-primary antialiased`}
+        className={`${alpino.variable} ${ranade.variable} ${interTight.variable} font-primary antialiased`}
         style={{ backgroundColor: PLATFORM_PRIMARY_HEX }}
       >
         <PlatformChromeMeta />
