@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { signOut } from "next-auth/react";
 import { useDispatch } from "react-redux";
 import { useAdmin } from "@/hooks/use-admin";
 import { clearSession } from "@/store/auth-slice";
@@ -56,7 +57,7 @@ export function AccountSettingsContent() {
     } catch {
       // non-fatal
     }
-    window.location.href = "/api/auth/signout?callbackUrl=" + encodeURIComponent("/login");
+    await signOut({ callbackUrl: "/business/signin", redirect: true });
   };
 
   const handleSetupPasskey = async () => {
