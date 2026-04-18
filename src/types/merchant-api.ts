@@ -6,6 +6,7 @@ export interface MerchantBusinessProfile {
   logoUrl: string | null;
   website: string | null;
   supportEmail: string | null;
+  supportUrl?: string | null;
   kybStatus?: string;
   riskScore?: number | null;
   webhookUrl: string | null;

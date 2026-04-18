@@ -760,13 +760,26 @@ export function MerchantPaymentLinksClient() {
                       {usdByRowId[row.id] ?? "…"}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={row.isOneTime && row.paidAt ? "outline" : row.isActive !== false ? "success" : "secondary"}>
-                        {row.isOneTime && row.paidAt
-                          ? "Paid"
-                          : row.isActive !== false
-                            ? "Active"
-                            : "Inactive"}
-                      </Badge>
+                      <div className="flex flex-col items-start gap-1">
+                        <Badge
+                          variant={
+                            row.isOneTime && row.paidAt
+                              ? "outline"
+                              : row.isActive !== false
+                                ? "success"
+                                : "secondary"
+                          }
+                        >
+                          {row.isOneTime && row.paidAt
+                            ? "Paid"
+                            : row.isActive !== false
+                              ? "Active"
+                              : "Inactive"}
+                        </Badge>
+                        <Badge variant="outline" className="font-normal text-muted-foreground">
+                          {row.isOneTime ? "One-time" : "Unlimited"}
+                        </Badge>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-sm">
                       {row.isOneTime ? (row.paidAt ? "1" : "0") : (row.usageCount ?? 0)}
