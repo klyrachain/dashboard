@@ -22,7 +22,9 @@ function isAuthPath(pathname: string | null): boolean {
 export function LayoutSwitcher({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   if (isAuthPath(pathname)) {
-    return <>{children}</>;
+    return <>
+    {children}
+    </>;
   }
   return <DashboardShell>{children}</DashboardShell>;
 }

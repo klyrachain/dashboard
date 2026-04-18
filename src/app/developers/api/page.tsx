@@ -18,23 +18,15 @@ export default async function ManageApiPage() {
 
   if (access.ok && access.context?.type === "merchant") {
     return (
-      <div className="space-y-6 font-primary text-body">
+      <div className="space-y-8 font-primary text-body">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <header className="space-y-1 min-w-0">
-            <h1 className="text-display font-semibold tracking-tight">
-              API keys
-            </h1>
-            <p className="font-secondary text-caption text-muted-foreground max-w-prose">
-              Create keys to connect your backend and automate payouts, products,
-              and more.
+          <header className="min-w-0 space-y-1">
+            <h1 className="text-display font-semibold tracking-tight text-foreground">API keys</h1>
+            <p className="max-w-prose font-secondary text-caption text-muted-foreground">
+              Create keys to connect your backend and automate payouts, products, and more.
             </p>
           </header>
-          <Button
-            variant="default"
-            size="sm"
-            asChild
-            className="bg-indigo-600 hover:bg-indigo-700 shrink-0"
-          >
+          <Button variant="default" size="sm" asChild className="shrink-0">
             <Link
               href={docsUrl}
               target="_blank"
@@ -56,17 +48,13 @@ export default async function ManageApiPage() {
   const rotationNotice = getKeyRotationNotice();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 font-primary text-body">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Manage API
-          </h1>
-          <p className="text-muted-foreground">
-            API keys, base URL, and usage.
-          </p>
+          <h1 className="text-display font-semibold tracking-tight text-foreground">Manage API</h1>
+          <p className="font-secondary text-caption text-muted-foreground">API keys, base URL, and usage.</p>
         </div>
-        <Button variant="default" size="sm" asChild className="bg-indigo-600 hover:bg-indigo-700">
+        <Button variant="default" size="sm" asChild className="shrink-0">
           <Link
             href={docsUrl}
             target="_blank"
