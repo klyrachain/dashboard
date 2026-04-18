@@ -17,7 +17,10 @@ import {
 } from "@/store/merchant-api";
 import type { RootState } from "@/store";
 import type { MerchantPayPageRow } from "@/types/merchant-api";
-import { isForbiddenMerchantRole } from "@/lib/merchant-api-error";
+import {
+  formatMerchantApiFetchError,
+  isForbiddenMerchantRole,
+} from "@/lib/merchant-api-error";
 import { buildPaymentLinkPublicUrl } from "@/lib/merchant-commerce-helpers";
 import { PaymentLinkCurrencyPicker } from "@/components/merchant/payment-link-currency-picker";
 import { Button } from "@/components/ui/button";
@@ -366,13 +369,19 @@ export function MerchantPaymentLinksClient() {
   }
 
   if (isError && !forbidden) {
+    const detail = formatMerchantApiFetchError(error);
     return (
       <section
         role="alert"
         className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm"
       >
         <h2 className="font-medium text-destructive">Could not load payment links</h2>
-        <p className="mt-2 flex flex-wrap gap-2 text-muted-foreground">
+        {detail ? (
+          <p className="mt-2 font-mono text-xs leading-relaxed text-muted-foreground break-words">
+            {detail}
+          </p>
+        ) : null}
+        <p className="mt-3 flex flex-wrap gap-2 text-muted-foreground">
           <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
             Retry
           </Button>

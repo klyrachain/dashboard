@@ -1,6 +1,7 @@
 import { BookOpen, Gauge, KeyRound, Terminal, Webhook } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PLATFORM_PRIMARY_HEX } from "@/lib/platform-theme";
 
 type KeysIntroVariant = "platform" | "merchant";
 
@@ -57,22 +58,23 @@ export function DeveloperRequestExample({
   description: string;
 }): React.ReactNode {
   return (
-    <div className="rounded-lg bg-background text-card-foreground space-y-4 p-4 pb-6">
+    <div className="rounded-lg text-card-foreground space-y-4 p-4 pb-6"
+    style={{ backgroundColor: PLATFORM_PRIMARY_HEX }}>
         <div className="flex flex-wrap items-center gap-2">
-          <Terminal className="size-5 shrink-0 text-primary" aria-hidden />
+          <Terminal className="size-5 shrink-0 text-white" aria-hidden />
           <h2
             id="dash-dev-auth-heading"
-            className="font-primary text-heading font-semibold tracking-tight text-foreground"
+            className="font-primary text-heading font-semibold tracking-tight text-white"
           >
             {requestHeader}
           </h2>
         </div>
-        <p className="max-w-prose font-secondary text-caption leading-relaxed text-muted-foreground">
+        <p className="max-w-prose font-secondary text-caption leading-relaxed text-white">
           {description}
         </p>
         
         <div className="overflow-hidden rounded-lg border border-border bg-muted/40">
-          <div className="border-b border-border bg-muted/60 px-4 py-2 text-caption font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="border-b border-border bg-muted/10 px-4 py-2 text-caption font-medium uppercase tracking-wide text-foreground">
             Example
           </div>
           <pre
@@ -136,7 +138,9 @@ export function DevelopersApiDocSections({
           Core capabilities
         </h2>
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <li className="rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm transition-all duration-300 ease-out hover:border-primary/25 hover:shadow-md">
+          <li className="rounded-lg border border-border p-4 text-card-foreground shadow-sm transition-all duration-300 ease-out hover:border-primary/25 hover:shadow-md"
+          // style={{ backgroundColor: "rgba(255, 255, 255, 0.05)" }}
+          >
             <div className="flex items-start gap-3">
               <Gauge className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
               <div>

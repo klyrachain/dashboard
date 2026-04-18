@@ -153,9 +153,9 @@ function EmptyUsersState() {
         </span>
       </div>
       <div>
-        <p className="text-sm font-medium text-slate-600">No users yet</p>
+        <p className="text-sm font-medium text-slate-600">No customers yet</p>
         <p className="text-xs text-slate-500">
-          Users will appear here when they sign up or when data is synced from Core.
+          Customers will appear here when they sign up or when data is synced from our payment gateway.
         </p>
       </div>
     </div>

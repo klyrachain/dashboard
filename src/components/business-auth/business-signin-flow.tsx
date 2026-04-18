@@ -229,7 +229,7 @@ export function BusinessSigninFlow() {
         >
           <h1
             id={`${formId}-title`}
-            className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl [font-family:var(--font-inter-tight),ui-sans-serif,sans-serif]"
+            className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl font-inter-tight-stack"
           >
             Sign in to your business account
           </h1>

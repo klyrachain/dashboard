@@ -253,7 +253,7 @@ export function BusinessSigninFlow() {
         >
           <h1
             id={`${formId}-title`}
-            className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl [font-family:var(--font-inter-tight),ui-sans-serif,sans-serif]"
+            className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl font-inter-tight-stack"
           >
             Sign in to your business account
           </h1>
@@ -282,7 +282,7 @@ export function BusinessSigninFlow() {
                   clearError();
                   setMagicSent(false);
                 }}
-                className="h-11 text-base md:text-sm"
+                className="h-11 text-base md:text-sm border border-black"
                 disabled={isSubmitting}
                 aria-invalid={!!formError}
               />
@@ -301,7 +301,7 @@ export function BusinessSigninFlow() {
                   setPassword(e.target.value);
                   clearError();
                 }}
-                className="h-11 text-base md:text-sm"
+                className="h-11 text-base md:text-sm border border-black"
                 disabled={isSubmitting}
                 aria-invalid={!!formError}
               />

@@ -152,6 +152,16 @@ body {
   font-size: var(--text-size-body);
 }
 
+/*
+ * Marketing / auth headings (Inter Tight from next/font in layout.tsx).
+ * Do not use Tailwind arbitrary `[font-family:var(--font-inter-tight),...]`:
+ * the generated selector/value can be mangled (CSS \\f / hex escape edge cases),
+ * which breaks Lightning CSS parsing until .next is deleted.
+ */
+.font-inter-tight-stack {
+  font-family: var(--font-inter-tight), ui-sans-serif, sans-serif;
+}
+
 /* Themed scrollbars (Firefox + WebKit) — skip dashboard regions; they use dedicated classes below */
 *:not(.scrollbar-dashboard-sidebar):not(.scrollbar-dashboard-main) {
   scrollbar-width: thin;
@@ -267,3 +277,9 @@ aside[data-dashboard-sidebar] {
   background: color-mix(in oklch, var(--muted-foreground) 38%, var(--border));
   background-clip: padding-box;
 }
+
+/*
+ * Do not use bare `input { border: none }` here: Tailwind classes on components
+ * (e.g. `border border-black` on `Input`) win in the cascade. Borderless styling
+ * belongs on `@/components/ui/input` (and any raw `<input className="...">`).
+ */
