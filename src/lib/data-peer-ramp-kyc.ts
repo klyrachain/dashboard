@@ -1,5 +1,6 @@
 /**
- * Platform KYC admin — Core lists Peer Ramp app users + portal `User` KYC rows.
+ * Platform verification admin — Core returns **two sources**: ramp consumers (`PeerRampAppUser`)
+ * and business-portal users (`User.portalKyc*`). Ramp KYC APIs only update the former.
  */
 import { getSessionToken } from "@/lib/auth";
 import { getCoreAdminPeerRampKycUsers } from "@/lib/core-api";

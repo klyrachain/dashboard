@@ -63,7 +63,8 @@ export function TeamSettingsContent({ initialAdmins }: TeamSettingsContentProps)
         <CardHeader>
           <CardTitle>Verification</CardTitle>
           <CardDescription>
-            Complete KYB/KYC before enabling higher limits and some payout rails.
+            Businesses run user KYC (every member) and KYB (founding member, on their dashboard when ready).
+            Platform staff review and support from Connect — merchants do not rely on admins to file KYB for them.
           </CardDescription>
         </CardHeader>
         <CardContent>

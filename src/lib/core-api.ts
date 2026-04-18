@@ -893,7 +893,7 @@ export async function getCoreConnectSettlement(id: string, bearerToken?: string 
   return fetchCoreGet<unknown>(`api/connect/settlements/${encodeURIComponent(id)}`, undefined, bearerToken);
 }
 
-/** GET /api/admin/peer-ramp-app/kyc/users — Peer Ramp app users + KYC (platform). */
+/** GET /api/admin/peer-ramp-app/kyc/users — ramp consumers + portal users (platform verification queue). */
 export async function getCoreAdminPeerRampKycUsers(
   params?: { q?: string; limit?: number },
   bearerToken?: string | null
@@ -904,7 +904,7 @@ export async function getCoreAdminPeerRampKycUsers(
   }, bearerToken);
 }
 
-/** POST /api/admin/peer-ramp-app/kyc/reset — clear KYC + sessions so user can redo verification. */
+/** POST /api/admin/peer-ramp-app/kyc/reset — clear KYC + sessions (per email; ramp or portal row). */
 export async function postCoreAdminPeerRampKycReset(
   body: { email: string },
   bearerToken?: string | null
@@ -912,7 +912,7 @@ export async function postCoreAdminPeerRampKycReset(
   return fetchCorePost<unknown>("api/admin/peer-ramp-app/kyc/reset", body, bearerToken);
 }
 
-/** POST /api/admin/peer-ramp-app/kyc/override — set approved|declined in DB only (admin_manual). */
+/** POST /api/admin/peer-ramp-app/kyc/override — DB-only approved|declined (admin_manual). */
 export async function postCoreAdminPeerRampKycOverride(
   body: { email: string; status: "approved" | "declined" },
   bearerToken?: string | null

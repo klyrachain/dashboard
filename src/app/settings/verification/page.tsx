@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getCoreBaseUrl } from "@/lib/core-api";
+import { getAccessContext } from "@/lib/data-access";
 
 type ProviderRailMetadata = {
   providerCode: string;
@@ -45,7 +46,8 @@ async function getProviderRails(): Promise<ProviderRailMetadata[]> {
 }
 
 export default async function SettingsVerificationPage() {
-  const rails = await getProviderRails();
+  const [rails, access] = await Promise.all([getProviderRails(), getAccessContext()]);
+  const isPlatform = access.ok && access.context?.type === "platform";
 
   return (
     <div className="space-y-6 font-primary text-body">
@@ -56,14 +58,24 @@ export default async function SettingsVerificationPage() {
       <Card className="bg-white">
         <CardHeader>
           <CardTitle>KYB / KYC</CardTitle>
+          <CardDescription>
+            {isPlatform
+              ? "Connect lists verification for support — merchants complete user KYC (every member) and KYB (founding member, on the dashboard when ready) themselves."
+              : "Every team member completes user KYC when required. The founding member completes company KYB later on the dashboard (not immediately after signup). Use Business profile and Team; Connect tools are for platform staff only."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            <Button asChild type="button">
-              <Link href="/settings/general">Continue</Link>
+            {isPlatform ? (
+              <Button asChild type="button">
+                <Link href="/connect/kyc">Open verification queue</Link>
+              </Button>
+            ) : null}
+            <Button asChild type="button" variant="outline">
+              <Link href="/settings/general">Business profile</Link>
             </Button>
             <Button asChild type="button" variant="outline">
-              <Link href="/settings/team">Open team settings</Link>
+              <Link href="/settings/team">Team</Link>
             </Button>
           </div>
         </CardContent>

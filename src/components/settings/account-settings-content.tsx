@@ -16,6 +16,7 @@ import {
   formatWebAuthnClientError,
   isWebAuthnAvailable,
   runPasskeyRegistration,
+  sanitizePasskeyApiError,
 } from "@/lib/webauthn-client";
 import { isAuthSuccess } from "@/types/auth";
 import type { Role } from "@/types/auth";
@@ -74,7 +75,7 @@ export function AccountSettingsContent() {
       setPasskeyError(
         optionsRes.success
           ? "Could not get passkey options."
-          : (optionsRes as { error: string }).error
+          : sanitizePasskeyApiError((optionsRes as { error?: string }).error)
       );
       return;
     }
@@ -91,7 +92,7 @@ export function AccountSettingsContent() {
         setPasskeyError(null);
         setNewPasskeyLabel("");
       } else {
-        setPasskeyError((verifyRes as { error: string }).error ?? "Verification failed");
+        setPasskeyError(sanitizePasskeyApiError((verifyRes as { error?: string }).error));
       }
     } catch (err) {
       setPasskeyLoading(false);
