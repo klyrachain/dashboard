@@ -279,6 +279,73 @@ aside[data-dashboard-sidebar] {
 }
 
 /*
+ * Clickable controls: pointer in @layer base so `cursor-*` utilities still win
+ * (resize handles, drag, dialog overlay cursor-default, etc.).
+ *
+ * Covered: links, buttons, common input types, select, summary, labels that
+ * activate a field, ARIA roles for menus/tabs/custom controls, image map areas.
+ * Skips: text-like inputs/textarea (keep I-beam / default), disabled controls.
+ * Opt-out: `data-clickable-cursor="default"` on the element.
+ */
+@layer base {
+  :where(
+    a[href]:not([data-clickable-cursor="default"]),
+    area[href]:not([data-clickable-cursor="default"]),
+    button:not(:disabled, [data-clickable-cursor="default"]),
+    input:not(:disabled, [data-clickable-cursor="default"]):where(
+      [type="button"],
+      [type="submit"],
+      [type="reset"],
+      [type="checkbox"],
+      [type="radio"],
+      [type="file"],
+      [type="image"]
+    ),
+    select:not(:disabled, [data-clickable-cursor="default"]),
+    summary:not([data-clickable-cursor="default"]),
+    label[for]:not([data-clickable-cursor="default"]),
+    label:not([data-clickable-cursor="default"]):has(input, select, textarea)
+  ) {
+    cursor: pointer;
+  }
+
+  :where(
+    [role="button"]:not([aria-disabled="true"], [data-clickable-cursor="default"]),
+    [role="link"][href]:not([data-clickable-cursor="default"]),
+    [role="tab"]:not([aria-disabled="true"], [data-clickable-cursor="default"]),
+    [role="menuitem"]:not([aria-disabled="true"], [data-clickable-cursor="default"]),
+    [role="menuitemcheckbox"]:not([aria-disabled="true"], [data-clickable-cursor="default"]),
+    [role="menuitemradio"]:not([aria-disabled="true"], [data-clickable-cursor="default"]),
+    [role="option"]:not([aria-disabled="true"], [data-clickable-cursor="default"]),
+    [role="switch"]:not([aria-disabled="true"], [data-clickable-cursor="default"]),
+    [role="checkbox"]:not([aria-disabled="true"], [data-clickable-cursor="default"]):not(input),
+    [role="radio"]:not([aria-disabled="true"], [data-clickable-cursor="default"]):not(input)
+  ) {
+    cursor: pointer;
+  }
+
+  :where(
+    button:disabled,
+    input:disabled,
+    select:disabled,
+    textarea:disabled,
+    [role="button"][aria-disabled="true"],
+    [role="tab"][aria-disabled="true"],
+    [role="menuitem"][aria-disabled="true"],
+    [role="option"][aria-disabled="true"],
+    [role="switch"][aria-disabled="true"],
+    [role="checkbox"][aria-disabled="true"]:not(input),
+    [role="radio"][aria-disabled="true"]:not(input)
+  ) {
+    cursor: not-allowed;
+  }
+
+  fieldset:disabled :where(button, input, select, textarea) {
+    cursor: not-allowed;
+  }
+}
+
+/*
  * Do not use bare `input { border: none }` here: Tailwind classes on components
  * (e.g. `border border-black` on `Input`) win in the cascade. Borderless styling
  * belongs on `@/components/ui/input` (and any raw `<input className="...">`).

@@ -123,7 +123,6 @@ export function AppSidebar() {
       data-dashboard-sidebar
       className={cn(
         "flex h-full min-h-0 w-64 max-w-[85vw] shrink-0 flex-col bg-platform-primary text-white transition-transform duration-200 ease-out",
-        /* Mobile drawer: off-canvas; does not use `fixed` on lg+ so flex row reserves width on desktop */
         "max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:shadow-xl",
         mobileSidebarOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full",
         "lg:relative lg:z-auto lg:max-w-none lg:translate-x-0 lg:shadow-none",

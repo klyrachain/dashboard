@@ -364,7 +364,7 @@ export function HeaderNoSidebar() {
             <Input
               type="search"
               placeholder="Search"
-              className="h-9 w-full bg-white/10 pl-9 text-sm text-white placeholder:text-slate-400 focus-visible:ring-white/20"
+              className="h-9 w-full border-0 bg-white/10 pl-9 text-sm text-white shadow-none placeholder:text-slate-300 focus:bg-white/15 focus-visible:bg-white/15 focus-visible:ring-white/25"
               aria-label="Search"
             />
           </div>

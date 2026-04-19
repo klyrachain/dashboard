@@ -50,9 +50,7 @@ export function Topbar({ className }: { className?: string }) {
     (searchParams.toString() ? `?${searchParams.toString()}` : "");
   const shellBusinessSignInHref = businessSignInHref(returnPath);
   const dispatch = useDispatch();
-  const openMobileNav = () => {
-    dispatch(toggleMobileSidebar());
-  };
+  const mobileSidebarOpen = useSelector((s: RootState) => s.layout.mobileSidebarOpen);
   const admin = useAdmin();
   const sessionType = useSelector((s: RootState) => s.merchantSession.sessionType);
   const merchantEnvironment = useSelector(
@@ -186,17 +184,17 @@ export function Topbar({ className }: { className?: string }) {
             variant="ghost"
             size="icon"
             className="size-9 shrink-0 text-white/80 hover:bg-white/10 hover:text-white lg:hidden"
-            onClick={openMobileNav}
-            aria-label="Open navigation menu"
+            onClick={() => dispatch(toggleMobileSidebar())}
+            aria-label={mobileSidebarOpen ? "Close navigation menu" : "Open navigation menu"}
           >
             <LayoutPanelLeft className="size-5" aria-hidden />
           </Button>
           <div className="relative min-w-0 max-w-full flex-1 sm:max-w-xs">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/45" />
             <Input
               type="search"
               placeholder="Search"
-              className="h-9 w-full bg-white/10 pl-9 text-sm text-white placeholder:text-slate-400 focus-visible:ring-white/20"
+              className="h-9 w-full border-0 bg-white/10 pl-9 text-sm text-white shadow-none placeholder:text-slate-300 focus:bg-white/15 focus-visible:bg-white/15 focus-visible:ring-white/25"
               aria-label="Search"
             />
           </div>

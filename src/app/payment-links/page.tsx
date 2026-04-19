@@ -20,8 +20,7 @@ export default async function PaymentLinksPage() {
             Payment links
           </h1>
           <p className="font-secondary text-caption text-muted-foreground max-w-prose">
-            Share a link and get paid. When you need a safe dry run, switch to test mode in the
-            header or sidebar before sharing links.
+            Share a link and get paid.
           </p>
         </header>
         <Suspense

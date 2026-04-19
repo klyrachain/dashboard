@@ -434,7 +434,8 @@ export function MerchantPaymentLinksClient() {
                 : "—"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Completed sales attributed to a payment link (checkout). Overall
+              Completed sales using payment links.
+              <br />Overall
               completed volume:{" "}
               {volumeAll30 != null && volumeAll30 !== ""
                 ? `$${Number(volumeAll30).toLocaleString("en-US", { maximumFractionDigits: 0 })}`
@@ -460,12 +461,12 @@ export function MerchantPaymentLinksClient() {
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {distinctLinksUsed} of {totalPaymentLinksCatalog} payment link
-              {totalPaymentLinksCatalog === 1 ? "" : "s"} had at least one completed sale in
-              this period. Percentage = distinct links with sales ÷ total links defined.
+              {totalPaymentLinksCatalog === 1 ? "" : "s"} completed sale in
+              this period.
             </p>
             {completedInPeriod != null ? (
               <p className="mt-1 text-xs text-muted-foreground">
-                All completed txs in period (any rail): {completedInPeriod}
+                All completed transactions in period: {completedInPeriod}
               </p>
             ) : null}
           </CardContent>
