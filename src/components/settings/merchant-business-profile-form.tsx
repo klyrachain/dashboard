@@ -138,7 +138,7 @@ export function MerchantBusinessProfileForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="mb-logo">Logo URL (optional)</Label>
+            <Label htmlFor="mb-logo">Logo URL</Label>
             <Input
               id="mb-logo"
               type="url"
@@ -148,7 +148,7 @@ export function MerchantBusinessProfileForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="mb-web">Website (optional)</Label>
+            <Label htmlFor="mb-web">Website</Label>
             <Input
               id="mb-web"
               type="url"
@@ -158,7 +158,7 @@ export function MerchantBusinessProfileForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="mb-email">Support email (optional)</Label>
+            <Label htmlFor="mb-email">Support email</Label>
             <Input
               id="mb-email"
               type="email"

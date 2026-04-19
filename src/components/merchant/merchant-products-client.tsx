@@ -18,18 +18,14 @@ import {
   parsePrice,
 } from "@/lib/merchant-commerce-helpers";
 import { MerchantProductTopChart } from "@/components/merchant/merchant-product-top-chart";
+import {
+  ProductFormModal,
+  type ProductFormSavePayload,
+} from "@/components/merchant/product-form-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -77,20 +73,9 @@ export function MerchantProductsClient() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [editing, setEditing] = useState<MerchantProductRow | null>(null);
-
-  const [cName, setCName] = useState("");
-  const [cPrice, setCPrice] = useState("");
-  const [cType, setCType] = useState<ProductType>("DIGITAL");
-
-  const [eName, setEName] = useState("");
-  const [eDesc, setEDesc] = useState("");
-  const [ePrice, setEPrice] = useState("");
-  const [eType, setEType] = useState<ProductType>("DIGITAL");
-  const [eImageUrl, setEImageUrl] = useState("");
-  const [eActive, setEActive] = useState(true);
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [productModalRow, setProductModalRow] =
+    useState<MerchantProductRow | null>(null);
 
   const params = useMemo(() => {
     const p: Record<string, string | number> = {
@@ -126,7 +111,8 @@ export function MerchantProductsClient() {
 
   const [postProduct, { isLoading: posting, error: postErr }] =
     usePostMerchantProductMutation();
-  const [patchProduct, { error: patchErr }] = usePatchMerchantProductMutation();
+  const [patchProduct, { isLoading: patching, error: patchErr }] =
+    usePatchMerchantProductMutation();
 
   const rawRows = useMemo(() => data?.items ?? [], [data?.items]);
   const purchaseByProduct = useMemo(
@@ -177,56 +163,24 @@ export function MerchantProductsClient() {
     isForbiddenMerchantRole(postErr) ||
     isForbiddenMerchantRole(patchErr);
 
+  const openNewProduct = () => {
+    setProductModalRow(null);
+    setProductModalOpen(true);
+  };
+
   const openEdit = (row: MerchantProductRow) => {
-    setEditing(row);
-    setEName(row.name);
-    setEDesc(row.description ?? "");
-    setEPrice(row.price ?? "");
-    setEType((row.type?.toUpperCase() as ProductType) ?? "DIGITAL");
-    setEImageUrl(row.imageUrl ?? "");
-    setEActive(row.isActive !== false);
-    setEditOpen(true);
+    setProductModalRow(row);
+    setProductModalOpen(true);
   };
 
-  const handleCreate = async () => {
-    const p = parseFloat(cPrice);
-    if (!cName.trim() || Number.isNaN(p) || p < 0) return;
-    try {
-      await postProduct({
-        name: cName.trim(),
-        price: p,
-        type: cType,
-        currency: "USD",
-        isActive: true,
-      }).unwrap();
-      setCreateOpen(false);
-      setCName("");
-      setCPrice("");
-    } catch {
-      /* toast via base query */
-    }
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editing) return;
-    const p = parseFloat(ePrice);
-    if (!eName.trim() || Number.isNaN(p) || p < 0) return;
-    try {
+  const handleProductSave = async (payload: ProductFormSavePayload) => {
+    if (payload.kind === "create") {
+      await postProduct(payload.body).unwrap();
+    } else {
       await patchProduct({
-        id: editing.id,
-        patch: {
-          name: eName.trim(),
-          description: eDesc.trim() || undefined,
-          price: p,
-          type: eType,
-          imageUrl: eImageUrl.trim() || undefined,
-          isActive: eActive,
-        },
+        id: payload.id,
+        patch: payload.body,
       }).unwrap();
-      setEditOpen(false);
-      setEditing(null);
-    } catch {
-      /* base query */
     }
   };
 
@@ -298,7 +252,7 @@ export function MerchantProductsClient() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Products (filters)
+              Products
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -401,65 +355,10 @@ export function MerchantProductsClient() {
             </SelectContent>
           </Select>
         </div>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button type="button" className="gap-2 ml-auto">
-              <Plus className="size-4" aria-hidden />
-              New product
-            </Button>
-          </DialogTrigger>
-          {/* Add border-none here */}
-          <DialogContent className="!border-0 !border-transparent !shadow-none outline-none">
-            <DialogHeader>
-              <DialogTitle>Create product</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-2">
-              <div className="space-y-2">
-                <Label htmlFor="np-name">Name</Label>
-                <Input
-                  id="np-name"
-                  value={cName}
-                  onChange={(e) => setCName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="np-price">Price</Label>
-                <Input
-                  id="np-price"
-                  inputMode="decimal"
-                  value={cPrice}
-                  onChange={(e) => setCPrice(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select
-                  value={cType}
-                  onValueChange={(v) => setCType(v as ProductType)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRODUCT_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="button" onClick={handleCreate} disabled={posting}>
-                Create
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button type="button" className="ml-auto gap-2" onClick={openNewProduct}>
+          <Plus className="size-4" aria-hidden />
+          New product
+        </Button>
       </div>
 
       <div className="rounded-md bg-white overflow-x-auto">
@@ -587,77 +486,16 @@ export function MerchantProductsClient() {
         />
       </div>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit product</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="ep-name">Name</Label>
-              <Input id="ep-name" value={eName} onChange={(e) => setEName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ep-desc">Description</Label>
-              <Input id="ep-desc" value={eDesc} onChange={(e) => setEDesc(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ep-price">Price</Label>
-              <Input
-                id="ep-price"
-                inputMode="decimal"
-                value={ePrice}
-                onChange={(e) => setEPrice(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <Select
-                value={eType}
-                onValueChange={(v) => setEType(v as ProductType)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRODUCT_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ep-img">Image URL</Label>
-              <Input
-                id="ep-img"
-                value={eImageUrl}
-                onChange={(e) => setEImageUrl(e.target.value)}
-                placeholder="https://…"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="ep-active"
-                checked={eActive}
-                onChange={(e) => setEActive(e.target.checked)}
-                className="size-4 rounded border-input"
-              />
-              <Label htmlFor="ep-active">Active</Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={handleSaveEdit}>
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ProductFormModal
+        open={productModalOpen}
+        onOpenChange={(next) => {
+          setProductModalOpen(next);
+          if (!next) setProductModalRow(null);
+        }}
+        product={productModalRow}
+        onSave={handleProductSave}
+        isSubmitting={posting || patching}
+      />
     </div>
   );
 }

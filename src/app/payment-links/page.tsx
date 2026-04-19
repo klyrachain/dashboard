@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { getAccessContext, isMerchantPortalSessionReady } from "@/lib/data-access";
+import { getMerchantBusinessProfileSsr } from "@/lib/data-settings";
 import { getPaymentLinks } from "@/lib/data-payment-links";
 import { PaymentLinksTable } from "@/components/payment-links/payment-links-table";
 import { MerchantPaymentLinksClient } from "@/components/merchant/merchant-payment-links-client";
@@ -13,6 +14,7 @@ export default async function PaymentLinksPage() {
     merchantPortalCookies ||
     (access.ok && access.context?.type === "merchant")
   ) {
+    const businessSnapshot = await getMerchantBusinessProfileSsr();
     return (
       <div className="space-y-6 font-primary text-body">
         <header className="space-y-1 min-w-0">
@@ -34,7 +36,11 @@ export default async function PaymentLinksPage() {
             </div>
           }
         >
-          <MerchantPaymentLinksClient />
+          <MerchantPaymentLinksClient
+            serverBusinessProfile={
+              businessSnapshot.ok ? businessSnapshot.data : null
+            }
+          />
         </Suspense>
       </div>
     );
