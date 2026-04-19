@@ -23,7 +23,7 @@ export default async function SettingsApiPage() {
           {mapInvoiceLoadError(error)}
         </div>
       )}
-      <ApiSettingsContent initialData={ok ? data : undefined} />
+      <ApiSettingsContent initialData={ok && data ? data : undefined} />
     </div>
   );
 }

@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CopyButton } from "@/components/ui/copy-button";
-import type { SettingsAdmin } from "@/lib/data-settings";
+import type { SettingsAdmin, TeamSettingsSource } from "@/lib/data-settings";
 import { inviteTeamAdminAction } from "@/app/settings/actions";
 
 const ROLES = [
@@ -36,6 +36,7 @@ const ROLES = [
 
 type TeamSettingsContentProps = {
   initialAdmins?: SettingsAdmin[] | null;
+  teamSource?: TeamSettingsSource;
 };
 
 function fullInviteUrl(inviteLink: string): string {
@@ -46,7 +47,10 @@ function fullInviteUrl(inviteLink: string): string {
   return `${base}${path}`;
 }
 
-export function TeamSettingsContent({ initialAdmins }: TeamSettingsContentProps) {
+export function TeamSettingsContent({
+  initialAdmins,
+  teamSource = "platform",
+}: TeamSettingsContentProps) {
   const router = useRouter();
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<string>("viewer");
@@ -63,8 +67,9 @@ export function TeamSettingsContent({ initialAdmins }: TeamSettingsContentProps)
         <CardHeader>
           <CardTitle>Verification</CardTitle>
           <CardDescription>
-            Businesses run user KYC (every member) and KYB (founding member, on their dashboard when ready).
-            Platform staff review and support from Connect — merchants do not rely on admins to file KYB for them.
+            {teamSource === "merchant"
+              ? "Your business runs member KYC and founding member KYB from the verification hub. Use the link below for status and next steps."
+              : "Businesses run user KYC (every member) and KYB (founding member, on their dashboard when ready). Platform staff review and support from Connect."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -76,9 +81,11 @@ export function TeamSettingsContent({ initialAdmins }: TeamSettingsContentProps)
 
       <Card className="bg-white">
         <CardHeader>
-          <CardTitle>Admin list</CardTitle>
+          <CardTitle>{teamSource === "merchant" ? "Team members" : "Admin list"}</CardTitle>
           <CardDescription>
-            Staff who can access this dashboard. Super Admin can change fees and payout keys; Support can view only; Developer can view Logs and API keys.
+            {teamSource === "merchant"
+              ? "People who can sign in to this business in the portal. Roles are set in Core when you invite or update a member."
+              : "Staff who can access this dashboard. Super Admin can change fees and payout keys; Support can view only; Developer can view Logs and API keys."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -95,7 +102,9 @@ export function TeamSettingsContent({ initialAdmins }: TeamSettingsContentProps)
               {admins.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                    No admins yet. Send an invite below.
+                    {teamSource === "merchant"
+                      ? "No team members yet. Send an invite below."
+                      : "No admins yet. Send an invite below."}
                   </TableCell>
                 </TableRow>
               ) : (

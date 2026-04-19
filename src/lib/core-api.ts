@@ -802,8 +802,11 @@ export async function getCoreInvoiceExport(
 // ——— Access API ———
 
 /** GET /api/access — current API key context (platform vs merchant, key info, business). */
-export async function getCoreAccess(bearerToken?: string | null) {
-  return fetchCoreGet<unknown>("api/access", undefined, bearerToken);
+export async function getCoreAccess(
+  bearerToken?: string | null,
+  extraHeaders?: HeadersInit
+) {
+  return fetchCoreGet<unknown>("api/access", undefined, bearerToken, extraHeaders);
 }
 
 // ——— Provider Routing API ———
@@ -816,6 +819,14 @@ export async function getCoreProviders(bearerToken?: string | null) {
 /** GET /api/providers/:id — one provider by UUID. */
 export async function getCoreProviderById(id: string, bearerToken?: string | null) {
   return fetchCoreGet<unknown>(`api/providers/${encodeURIComponent(id)}`, undefined, bearerToken);
+}
+
+/** GET /api/provider-metadata — static fiat rail partner metadata (Yellow Card, Kotani, Cowrie). */
+export async function getCoreProviderMetadata(
+  params?: { providerCode?: string; country?: string; currency?: string },
+  bearerToken?: string | null
+) {
+  return fetchCoreGet<unknown[]>("api/provider-metadata", params, bearerToken);
 }
 
 /** Body for PATCH /api/providers/:id — status, operational, enabled, priority, fee, name. */
@@ -1073,6 +1084,27 @@ export async function postCoreSettingsTeamInvite(body: {
 /** GET /api/settings/api */
 export async function getCoreSettingsApi(bearerToken?: string | null) {
   return fetchCoreGet<unknown>("api/settings/api", undefined, bearerToken);
+}
+
+/** GET /api/v1/merchant/team/members — portal JWT + `X-Business-Id` + `x-merchant-environment`. */
+export async function getCoreMerchantTeamMembers(
+  bearerToken: string,
+  extraHeaders?: HeadersInit
+) {
+  return fetchCoreGet<unknown[]>(
+    "api/v1/merchant/team/members",
+    undefined,
+    bearerToken,
+    extraHeaders
+  );
+}
+
+/** GET /api/v1/merchant/business — same auth headers as other merchant v1 routes. */
+export async function getCoreMerchantBusiness(
+  bearerToken: string,
+  extraHeaders?: HeadersInit
+) {
+  return fetchCoreGet<unknown>("api/v1/merchant/business", undefined, bearerToken, extraHeaders);
 }
 
 /** PATCH /api/settings/api */

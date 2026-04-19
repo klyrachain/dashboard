@@ -3,7 +3,9 @@
 /* Ensure Tailwind scans all of src (components, layout, etc.). Without this, only files
    under the CSS file's directory may be scanned, so utilities like bg-* in components
    were never generated. */
-@source "../**/*.{tsx,ts,jsx,js}";
+/* @source "..*.{tsx,ts,jsx,js}"; */
+/* In your global.css */
+@source "../../**/*.{tsx,ts,jsx,js}";
 
 :root {
   /* Font roles: change these to swap fonts app-wide (e.g. set --font-primary-stack to --font-ranade for Ranade everywhere). */
@@ -146,8 +148,8 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: oklch(var(--background));
+  color: oklch(var(--foreground));
   font-family: var(--font-primary-stack), system-ui, sans-serif;
   font-size: var(--text-size-body);
 }

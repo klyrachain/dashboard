@@ -33,14 +33,36 @@ function toNum(s: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function financialsFieldsFrom(initial: SettingsFinancials | null | undefined) {
+  if (!initial) {
+    return {
+      baseFeePercent: "",
+      fixedFee: "",
+      minTxSize: "",
+      maxTxSize: "",
+      lowBalanceAlert: "",
+      baseCurrency: "usdc" as QuoteCurrency,
+    };
+  }
+  return {
+    baseFeePercent: toStr(initial.baseFeePercent),
+    fixedFee: toStr(initial.fixedFee),
+    minTxSize: toStr(initial.minTransactionSize),
+    maxTxSize: toStr(initial.maxTransactionSize),
+    lowBalanceAlert: toStr(initial.lowBalanceAlert),
+    baseCurrency: (initial.baseCurrency ?? "usdc") as QuoteCurrency,
+  };
+}
+
 export function FinancialsSettingsForm({ initialData }: FinancialsSettingsFormProps) {
   const dispatch = useDispatch<AppDispatch>();
-  const [baseFeePercent, setBaseFeePercent] = useState("1.00");
-  const [fixedFee, setFixedFee] = useState("0.50");
-  const [minTxSize, setMinTxSize] = useState("5.00");
-  const [maxTxSize, setMaxTxSize] = useState("10000.00");
-  const [lowBalanceAlert, setLowBalanceAlert] = useState("500.00");
-  const [baseCurrency, setBaseCurrencyState] = useState<QuoteCurrency>("usdc");
+  const seeded = financialsFieldsFrom(initialData);
+  const [baseFeePercent, setBaseFeePercent] = useState(seeded.baseFeePercent);
+  const [fixedFee, setFixedFee] = useState(seeded.fixedFee);
+  const [minTxSize, setMinTxSize] = useState(seeded.minTxSize);
+  const [maxTxSize, setMaxTxSize] = useState(seeded.maxTxSize);
+  const [lowBalanceAlert, setLowBalanceAlert] = useState(seeded.lowBalanceAlert);
+  const [baseCurrency, setBaseCurrencyState] = useState<QuoteCurrency>(seeded.baseCurrency);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
