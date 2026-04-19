@@ -1,11 +1,11 @@
-import { getSettingsTeamAdmins } from "@/lib/data-settings";
+import { getSettingsTeamForPage } from "@/lib/data-settings";
 import { TeamSettingsContent } from "@/components/settings/team-settings-content";
 import { mapTeamLoadError } from "@/lib/user-feedback-copy";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default async function SettingsTeamPage() {
-  const { ok, data: admins, error } = await getSettingsTeamAdmins();
+  const { ok, data: admins, error, source } = await getSettingsTeamForPage();
 
   return (
     <div className="space-y-6 font-primary text-body">
@@ -28,7 +28,10 @@ export default async function SettingsTeamPage() {
           {mapTeamLoadError(error)}
         </div>
       )}
-      <TeamSettingsContent initialAdmins={ok ? admins : undefined} />
+      <TeamSettingsContent
+        initialAdmins={ok ? admins : undefined}
+        teamSource={source}
+      />
     </div>
   );
 }

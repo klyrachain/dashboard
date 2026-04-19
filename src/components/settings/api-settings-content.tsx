@@ -14,7 +14,9 @@ type ApiSettingsContentProps = {
 };
 
 export function ApiSettingsContent({ initialData }: ApiSettingsContentProps) {
-  const [webhookSecretMasked, setWebhookSecretMasked] = useState("whsec_••••••••••••••••");
+  const [webhookSecretMasked, setWebhookSecretMasked] = useState(
+    () => initialData?.webhookSigningSecretMasked ?? ""
+  );
   const [slackWebhookUrl, setSlackWebhookUrl] = useState("");
   const [alertEmails, setAlertEmails] = useState("");
   const [saving, setSaving] = useState(false);

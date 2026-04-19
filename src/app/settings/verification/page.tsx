@@ -50,6 +50,11 @@ export default async function SettingsVerificationPage() {
   const [rails, access] = await Promise.all([getProviderRails(), getAccessContext()]);
   const isPlatform = access.ok && access.context?.type === "platform";
   const isMerchant = access.ok && access.context?.type === "merchant";
+  const railPartnerNames = rails.map((r) => r.providerName).filter(Boolean);
+  const supportedRailsDescription =
+    railPartnerNames.length > 0
+      ? `Active corridors from ${railPartnerNames.join(", ")} for rollout planning.`
+      : "Rail partners returned by Core when provider metadata is available.";
 
   return (
     <div className="space-y-6 font-primary text-body">
@@ -84,9 +89,7 @@ export default async function SettingsVerificationPage() {
       <Card className="bg-white">
         <CardHeader>
           <CardTitle>Supported fiat rail partners</CardTitle>
-          <CardDescription>
-            Active corridors from Yellow Card, Kotani Pay, and Cowrie for current rollout planning.
-          </CardDescription>
+          <CardDescription>{supportedRailsDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {rails.length === 0 ? (
