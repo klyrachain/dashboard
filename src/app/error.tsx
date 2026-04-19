@@ -30,7 +30,7 @@ export default function Error({
       className="flex min-h-screen items-center justify-center bg-(--platform-primary) px-4 py-12 font-primary text-foreground"
       role="alert"
     >
-      <section className="w-full max-w-md rounded-2xl border border-white/10 bg-card p-8 text-center shadow-xl">
+      <section className="w-full max-w-md rounded-2xl border border-white/10 p-8 text-center shadow-xl">
         <h1 className="text-xl font-semibold tracking-tight text-card-foreground">
           Something went wrong
         </h1>

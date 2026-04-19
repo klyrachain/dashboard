@@ -9,7 +9,15 @@ import {
   useSyncExternalStore,
 } from "react";
 import { useSearchParams } from "next/navigation";
-import { Copy, Loader2, MoreHorizontal, Plus, QrCode } from "lucide-react";
+import {
+  Copy,
+  Loader2,
+  MoreHorizontal,
+  Plus,
+  QrCode,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import {
   useGetCheckoutBaseUrlQuery,
@@ -49,8 +57,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -294,6 +302,9 @@ export function MerchantPaymentLinksClient() {
         )
       : 0;
 
+  const activeFilterCount =
+    (statusFilter !== "all" ? 1 : 0) + (amountFilter !== "all" ? 1 : 0);
+
   const paymentLinkBase = useMemo(() => {
     const fromCore = checkoutMeta?.checkoutBaseUrl?.trim().replace(/\/$/, "") ?? "";
     const fromEnv =
@@ -452,8 +463,8 @@ export function MerchantPaymentLinksClient() {
                 : "—"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Completed sales using payment links.
-              <br />Overall
+
+              Overall
               completed volume:{" "}
               {volumeAll30 != null && volumeAll30 !== ""
                 ? `$${Number(volumeAll30).toLocaleString("en-US", { maximumFractionDigits: 0 })}`
@@ -482,11 +493,11 @@ export function MerchantPaymentLinksClient() {
               {totalPaymentLinksCatalog === 1 ? "" : "s"} completed sale in
               this period.
             </p>
-            {completedInPeriod != null ? (
+            {/* {completedInPeriod != null ? (
               <p className="mt-1 text-xs text-muted-foreground">
                 All completed transactions in period: {completedInPeriod}
               </p>
-            ) : null}
+            ) : null} */}
           </CardContent>
         </Card>
       </section>
@@ -504,24 +515,102 @@ export function MerchantPaymentLinksClient() {
         </p>
       )} */}
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-2">
-          <Label htmlFor="pl-q">Search</Label>
+      <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+
+        <div className="flex w-full items-end gap-2 ">
+        {/* <Label htmlFor="pl-q">Search</Label> */}
+        <div className={`${FILTER_CONTROL_CLASS} flex items-center gap-2 rounded-md w-[500px]`}>
           <Input
             id="pl-q"
+            type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Title or slug"
-            className={`w-[220px] ${FILTER_CONTROL_CLASS}`}
+            placeholder="Search title or slug"
+            className={`w-full bg-transparent`}
           />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className={` justify-center gap-2 bg-background`}
+                aria-label="Open filters"
+              >
+                <SlidersHorizontal className="size-4 shrink-0" aria-hidden />
+                {/* <span>Filters</span> */}
+                {activeFilterCount > 0 ? (
+                  <Badge variant="secondary" className="tabular-nums">
+                    {activeFilterCount}
+                  </Badge>
+                ) : null}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              className={` space-y-4 p-4 ${FILTER_CONTROL_CLASS}`}
+            >
+              <p className="text-sm font-medium">Filter payment links</p>
+              <div className="space-y-2">
+                <Label htmlFor="pl-status-m">Status</Label>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+                >
+                  <SelectTrigger id="pl-status-m" className={`w-full ${FILTER_CONTROL_CLASS}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pl-amt-type-m">Amount type</Label>
+                <Select
+                  value={amountFilter}
+                  onValueChange={(v) => setAmountFilter(v as AmountFilter)}
+                >
+                  <SelectTrigger id="pl-amt-type-m" className={`w-full ${FILTER_CONTROL_CLASS}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="fixed">Fixed price</SelectItem>
+                    <SelectItem value="open">Open / customer decides</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Button
+                type="button"
+                variant="outline"
+                className={` justify-center gap-2`}
+                aria-label="Open filters"
+              >
+                <Search className="size-4 shrink-0" aria-hidden />
+              </Button>
+          </div>
+          <div className="flex-1"></div>
+          <Button
+            type="button"
+            className="shrink-0 gap-2"
+            onClick={() => setOpen(true)}
+          >
+            <Plus className="size-4" aria-hidden />
+            New link
+          </Button>
         </div>
-        <div className="space-y-2">
-          <Label>Status</Label>
+
+        {/* <div className="hidden space-y-2 md:block">
+          <Label htmlFor="pl-status">Status</Label>
           <Select
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v as StatusFilter)}
           >
-            <SelectTrigger className={`w-[160px] ${FILTER_CONTROL_CLASS}`}>
+            <SelectTrigger id="pl-status" className={`w-[160px] ${FILTER_CONTROL_CLASS}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -531,13 +620,13 @@ export function MerchantPaymentLinksClient() {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label>Amount type</Label>
+        <div className="hidden space-y-2 md:block">
+          <Label htmlFor="pl-amt-type">Amount type</Label>
           <Select
             value={amountFilter}
             onValueChange={(v) => setAmountFilter(v as AmountFilter)}
           >
-            <SelectTrigger className={`w-[180px] ${FILTER_CONTROL_CLASS}`}>
+            <SelectTrigger id="pl-amt-type" className={`w-[180px] ${FILTER_CONTROL_CLASS}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -547,13 +636,17 @@ export function MerchantPaymentLinksClient() {
             </SelectContent>
           </Select>
         </div>
+        <div className="hidden md:ml-auto md:block">
+          <Button
+            type="button"
+            className="gap-2"
+            onClick={() => setOpen(true)}
+          >
+            <Plus className="size-4" aria-hidden />
+            New link
+          </Button>
+        </div> */}
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button type="button" className="gap-2 ml-auto">
-              <Plus className="size-4" aria-hidden />
-              New link
-            </Button>
-          </DialogTrigger>
           <DialogContent
             className="border-none sm:max-w-135"
             aria-describedby={undefined}

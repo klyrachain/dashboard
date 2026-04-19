@@ -90,8 +90,8 @@ export function DataTablePaginationBar({
            
           </div>
         </div>
-        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4 md:justify-end">
-          <p className="text-sm text-muted-foreground tabular-nums">
+        <div className="flex min-w-0 flex-row items-center justify-between gap-4">
+          <p className="flex text-sm text-muted-foreground tabular-nums w-fit">
             <span className="whitespace-nowrap">Page {safePage} of {totalPages}</span>
             {total > 0 ? (
               <span className="mt-0.5 block text-xs sm:ml-2 sm:mt-0 sm:inline">
@@ -99,7 +99,7 @@ export function DataTablePaginationBar({
               </span>
             ) : null}
           </p>
-          <div className="flex w-full gap-2 sm:w-auto sm:shrink-0">
+          <div className="flex gap-2 sm:w-auto sm:shrink-0">
             <Button
               type="button"
               variant="outline"
