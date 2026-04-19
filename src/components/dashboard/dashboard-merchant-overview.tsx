@@ -32,6 +32,12 @@ import {
 } from "@/store/merchant-api";
 import type { MerchantSummary } from "@/types/merchant-api";
 import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
+import { Badge } from "@/components/ui/badge";
+import {
+  formatKybLabel,
+  isKybVerifiedStatus,
+  kybBadgeVariant,
+} from "@/lib/kyb-status";
 
 const PERIOD_OPTIONS = [
   { value: "7", label: "Last 7 days" },
@@ -86,11 +92,6 @@ function buildStatusChartData(byStatus: Record<string, number> | undefined) {
     name,
     value,
   }));
-}
-
-function isKybVerified(value: string | undefined): boolean {
-  const normalized = (value ?? "").trim().toLowerCase();
-  return normalized === "approved" || normalized === "verified";
 }
 
 const noopSubscribe = () => () => {};
@@ -262,24 +263,26 @@ export function DashboardMerchantOverview() {
   return (
     <div className="space-y-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-1">
+        <div className="space-y-2">
           <p
             id="merchant-overview-heading"
             className="text-sm font-medium text-muted-foreground"
           >
             Reporting
           </p>
-          <p className="text-sm text-muted-foreground">
-            {data.business.name}
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2">
+            <p className="text-base font-semibold text-foreground">
+              {data.business.name}
+            </p>
             {data.business.kybStatus ? (
-              <span className="ml-2 text-xs rounded-md px-2 py-0.5">
-                KYB: {data.business.kybStatus}
-              </span>
+              <Badge variant={kybBadgeVariant(data.business.kybStatus)} className="w-fit font-normal">
+                Company verification · {formatKybLabel(data.business.kybStatus)}
+              </Badge>
             ) : null}
-          </p>
-          {!isKybVerified(data.business.kybStatus) ? (
-            <Button variant="outline" size="sm" className="mt-2" asChild>
-              <Link href="/settings/verification">KYB</Link>
+          </div>
+          {!isKybVerifiedStatus(data.business.kybStatus) ? (
+            <Button variant="outline" size="sm" className="w-fit" asChild>
+              <Link href="/settings/verification">Start verification</Link>
             </Button>
           ) : null}
           <p className="text-xs text-muted-foreground">

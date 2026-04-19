@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { sendInvoiceAction, createInvoiceAction } from "@/app/invoices/actions";
+import {
+  createInvoiceViaMerchantProxy,
+  hasMerchantInvoicesAuth,
+  sendInvoiceViaMerchantProxy,
+} from "@/lib/merchant-invoices-proxy-client";
 
 type SendInvoiceModalProps = {
   open: boolean;
@@ -30,6 +36,7 @@ export function SendInvoiceModal({
   initialEmail = "",
   onSuccess,
 }: SendInvoiceModalProps) {
+  const router = useRouter();
   const [email, setEmail] = useState(initialEmail);
   const [subject, setSubject] = useState("");
   const [dueDays, setDueDays] = useState("14");

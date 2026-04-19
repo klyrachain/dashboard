@@ -15,18 +15,23 @@ export default async function PaymentLinksPage() {
   ) {
     return (
       <div className="space-y-6 font-primary text-body">
-        <header className="space-y-1">
+        <header className="space-y-1 min-w-0">
           <h1 className="text-display font-semibold tracking-tight">
             Payment links
           </h1>
           <p className="font-secondary text-caption text-muted-foreground max-w-prose">
-            Share a link and get paid. Use Test mode in the header to try safely.
+            Share a link and get paid. When you need a safe dry run, switch to test mode in the
+            header or sidebar before sharing links.
           </p>
         </header>
         <Suspense
           fallback={
-            <div className="flex justify-center py-12 text-muted-foreground" role="status">
-              <Loader2 className="size-8 animate-spin" aria-hidden />
+            <div
+              className="flex min-h-[12rem] items-center justify-center rounded-lg border border-slate-200 bg-white py-12 text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              <Loader2 className="size-8 shrink-0 animate-spin" aria-hidden />
             </div>
           }
         >
@@ -40,14 +45,14 @@ export default async function PaymentLinksPage() {
 
   return (
     <div className="space-y-6 font-primary text-body">
-      <div>
+      <header className="space-y-1 min-w-0">
         <h1 className="text-display font-semibold tracking-tight">
-          Payment Links
+          Payment links
         </h1>
-        <p className="font-secondary text-caption text-muted-foreground">
+        <p className="font-secondary text-caption text-muted-foreground max-w-prose">
           View and manage payment link requests sent to customers.
         </p>
-      </div>
+      </header>
       {error ? (
         <div
           className="rounded-lg px-4 py-3 font-secondary text-caption text-amber-800"

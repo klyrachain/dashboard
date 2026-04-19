@@ -22,13 +22,13 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
       : undefined;
   const page = params.page ? Math.max(1, parseInt(params.page, 10)) : 1;
 
-  const merchantSessionReady = await isMerchantPortalSessionReady();
+  const merchantPortalCookies = await isMerchantPortalSessionReady();
   const access = await getAccessContext();
-  const shouldUseMerchantScopedView =
-    merchantSessionReady &&
-    (access.ok ? access.context?.type === "merchant" : true);
+  const useMerchantInvoicesView =
+    merchantPortalCookies ||
+    (access.ok && access.context?.type === "merchant");
 
-  if (shouldUseMerchantScopedView) {
+  if (useMerchantInvoicesView) {
     return (
       <div className="space-y-6 font-primary text-body">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

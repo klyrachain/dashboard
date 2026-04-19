@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { businessSignInHref } from "@/lib/business-portal-urls";
 import { useDispatch, useSelector } from "react-redux";
 import { Settings, ChevronDown, ChevronRight, LayoutPanelLeft, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RootState } from "@/store";
-import { setTheme, setTestMode, type LayoutTheme } from "@/store/layout-slice";
+import { setTheme, setMobileSidebarOpen, type LayoutTheme } from "@/store/layout-slice";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -16,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Switch } from "@/components/ui/switch";
+import { PlatformTestModeSwitch } from "@/components/layout/platform-test-mode-switch";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useShellNav } from "@/hooks/use-shell-nav";
@@ -32,10 +33,12 @@ function NavGroup({
   title,
   items,
   pathname,
+  onItemClick,
 }: {
   title: string;
   items: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }[];
   pathname: string;
+  onItemClick?: () => void;
 }) {
   const [open, setOpen] = useState(true);
   return (
@@ -62,6 +65,7 @@ function NavGroup({
                 key={item.href + item.label}
                 href={item.href}
                 prefetch={false}
+                onClick={onItemClick}
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                   isActive
@@ -84,13 +88,13 @@ function NavGroup({
 export function AppSidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const mobileSidebarOpen = useSelector((s: RootState) => s.layout.mobileSidebarOpen);
   const returnPath =
     (pathname || "/") +
     (searchParams.toString() ? `?${searchParams.toString()}` : "");
   const shellBusinessSignInHref = businessSignInHref(returnPath);
   const dispatch = useDispatch();
   const theme = useSelector((s: RootState) => s.layout.theme);
-  const testMode = useSelector((s: RootState) => s.layout.testMode);
   const sessionType = useSelector((s: RootState) => s.merchantSession.sessionType);
   const businesses = useSelector((s: RootState) => s.merchantSession.businesses);
   const activeBusinessId = useSelector((s: RootState) => s.merchantSession.activeBusinessId);
@@ -106,10 +110,25 @@ export function AppSidebar() {
         : "Morapay platform"
       : "Morapay platform";
 
+  const closeMobileSidebar = () => {
+    dispatch(setMobileSidebarOpen(false));
+  };
+
+  useEffect(() => {
+    dispatch(setMobileSidebarOpen(false));
+  }, [pathname, dispatch]);
+
   return (
     <aside
       data-dashboard-sidebar
-      className="flex h-full min-h-0 w-64 shrink-0 flex-col bg-platform-primary text-white"
+      className={cn(
+        "flex h-full min-h-0 w-64 max-w-[85vw] shrink-0 flex-col bg-platform-primary text-white transition-transform duration-200 ease-out",
+        /* Mobile drawer: off-canvas; does not use `fixed` on lg+ so flex row reserves width on desktop */
+        "max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:shadow-xl",
+        mobileSidebarOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full",
+        "lg:relative lg:z-auto lg:max-w-none lg:translate-x-0 lg:shadow-none",
+        !mobileSidebarOpen && "max-lg:pointer-events-none"
+      )}
     >
       {/* Workspace / business switcher */}
       <div className="px-3 py-3">
@@ -121,7 +140,7 @@ export function AppSidebar() {
             </Button>
           </div>
         ) : (
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
@@ -174,6 +193,7 @@ export function AppSidebar() {
             title={group.title}
             items={group.items}
             pathname={pathname}
+            onItemClick={closeMobileSidebar}
           />
         ))}
       </nav>
@@ -182,6 +202,7 @@ export function AppSidebar() {
         {sessionType === "platform" && !isUnauthedShell ? (
           <Link
             href="/settings"
+            onClick={closeMobileSidebar}
             className={cn(
               "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
               pathname === "/settings" || pathname.startsWith("/settings/")
@@ -194,7 +215,7 @@ export function AppSidebar() {
           </Link>
         ) : null}
         {!isUnauthedShell ? (
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
@@ -212,11 +233,21 @@ export function AppSidebar() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuItem onClick={() => dispatch(setTheme("sidebar" as LayoutTheme))}>
+              <DropdownMenuItem
+                onSelect={() => {
+                  dispatch(setTheme("sidebar" as LayoutTheme));
+                  closeMobileSidebar();
+                }}
+              >
                 <LayoutPanelLeft className="size-4" aria-hidden />
                 Sidebar layout
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => dispatch(setTheme("no-sidebar" as LayoutTheme))}>
+              <DropdownMenuItem
+                onSelect={() => {
+                  dispatch(setTheme("no-sidebar" as LayoutTheme));
+                  closeMobileSidebar();
+                }}
+              >
                 <LayoutDashboard className="size-4" aria-hidden />
                 Top nav layout
               </DropdownMenuItem>
@@ -228,17 +259,7 @@ export function AppSidebar() {
             <MerchantEnvironmentSwitch />
           </div>
         ) : sessionType === "platform" && !isUnauthedShell ? (
-          <div className="flex items-center justify-between rounded-md px-3 py-2">
-            <span className="text-sm font-normal text-white/60">
-              Platform test mode
-            </span>
-            <Switch
-              checked={testMode}
-              onCheckedChange={(v) => dispatch(setTestMode(v))}
-              aria-label="Toggle test mode"
-              className="data-[state=checked]:bg-indigo-500"
-            />
-          </div>
+          <PlatformTestModeSwitch variant="sidebar" />
         ) : null}
       </div>
     </aside>
