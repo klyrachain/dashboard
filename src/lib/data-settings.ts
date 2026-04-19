@@ -18,11 +18,15 @@ import {
   getCoreSettingsApi,
   patchCoreSettingsApi,
   postCoreSettingsApiRotateWebhookSecret,
+  getCoreMerchantTeamMembers,
+  getCoreMerchantBusiness,
 } from "@/lib/core-api";
 import { getSessionToken } from "@/lib/auth";
 import { postCoreAuthInviteCreate } from "@/lib/auth-api-server";
+import { getPortalSsrAuthForCore } from "@/lib/portal-server-auth";
 import type { QuoteCurrency } from "@/lib/token-rates";
 import type { InviteCreateData } from "@/types/auth";
+import type { MerchantBusinessProfile } from "@/types/merchant-api";
 
 type Envelope<T> = { success?: boolean; data?: T; error?: string };
 
@@ -81,16 +85,22 @@ function parseGeneral(raw: unknown): SettingsGeneral {
 
 export async function getSettingsGeneral(): Promise<{
   ok: boolean;
-  data: SettingsGeneral;
+  data: SettingsGeneral | null;
   error?: string;
 }> {
   const token = await getSessionToken();
   const res = await getCoreSettingsGeneral(token ?? undefined);
   const out = extract<unknown>(res);
+  if (!out.ok) {
+    return { ok: false, data: null, error: out.error };
+  }
+  if (out.data == null) {
+    return { ok: true, data: null, error: out.error };
+  }
   return {
-    ok: out.ok,
-    data: out.data ? parseGeneral(out.data) : defaultGeneral,
-    error: out.error,
+    ok: true,
+    data: parseGeneral(out.data),
+    error: undefined,
   };
 }
 
@@ -150,16 +160,22 @@ function parseFinancials(raw: unknown): SettingsFinancials {
 
 export async function getSettingsFinancials(): Promise<{
   ok: boolean;
-  data: SettingsFinancials;
+  data: SettingsFinancials | null;
   error?: string;
 }> {
   const token = await getSessionToken();
   const res = await getCoreSettingsFinancials(token ?? undefined);
   const out = extract<unknown>(res);
+  if (!out.ok) {
+    return { ok: false, data: null, error: out.error };
+  }
+  if (out.data == null) {
+    return { ok: true, data: null, error: out.error };
+  }
   return {
-    ok: out.ok,
-    data: out.data ? parseFinancials(out.data) : defaultFinancials,
-    error: out.error,
+    ok: true,
+    data: parseFinancials(out.data),
+    error: undefined,
   };
 }
 
@@ -461,14 +477,17 @@ const defaultApi: SettingsApi = {
 
 export async function getSettingsApi(): Promise<{
   ok: boolean;
-  data: SettingsApi;
+  data: SettingsApi | null;
   error?: string;
 }> {
   const token = await getSessionToken();
   const res = await getCoreSettingsApi(token ?? undefined);
   const out = extract<unknown>(res);
-  if (!out.ok || !out.data || typeof out.data !== "object") {
-    return { ok: false, data: defaultApi, error: out.error };
+  if (!out.ok) {
+    return { ok: false, data: null, error: out.error };
+  }
+  if (!out.data || typeof out.data !== "object") {
+    return { ok: true, data: null, error: out.error };
   }
   const o = out.data as Record<string, unknown>;
   return {
@@ -528,4 +547,113 @@ export async function postSettingsApiRotateWebhookSecret(): Promise<{
       ? String((data as { webhookSigningSecretMasked: string }).webhookSigningSecretMasked)
       : undefined;
   return { ok: true, webhookSigningSecretMasked: masked };
+}
+
+// ——— Merchant portal (Core `/api/v1/merchant/*`, Bearer + cookies from SSR) ———
+
+function parseMerchantTeamRowToAdmin(row: unknown): SettingsAdmin | null {
+  if (!row || typeof row !== "object") return null;
+  const o = row as Record<string, unknown>;
+  const id = String(o.id ?? "");
+  if (!id) return null;
+  const email = String(o.email ?? "");
+  const display = String(o.displayName ?? "").trim();
+  const name = display.length > 0 ? display : email.split("@")[0] || "Member";
+  return {
+    id,
+    name,
+    email,
+    role: String(o.role ?? "MEMBER"),
+    twoFaEnabled: o.twoFaEnabled === true,
+  };
+}
+
+function parseMerchantBusinessSsr(raw: unknown): MerchantBusinessProfile | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const id = typeof o.id === "string" ? o.id : "";
+  const name = typeof o.name === "string" ? o.name : "";
+  const slug = typeof o.slug === "string" ? o.slug : "";
+  if (!id || !name || !slug) return null;
+  return {
+    id,
+    name,
+    slug,
+    logoUrl: typeof o.logoUrl === "string" ? o.logoUrl : null,
+    website: typeof o.website === "string" ? o.website : null,
+    supportEmail: typeof o.supportEmail === "string" ? o.supportEmail : null,
+    kybStatus: typeof o.kybStatus === "string" ? o.kybStatus : undefined,
+    riskScore: typeof o.riskScore === "number" ? o.riskScore : (o.riskScore === null ? null : undefined),
+    webhookUrl: typeof o.webhookUrl === "string" ? o.webhookUrl : null,
+    country: typeof o.country === "string" ? o.country : null,
+    createdAt: typeof o.createdAt === "string" ? o.createdAt : undefined,
+    portalKycStatus:
+      o.portalKycStatus === null || o.portalKycStatus === undefined
+        ? undefined
+        : String(o.portalKycStatus),
+    portalKycProvider:
+      o.portalKycProvider === null || o.portalKycProvider === undefined
+        ? undefined
+        : String(o.portalKycProvider),
+    portalKycVerifiedAt:
+      typeof o.portalKycVerifiedAt === "string" ? o.portalKycVerifiedAt : undefined,
+    isFirstActiveMember: o.isFirstActiveMember === true,
+  };
+}
+
+export type TeamSettingsSource = "merchant" | "platform";
+
+/** Platform admins from Core settings, or business members when portal SSR cookies are present. */
+export async function getSettingsTeamForPage(): Promise<{
+  ok: boolean;
+  data: SettingsAdmin[];
+  error?: string;
+  source: TeamSettingsSource;
+}> {
+  const portal = await getPortalSsrAuthForCore();
+  if (portal) {
+    const res = await getCoreMerchantTeamMembers(portal.bearerToken, portal.extraHeaders);
+    const out = extract<unknown[]>(res);
+    if (!out.ok || !Array.isArray(out.data)) {
+      return {
+        ok: false,
+        data: [],
+        error: out.error ?? "Could not load team.",
+        source: "merchant",
+      };
+    }
+    const data = out.data
+      .map(parseMerchantTeamRowToAdmin)
+      .filter((r): r is SettingsAdmin => r != null);
+    return { ok: true, data, source: "merchant" };
+  }
+  const r = await getSettingsTeamAdmins();
+  return {
+    ok: r.ok,
+    data: r.data,
+    error: r.error,
+    source: "platform",
+  };
+}
+
+/** `GET /api/v1/merchant/business` for RSC (same auth as browser merchant API). */
+export async function getMerchantBusinessProfileSsr(): Promise<{
+  ok: boolean;
+  data: MerchantBusinessProfile | null;
+  error?: string;
+}> {
+  const portal = await getPortalSsrAuthForCore();
+  if (!portal) {
+    return { ok: false, data: null, error: undefined };
+  }
+  const res = await getCoreMerchantBusiness(portal.bearerToken, portal.extraHeaders);
+  const out = extract<unknown>(res);
+  if (!out.ok) {
+    return { ok: false, data: null, error: out.error };
+  }
+  if (out.data == null) {
+    return { ok: true, data: null, error: out.error };
+  }
+  const parsed = parseMerchantBusinessSsr(out.data);
+  return { ok: true, data: parsed, error: parsed ? undefined : "Invalid business payload." };
 }

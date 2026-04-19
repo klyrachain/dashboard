@@ -21,7 +21,7 @@ export default async function SettingsFinancialsPage() {
           {mapInvoiceLoadError(error)}
         </div>
       )}
-      <FinancialsSettingsForm initialData={ok ? data : undefined} />
+      <FinancialsSettingsForm initialData={ok && data ? data : undefined} />
     </div>
   );
 }

@@ -7,6 +7,7 @@
 import { cookies } from "next/headers";
 import { getSessionToken } from "@/lib/auth";
 import { getCoreAccess } from "@/lib/core-api";
+import { getPortalSsrAuthForCore } from "@/lib/portal-server-auth";
 import {
   MERCHANT_SSR_COOKIE,
   MERCHANT_SSR_VALUE,
@@ -40,7 +41,8 @@ export type AccessBusiness = {
 
 export type AccessContext = {
   type: "platform" | "merchant";
-  key: AccessKey;
+  /** Present for API-key auth; omitted for admin session or business portal JWT. */
+  key?: AccessKey;
   business?: AccessBusiness;
 };
 
@@ -75,8 +77,11 @@ function parseBusiness(raw: unknown): AccessBusiness | null {
  */
 export async function getAccessContext(): Promise<AccessResult> {
   try {
-    const token = await getSessionToken();
-    const { ok, status, data } = await getCoreAccess(token ?? undefined);
+    const adminToken = await getSessionToken();
+    const portal = await getPortalSsrAuthForCore();
+    const bearer = adminToken ?? portal?.bearerToken ?? undefined;
+    const extra = adminToken ? undefined : portal?.extraHeaders;
+    const { ok, status, data } = await getCoreAccess(bearer, extra);
 
     if (ok && data && typeof data === "object") {
       const envelope = data as {
@@ -90,15 +95,32 @@ export async function getAccessContext(): Promise<AccessResult> {
           const p = payload as Record<string, unknown>;
           const type = p.type === "merchant" ? "merchant" : "platform";
           const key = parseKey(p.key);
-          if (key) {
-            const business =
-              type === "merchant" && p.business
-                ? parseBusiness(p.business)
-                : undefined;
+          const business =
+            type === "merchant" && p.business ? parseBusiness(p.business) : undefined;
+
+          if (type === "merchant" && (key || business)) {
             return {
               ok: true,
-              context: { type, key, business: business ?? undefined },
+              context: {
+                type: "merchant",
+                ...(key ? { key } : {}),
+                ...(business ? { business } : {}),
+              },
             };
+          }
+
+          if (type === "platform") {
+            const admin = p.admin;
+            const hasAdmin = admin && typeof admin === "object";
+            if (key || hasAdmin) {
+              return {
+                ok: true,
+                context: {
+                  type: "platform",
+                  ...(key ? { key } : {}),
+                },
+              };
+            }
           }
         }
       }

@@ -1,63 +1,37 @@
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getCoreBaseUrl } from "@/lib/core-api";
-import { getAccessContext } from "@/lib/data-access";
+import { getAccessContext, isMerchantPortalSessionReady } from "@/lib/data-access";
 import { MerchantVerificationPanel } from "@/components/settings/merchant-verification-panel";
-
-type ProviderRailMetadata = {
-  providerCode: string;
-  providerName: string;
-  supportedCountries: string[];
-  supportedFiatCurrencies: string[];
-  supportedCryptoAssets: string[];
-  channels: string[];
-  kycRequirements: string[];
-  status: "ACTIVE" | "PLANNED";
-};
-
-async function getProviderRails(): Promise<ProviderRailMetadata[]> {
-  try {
-    const core = getCoreBaseUrl().replace(/\/$/, "");
-    const res = await fetch(`${core}/api/provider-metadata`, {
-      method: "GET",
-      cache: "no-store",
-      signal: AbortSignal.timeout(12_000),
-    });
-    const payload: unknown = await res.json().catch(() => ({}));
-    if (!res.ok || !payload || typeof payload !== "object") return [];
-    const envelope = payload as { success?: boolean; data?: unknown };
-    if (envelope.success !== true || !Array.isArray(envelope.data)) return [];
-    return envelope.data.filter((row): row is ProviderRailMetadata => {
-      if (!row || typeof row !== "object") return false;
-      const typed = row as Record<string, unknown>;
-      return (
-        typeof typed.providerCode === "string" &&
-        typeof typed.providerName === "string" &&
-        Array.isArray(typed.supportedCountries) &&
-        Array.isArray(typed.supportedFiatCurrencies) &&
-        Array.isArray(typed.supportedCryptoAssets) &&
-        Array.isArray(typed.channels) &&
-        Array.isArray(typed.kycRequirements)
-      );
-    });
-  } catch {
-    return [];
-  }
-}
+import { getProviderRailsForVerification } from "@/lib/data-provider-rails";
 
 export default async function SettingsVerificationPage() {
-  const [rails, access] = await Promise.all([getProviderRails(), getAccessContext()]);
+  const [access, merchantPortalReady, rails] = await Promise.all([
+    getAccessContext(),
+    isMerchantPortalSessionReady(),
+    getProviderRailsForVerification(),
+  ]);
   const isPlatform = access.ok && access.context?.type === "platform";
-  const isMerchant = access.ok && access.context?.type === "merchant";
+  const isMerchantContext = access.ok && access.context?.type === "merchant";
+  /** Portal cookies mean a business session even when `/api/access` resolves as platform (e.g. key context). */
+  const showMerchantVerification = isMerchantContext || merchantPortalReady;
+
+  const railPartnerNames = rails.map((r) => r.providerName).filter(Boolean);
+  const supportedRailsDescription =
+    railPartnerNames.length > 0
+      ? `Active corridors from ${railPartnerNames.join(", ")} for rollout planning.`
+      : "Rail partners returned by Core when provider metadata is available.";
 
   return (
     <div className="space-y-6 font-primary text-body">
       <header className="space-y-1">
         <h1 className="text-display font-semibold tracking-tight">Verification</h1>
+        <p className="text-sm text-muted-foreground max-w-2xl">
+          Personal identity (KYC) for each member and company verification (KYB) for your business.
+        </p>
       </header>
 
-      {isMerchant ? (
+      {showMerchantVerification ? (
         <MerchantVerificationPanel />
       ) : (
         <Card className="bg-white">
@@ -84,9 +58,7 @@ export default async function SettingsVerificationPage() {
       <Card className="bg-white">
         <CardHeader>
           <CardTitle>Supported fiat rail partners</CardTitle>
-          <CardDescription>
-            Active corridors from Yellow Card, Kotani Pay, and Cowrie for current rollout planning.
-          </CardDescription>
+          <CardDescription>{supportedRailsDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {rails.length === 0 ? (

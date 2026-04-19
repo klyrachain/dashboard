@@ -26,12 +26,23 @@ import type { SerializedInvoice } from "@/lib/data-invoices";
 import { formatInvoiceCurrency } from "@/lib/data-invoices";
 import { exportInvoiceToCsv } from "@/lib/export-invoice-csv";
 import { markInvoicePaidAction, cancelInvoiceAction, duplicateInvoiceAction } from "@/app/invoices/actions";
+import {
+  cancelInvoiceViaMerchantProxy,
+  duplicateInvoiceViaMerchantProxy,
+  hasMerchantInvoicesAuth,
+  markInvoicePaidViaMerchantProxy,
+} from "@/lib/merchant-invoices-proxy-client";
 import { SendInvoiceModal } from "./send-invoice-modal";
 import { EditInvoiceModal } from "./edit-invoice-modal";
 import { EditNotesModal } from "./edit-notes-modal";
 
 type InvoiceDetailViewProps = {
   invoice: SerializedInvoice;
+  /**
+   * After PATCH / send / status changes, refetch client-held invoice (merchant detail).
+   * Always combined with `router.refresh()` for server-backed UI and lists.
+   */
+  onInvoiceDataUpdated?: () => void | Promise<void>;
 };
 
 function getStatusVariant(
@@ -50,7 +61,10 @@ function getStatusVariant(
   }
 }
 
-export function InvoiceDetailView({ invoice }: InvoiceDetailViewProps) {
+export function InvoiceDetailView({
+  invoice,
+  onInvoiceDataUpdated,
+}: InvoiceDetailViewProps) {
   const router = useRouter();
   const issued = new Date(invoice.issued);
   const dueDate = new Date(invoice.dueDate);
@@ -60,30 +74,73 @@ export function InvoiceDetailView({ invoice }: InvoiceDetailViewProps) {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editNotesOpen, setEditNotesOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const refresh = () => router.refresh();
+  const refresh = () => {
+    void (async () => {
+      await onInvoiceDataUpdated?.();
+      router.refresh();
+    })();
+  };
 
   const handleExport = () => exportInvoiceToCsv(invoice);
 
   const handleMarkAsPaid = async () => {
+    setActionError(null);
     setPendingAction("paid");
+    if (hasMerchantInvoicesAuth()) {
+      const result = await markInvoicePaidViaMerchantProxy(invoice.id);
+      setPendingAction(null);
+      if (result.success) refresh();
+      else setActionError(result.error);
+      return;
+    }
     const result = await markInvoicePaidAction(invoice.id);
     setPendingAction(null);
     if (result.success) refresh();
+    else setActionError(result.error ?? "Failed to mark as paid");
   };
 
   const handleCancel = async () => {
     if (!confirm("Cancel this invoice? This cannot be undone.")) return;
+    setActionError(null);
     setPendingAction("cancel");
+    if (hasMerchantInvoicesAuth()) {
+      const result = await cancelInvoiceViaMerchantProxy(invoice.id);
+      setPendingAction(null);
+      if (result.success) refresh();
+      else setActionError(result.error);
+      return;
+    }
     const result = await cancelInvoiceAction(invoice.id);
     setPendingAction(null);
     if (result.success) refresh();
+    else setActionError(result.error ?? "Failed to cancel");
   };
 
   const handleDuplicate = async () => {
+    setActionError(null);
     setPendingAction("duplicate");
-    await duplicateInvoiceAction(invoice.id);
-    setPendingAction(null);
+    try {
+      if (hasMerchantInvoicesAuth()) {
+        const dup = await duplicateInvoiceViaMerchantProxy(invoice.id);
+        if (dup.success) {
+          router.push(`/invoices/${dup.id}`);
+          router.refresh();
+        } else {
+          setActionError(dup.error);
+        }
+        return;
+      }
+      const dup = await duplicateInvoiceAction(invoice.id);
+      if (dup.success === false) {
+        setActionError(dup.error ?? "Failed to duplicate invoice");
+      }
+    } catch {
+      /* duplicateInvoiceAction redirect() */
+    } finally {
+      setPendingAction(null);
+    }
   };
 
   const canEdit = invoice.status !== "Paid" && invoice.status !== "Cancelled";
@@ -100,6 +157,12 @@ export function InvoiceDetailView({ invoice }: InvoiceDetailViewProps) {
         <ChevronRight className="size-4" aria-hidden />
         <span className="text-foreground">Invoice details</span>
       </nav>
+
+      {actionError ? (
+        <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive" role="alert">
+          {actionError}
+        </p>
+      ) : null}
 
       {/* Header: number, status, amount + paid at, actions */}
       <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-6 sm:flex-row sm:items-start sm:justify-between">

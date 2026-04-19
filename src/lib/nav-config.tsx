@@ -19,6 +19,7 @@ import {
   UserPlus,
   Fuel,
   ShieldCheck,
+  BadgeCheck,
 } from "lucide-react";
 import type { SessionPortalType } from "@/store/merchant-session-slice";
 
@@ -116,8 +117,13 @@ export const merchantNavGroups: NavGroupConfig[] = [
       },
       { href: "/settings/gas", label: "Gas sponsorship", icon: Fuel },
       {
+        href: "/settings/kyc",
+        label: "Identity (KYC)",
+        icon: BadgeCheck,
+      },
+      {
         href: "/settings/verification",
-        label: "Verification",
+        label: "Verification & KYB",
         icon: ShieldCheck,
       },
       { href: "/settings/team", label: "Team", icon: UserPlus },

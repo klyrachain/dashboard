@@ -291,6 +291,30 @@ export type InvoiceUpdatePayload = {
   termsAndConditions?: string;
 };
 
+/** JSON body for PATCH /api/invoices/:id (Core + `/api/invoices` proxy). */
+export function buildInvoiceUpdatePatchBody(
+  payload: InvoiceUpdatePayload
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (payload.subject != null) body.subject = payload.subject;
+  if (payload.dueDate != null) body.dueDate = payload.dueDate;
+  if (payload.notes !== undefined) body.notes = payload.notes;
+  if (payload.notesContent != null) body.notesContent = payload.notesContent;
+  if (payload.billedTo != null) body.billedTo = payload.billedTo;
+  if (payload.billingDetails != null) body.billingDetails = payload.billingDetails;
+  if (payload.termsAndConditions != null) body.termsAndConditions = payload.termsAndConditions;
+  if (payload.lineItems != null) {
+    body.lineItems = payload.lineItems.map((li) => ({
+      id: li.id,
+      productName: li.productName,
+      qty: li.qty,
+      unitPrice: li.unitPrice,
+      amount: li.amount,
+    }));
+  }
+  return body;
+}
+
 /** Serialized shape for passing invoice from server to client. */
 export type SerializedInvoice = Omit<
   Invoice,

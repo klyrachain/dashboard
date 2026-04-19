@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,14 +26,20 @@ export function InvoiceDetailMerchantClient({ id }: InvoiceDetailMerchantClientP
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    void (async () => {
+  const loadInvoice = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      const silent = opts?.silent === true;
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
+
       const token = getBusinessAccessToken();
       const businessId = getStoredActiveBusinessId();
       const env = getStoredMerchantEnvironment();
       if (!token?.trim() || !businessId?.trim()) {
         setError("Sign in and select a business to load invoices.");
-        setLoading(false);
+        if (!silent) setLoading(false);
         return;
       }
 
@@ -52,30 +58,44 @@ export function InvoiceDetailMerchantClient({ id }: InvoiceDetailMerchantClientP
         if (!res.ok) {
           const errObj =
             data && typeof data === "object" ? (data as { error?: string }) : {};
-          setError(errObj.error ?? `Request failed (${res.status})`);
-          setLoading(false);
+          if (!silent) {
+            setError(errObj.error ?? `Request failed (${res.status})`);
+          }
+          if (!silent) setLoading(false);
           return;
         }
         const envelope = data as { success?: boolean; data?: unknown };
         if (!envelope.success || envelope.data == null) {
-          setError("Invoice not found");
-          setLoading(false);
+          if (!silent) {
+            setError("Invoice not found");
+            setLoading(false);
+          }
           return;
         }
         const parsed = invoiceFromCoreApiData(envelope.data);
         if (!parsed) {
-          setError("Invalid invoice data");
-          setLoading(false);
+          if (!silent) {
+            setError("Invalid invoice data");
+            setLoading(false);
+          }
           return;
         }
         setInvoice(serializeInvoice(parsed));
+        if (!silent) setError(null);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Unable to load invoice");
+        if (!silent) {
+          setError(e instanceof Error ? e.message : "Unable to load invoice");
+        }
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
-    })();
-  }, [id]);
+    },
+    [id]
+  );
+
+  useEffect(() => {
+    void loadInvoice();
+  }, [loadInvoice]);
 
   if (loading) {
     return (
@@ -104,5 +124,10 @@ export function InvoiceDetailMerchantClient({ id }: InvoiceDetailMerchantClientP
 
   if (!invoice) return null;
 
-  return <InvoiceDetailView invoice={invoice} />;
+  return (
+    <InvoiceDetailView
+      invoice={invoice}
+      onInvoiceDataUpdated={() => loadInvoice({ silent: true })}
+    />
+  );
 }
