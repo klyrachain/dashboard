@@ -16,6 +16,8 @@ import {
   Bot,
   User,
   LogOut,
+  MoreHorizontal,
+  Building2,
 } from "lucide-react";
 import type { RootState } from "@/store";
 import { useAdmin } from "@/hooks/use-admin";
@@ -29,7 +31,7 @@ import {
   setStoredActiveBusinessId,
 } from "@/lib/businessAuthStorage";
 import { cn } from "@/lib/utils";
-import { setTheme, setTestMode, type LayoutTheme } from "@/store/layout-slice";
+import { setTheme, type LayoutTheme } from "@/store/layout-slice";
 import {
   clearMerchantPortal,
   setActiveBusinessId,
@@ -42,7 +44,7 @@ import { PLATFORM_PRIMARY_HEX } from "@/lib/platform-theme";
 import { clearMerchantPortalHttpOnlyCookie } from "@/lib/portal-auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
+import { PlatformTestModeSwitch } from "@/components/layout/platform-test-mode-switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,67 +65,77 @@ function NavParentDropdown({
   const [open, setOpen] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleEnter = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setOpen(true);
-  };
-  const handleLeave = () => {
-    timeoutRef.current = setTimeout(() => setOpen(false), 150);
+  const cancelClose = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
   };
 
-  useEffect(() => () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); }, []);
+  const scheduleClose = () => {
+    cancelClose();
+    timeoutRef.current = setTimeout(() => setOpen(false), 160);
+  };
+
+  useEffect(() => () => cancelClose(), []);
 
   const groupHrefs = group.items.map((i) => i.href);
   const activeInGroup = longestMatchingNavHref(pathname, groupHrefs);
   const isActive = activeInGroup != null;
 
   return (
-    <div
-      className="relative"
-      onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
-    >
-      <button
-        type="button"
-        className={cn(
-          "flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors cursor-pointer",
-          isActive
-            ? "border rounded-full p-1 px-4 border-slate-500 text-white "
-            : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
-        )}
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors cursor-pointer",
+            isActive
+              ? "border border-slate-500 px-4 py-1 text-white"
+              : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
+          )}
+          onMouseEnter={() => {
+            cancelClose();
+            setOpen(true);
+          }}
+          onMouseLeave={scheduleClose}
+        >
+          {group.title}
+          <ChevronDown className="ml-0.5 inline size-3.5 align-middle" aria-hidden />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        sideOffset={6}
+        className="min-w-[180px]"
+        onMouseEnter={() => {
+          cancelClose();
+          setOpen(true);
+        }}
+        onMouseLeave={scheduleClose}
+        onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        {group.title}
-        <ChevronDown className="size-3.5" aria-hidden />
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full z-50 min-w-[180px] rounded-md border border-slate-200 bg-white py-1 shadow-lg">
-          {group.items.map((item) => {
-            const itemActive = activeInGroup === item.href;
-            const Icon = item.icon;
-            const resolvedClass = cn(
-              "flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100",
-              itemActive && "bg-indigo-100 font-medium text-indigo-800"
-            );
-            return (
+        {group.items.map((item) => {
+          const itemActive = activeInGroup === item.href;
+          const Icon = item.icon;
+          return (
+            <DropdownMenuItem key={item.href + item.label} asChild>
               <Link
-                key={item.href + item.label}
                 href={item.href}
                 prefetch={false}
-                className={resolvedClass}
-              // style={
-              //   itemActive
-              //     ? { backgroundColor: INDIGO_100_BG, color: INDIGO_800_TEXT }
-              //     : undefined
-              // }
+                className={cn(
+                  "flex cursor-pointer items-center gap-2",
+                  itemActive && "bg-indigo-100 font-medium text-indigo-800 focus:bg-indigo-100 focus:text-indigo-800"
+                )}
               >
                 <Icon className="size-4 shrink-0" aria-hidden />
                 {item.label}
               </Link>
-            );
-          })}
-        </div>
-      )}
-    </div>
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -137,7 +149,6 @@ export function HeaderNoSidebar() {
   const router = useRouter();
   const dispatch = useDispatch();
   const theme = useSelector((s: RootState) => s.layout.theme);
-  const testMode = useSelector((s: RootState) => s.layout.testMode);
   const admin = useAdmin();
   const sessionType = useSelector((s: RootState) => s.merchantSession.sessionType);
   const businesses = useSelector((s: RootState) => s.merchantSession.businesses);
@@ -195,7 +206,7 @@ export function HeaderNoSidebar() {
 
   return (
     <header
-      className="flex shrink-0 flex-col border-b border-slate-200 text-white"
+      className="relative z-[70] flex shrink-0 flex-col border-b border-slate-200 text-white"
       style={{ backgroundColor: PLATFORM_PRIMARY_HEX }}
     >
       {/* Row 1: logo, sandbox, theme selector, search, notification, settings, live/testnet, refresh */}
@@ -216,20 +227,90 @@ export function HeaderNoSidebar() {
             <span className="text-sm text-white/70">{workspaceLabel}</span>
           ) : (
             <>
+              <div className="hidden items-center gap-2 lg:flex lg:gap-4">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex max-w-[200px] items-center gap-1 rounded-md px-2 py-1.5 text-sm text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+                    >
+                      <Building2 className="size-4 shrink-0 opacity-80" aria-hidden />
+                      <span className="truncate">{workspaceLabel}</span>
+                      <ChevronDown className="size-3.5 shrink-0" aria-hidden />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    <div className="px-2 py-1.5 text-xs font-medium text-slate-500">
+                      {sessionType === "merchant" ? "Business" : "Workspace"}
+                    </div>
+                    {sessionType === "merchant" && businesses.length > 0 ? (
+                      <>
+                        {businesses.map((b: MerchantBusiness) => (
+                          <DropdownMenuItem
+                            key={b.id}
+                            onClick={() => {
+                              dispatch(setActiveBusinessId(b.id));
+                              setStoredActiveBusinessId(b.id);
+                            }}
+                          >
+                            {b.name?.trim() || "Your business"}
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                      </>
+                    ) : null}
+                    <div className="rounded-md bg-slate-50 px-2 py-1.5 text-sm text-slate-700">
+                      {sessionType === "merchant"
+                        ? activeBusiness?.name?.trim() || "Your business"
+                        : "Platform admin"}
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+                    >
+                      {theme === "sidebar" ? (
+                        <LayoutPanelLeft className="size-4" aria-hidden />
+                      ) : (
+                        <LayoutDashboard className="size-4" aria-hidden />
+                      )}
+                      <span className="text-sm">
+                        {theme === "sidebar" ? "Sidebar" : "Topnav"}
+                      </span>
+                      <ChevronDown className="size-3.5" aria-hidden />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={handleThemeSelect("sidebar")}>
+                      <LayoutPanelLeft className="size-4" aria-hidden />
+                      Sidebar layout
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleThemeSelect("no-sidebar")}>
+                      <LayoutDashboard className="size-4" aria-hidden />
+                      Top nav layout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white/80 hover:bg-white/10 hover:text-white lg:hidden"
+                    aria-label="Workspace, layout, and tools"
                   >
-                    {workspaceLabel}
-                    <ChevronDown className="size-3.5" aria-hidden />
-                  </button>
+                    <MoreHorizontal className="size-5" aria-hidden />
+                  </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56">
-                  <div className="px-2 py-1.5 text-xs font-medium text-slate-500">
-                    {sessionType === "merchant" ? "Business" : "Workspace"}
-                  </div>
+                <DropdownMenuContent align="start" className="w-60">
+                  <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                    Workspace
+                  </DropdownMenuLabel>
                   {sessionType === "merchant" && businesses.length > 0 ? (
                     <>
                       {businesses.map((b: MerchantBusiness) => (
@@ -251,27 +332,10 @@ export function HeaderNoSidebar() {
                       ? activeBusiness?.name?.trim() || "Your business"
                       : "Platform admin"}
                   </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5 text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
-                  >
-                    {theme === "sidebar" ? (
-                      <LayoutPanelLeft className="size-4" aria-hidden />
-                    ) : (
-                      <LayoutDashboard className="size-4" aria-hidden />
-                    )}
-                    <span className="text-sm">
-                      {theme === "sidebar" ? "Sidebar" : "Topnav"}
-                    </span>
-                    <ChevronDown className="size-3.5" aria-hidden />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                    Layout
+                  </DropdownMenuLabel>
                   <DropdownMenuItem onClick={handleThemeSelect("sidebar")}>
                     <LayoutPanelLeft className="size-4" aria-hidden />
                     Sidebar layout
@@ -280,13 +344,22 @@ export function HeaderNoSidebar() {
                     <LayoutDashboard className="size-4" aria-hidden />
                     Top nav layout
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem disabled className="opacity-60">
+                    <Bell className="size-4" aria-hidden />
+                    Notifications (soon)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.refresh()}>
+                    <RefreshCw className="size-4" aria-hidden />
+                    Refresh page
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
           )}
         </div>
-        <div className="flex flex-1 items-center justify-center px-8">
-          <div className="relative w-full max-w-md">
+        <div className="flex min-w-0 flex-1 items-center justify-center px-2 sm:px-4 lg:px-8">
+          <div className="relative w-full min-w-0 max-w-md">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
             <Input
               type="search"
@@ -296,12 +369,12 @@ export function HeaderNoSidebar() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           {!isUnauthedShell ? (
             <Button
               variant="ghost"
               size="icon"
-              className="size-9 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
+              className="hidden size-9 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer lg:inline-flex"
               aria-label="Notifications"
             >
               <Bell className="size-4" aria-hidden />
@@ -320,8 +393,9 @@ export function HeaderNoSidebar() {
                   className="gap-1.5 text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
                   aria-label="Account menu"
                 >
-                  {displayName}
-                  <ChevronDown className="size-3.5" aria-hidden />
+                  <User className="size-4 shrink-0 lg:hidden" aria-hidden />
+                  <span className="hidden max-w-[140px] truncate lg:inline">{displayName}</span>
+                  <ChevronDown className="size-3.5 shrink-0 max-lg:hidden" aria-hidden />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -367,10 +441,13 @@ export function HeaderNoSidebar() {
                   className="gap-1.5 text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
                   aria-label="Business account menu"
                 >
-                  {portalUserDisplayName?.trim() ||
-                    portalUserEmail?.trim() ||
-                    "Account"}
-                  <ChevronDown className="size-3.5" aria-hidden />
+                  <User className="size-4 shrink-0 lg:hidden" aria-hidden />
+                  <span className="hidden max-w-[140px] truncate lg:inline">
+                    {portalUserDisplayName?.trim() ||
+                      portalUserEmail?.trim() ||
+                      "Account"}
+                  </span>
+                  <ChevronDown className="size-3.5 shrink-0 max-lg:hidden" aria-hidden />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -411,22 +488,12 @@ export function HeaderNoSidebar() {
           {sessionType === "merchant" ? (
             <MerchantEnvironmentSwitch className="pl-2" />
           ) : sessionType === "platform" && !isUnauthedShell ? (
-            <div className="flex items-center gap-2 pl-2">
-              <span className="text-xs text-white/60">
-                {testMode ? "Testnet" : "Live"}
-              </span>
-              <Switch
-                checked={testMode}
-                onCheckedChange={(v) => dispatch(setTestMode(v))}
-                aria-label="Toggle live / testnet"
-                className="data-[state=checked]:bg-indigo-600 bg-slate-600"
-              />
-            </div>
+            <PlatformTestModeSwitch variant="header" />
           ) : null}
           <Button
             variant="ghost"
             size="icon"
-            className="size-9 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
+            className="hidden size-9 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer lg:inline-flex"
             onClick={handleRefresh}
             aria-label="Refresh"
           >
@@ -435,8 +502,11 @@ export function HeaderNoSidebar() {
         </div>
       </div>
       {/* Row 2: parent navs (hover → children), AI assistant at end */}
-      <div className="flex h-12 items-center justify-between px-4 py-2">
-        <nav className="flex items-center gap-1 cursor-pointer">
+      <div className="flex h-12 min-w-0 items-center justify-between gap-2 overflow-hidden px-4">
+        <nav
+          className="-mx-1 flex min-h-0 min-w-0 flex-1 flex-nowrap items-center gap-0.5 overflow-x-auto overflow-y-visible px-1 py-1 [scrollbar-width:thin]"
+          aria-label="Primary"
+        >
           {navGroups.map((group) => (
             <NavParentDropdown key={group.title} group={group} pathname={pathname} />
           ))}
@@ -467,11 +537,11 @@ export function HeaderNoSidebar() {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-2 text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
+          className="shrink-0 gap-2 text-white/80 hover:bg-white/10 hover:text-white cursor-pointer"
           aria-label="AI Assistant"
         >
           <Bot className="size-4" aria-hidden />
-          AI Assistant
+          <span className="hidden sm:inline">AI Assistant</span>
         </Button>
       </div>
     </header>

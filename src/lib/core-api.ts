@@ -613,8 +613,10 @@ export type CreateCoreInvoiceBody = {
   sendNow?: boolean;
 };
 
-/** POST /api/invoices — create; required: billedTo, subject, dueDate, lineItems; optional sendNow. Normalizes line item amount to qty×unitPrice when missing. */
-export async function createCoreInvoice(body: CreateCoreInvoiceBody, bearerToken?: string | null) {
+/** JSON body for POST /api/invoices (server Core + dashboard `/api/invoices` proxy). */
+export function buildCreateCoreInvoiceRequestPayload(
+  body: CreateCoreInvoiceBody
+): Record<string, unknown> {
   const lineItems = body.lineItems.map((li) => ({
     productName: li.productName,
     qty: li.qty,
@@ -643,6 +645,12 @@ export async function createCoreInvoice(body: CreateCoreInvoiceBody, bearerToken
   if (body.sendNow === true) {
     payload.sendNow = true;
   }
+  return payload;
+}
+
+/** POST /api/invoices — create; required: billedTo, subject, dueDate, lineItems; optional sendNow. Normalizes line item amount to qty×unitPrice when missing. */
+export async function createCoreInvoice(body: CreateCoreInvoiceBody, bearerToken?: string | null) {
+  const payload = buildCreateCoreInvoiceRequestPayload(body);
 
   const base = getCoreBaseUrl().replace(/\/$/, "");
   const res = await fetch(`${base}/api/invoices`, {

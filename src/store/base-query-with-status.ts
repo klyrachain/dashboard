@@ -1,5 +1,10 @@
 import type { BaseQueryApi, BaseQueryFn } from "@reduxjs/toolkit/query";
 import { fetchBaseQuery } from "@reduxjs/toolkit/query";
+import {
+  getBusinessAccessToken,
+  getStoredActiveBusinessId,
+  getStoredMerchantEnvironment,
+} from "@/lib/businessAuthStorage";
 import { showStatus } from "./status-indicator-slice";
 
 type RequestArgs = {
@@ -36,19 +41,21 @@ function createBaseQueryForRequest(args: RequestArgs | string) {
       if (urlSnapshot.includes(MERCHANT_API_SEGMENT)) {
         const state = getState() as MerchantSessionForHeaders;
         const ms = state.merchantSession;
+        const portalJwt =
+          (ms.portalJwt?.trim() || getBusinessAccessToken()?.trim()) ?? "";
         const businessId =
-          ms.activeBusinessId ??
+          ms.activeBusinessId?.trim() ||
+          getStoredActiveBusinessId()?.trim() ||
           (ms.businesses.length === 1 ? ms.businesses[0].id : null);
-        if (ms.portalJwt) {
-          headers.set("Authorization", `Bearer ${ms.portalJwt}`);
+        if (portalJwt) {
+          headers.set("Authorization", `Bearer ${portalJwt}`);
         }
         if (businessId) {
           headers.set("X-Business-Id", businessId);
         }
-        headers.set(
-          "x-merchant-environment",
-          ms.merchantEnvironment ?? "LIVE"
-        );
+        const env =
+          ms.merchantEnvironment ?? getStoredMerchantEnvironment() ?? "LIVE";
+        headers.set("x-merchant-environment", env);
       }
       return headers;
     },

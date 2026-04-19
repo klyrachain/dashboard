@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { SerializedInvoice } from "@/lib/data-invoices";
 import { updateInvoiceAction } from "@/app/invoices/actions";
+import { hasMerchantInvoicesAuth, updateInvoiceViaMerchantProxy } from "@/lib/merchant-invoices-proxy-client";
 
 type EditInvoiceModalProps = {
   invoice: SerializedInvoice;
@@ -56,13 +57,16 @@ export function EditInvoiceModal({
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
-    const result = await updateInvoiceAction(invoice.id, {
+    const payload = {
       subject,
       dueDate: new Date(dueDate).toISOString(),
       billedTo,
       billingDetails,
       termsAndConditions,
-    });
+    };
+    const result = hasMerchantInvoicesAuth()
+      ? await updateInvoiceViaMerchantProxy(invoice.id, payload)
+      : await updateInvoiceAction(invoice.id, payload);
     setIsSubmitting(false);
     if (result.success) {
       onOpenChange(false);

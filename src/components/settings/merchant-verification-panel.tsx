@@ -9,24 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-
-function formatKybLabel(status: string | undefined): string {
-  const s = (status ?? "NOT_STARTED").toUpperCase().replace(/ /g, "_");
-  switch (s) {
-    case "NOT_STARTED":
-      return "Not started";
-    case "PENDING":
-      return "In review";
-    case "APPROVED":
-      return "Approved";
-    case "REJECTED":
-      return "Rejected";
-    case "RESTRICTED":
-      return "Restricted";
-    default:
-      return status ?? "Unknown";
-  }
-}
+import { formatKybLabel } from "@/lib/kyb-status";
 
 function isPortalKycApproved(
   status: string | null | undefined,

@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { updateInvoiceNotesAction } from "@/app/invoices/actions";
+import { hasMerchantInvoicesAuth, updateInvoiceViaMerchantProxy } from "@/lib/merchant-invoices-proxy-client";
 
 type EditNotesModalProps = {
   invoiceId: string;
@@ -43,7 +44,9 @@ export function EditNotesModal({
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
-    const result = await updateInvoiceNotesAction(invoiceId, notes);
+    const result = hasMerchantInvoicesAuth()
+      ? await updateInvoiceViaMerchantProxy(invoiceId, { notesContent: notes })
+      : await updateInvoiceNotesAction(invoiceId, notes);
     setIsSubmitting(false);
     if (result.success) {
       onOpenChange(false);

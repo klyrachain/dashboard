@@ -84,6 +84,7 @@ export function makeStore(input?: MakeStoreInput): AppStore {
     preloaded.layout = {
       theme: initialLayout.theme,
       testMode: initialLayout.testMode,
+      mobileSidebarOpen: false,
     };
   }
 

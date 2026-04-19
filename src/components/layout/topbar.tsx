@@ -1,10 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { businessSignInHref } from "@/lib/business-portal-urls";
-import { Search, Bell, ChevronDown, User, LogOut, Settings } from "lucide-react";
+import { Search, Bell, ChevronDown, User, LogOut, Settings, LayoutPanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,8 +31,16 @@ import {
   setStoredMerchantEnvironment,
 } from "@/lib/businessAuthStorage";
 import { setMerchantEnvironment } from "@/store/merchant-session-slice";
-import { setTestMode } from "@/store/layout-slice";
+import { setTestMode, toggleMobileSidebar } from "@/store/layout-slice";
 import { useShellNav } from "@/hooks/use-shell-nav";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function Topbar({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -41,6 +50,9 @@ export function Topbar({ className }: { className?: string }) {
     (searchParams.toString() ? `?${searchParams.toString()}` : "");
   const shellBusinessSignInHref = businessSignInHref(returnPath);
   const dispatch = useDispatch();
+  const openMobileNav = () => {
+    dispatch(toggleMobileSidebar());
+  };
   const admin = useAdmin();
   const sessionType = useSelector((s: RootState) => s.merchantSession.sessionType);
   const merchantEnvironment = useSelector(
@@ -54,6 +66,7 @@ export function Topbar({ className }: { className?: string }) {
 
   const isMerchant = sessionType === "merchant";
   const { isUnauthedShell } = useShellNav();
+  const [liveConfirmOpen, setLiveConfirmOpen] = useState(false);
   const isSandbox = isUnauthedShell
     ? false
     : isMerchant
@@ -105,41 +118,81 @@ export function Topbar({ className }: { className?: string }) {
     <>
       {/* Sandbox banner — hidden when not authenticated */}
       {!isUnauthedShell ? (
-        <div className="flex shrink-0 items-center justify-between gap-4 bg-platform-primary px-6 py-3 text-sm text-white">
-          <p className="text-slate-300">
-            {isSandbox
-              ? "You are currently in test mode. Actions are sandboxed."
-              : "You are currently in live mode."}
-          </p>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="shrink-0 bg-white/10 text-white hover:bg-white/20"
-            onClick={() => {
-              if (isMerchant) {
-                dispatch(setMerchantEnvironment("LIVE"));
-                setStoredMerchantEnvironment("LIVE");
-                return;
-              }
-              dispatch(setTestMode(false));
-            }}
-            disabled={!isSandbox}
-          >
-            {isSandbox ? "Switch to live account" : "Live mode active"}
-          </Button>
-        </div>
+        <>
+          <div className="flex shrink-0 flex-col gap-3 bg-platform-primary px-4 py-3 text-sm text-white sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6">
+            <p className="min-w-0 text-slate-300">
+              {isSandbox
+                ? "You are currently in test mode. Actions are sandboxed."
+                : "You are currently in live mode."}
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="shrink-0 bg-white/10 text-white hover:bg-white/20"
+              type="button"
+              onClick={() => {
+                if (!isSandbox) return;
+                setLiveConfirmOpen(true);
+              }}
+              disabled={!isSandbox}
+            >
+              {isSandbox ? "Switch to live account" : "Live mode active"}
+            </Button>
+          </div>
+          <Dialog open={liveConfirmOpen} onOpenChange={setLiveConfirmOpen}>
+            <DialogContent className="sm:max-w-md border-none" showClose>
+              <DialogHeader>
+                <DialogTitle>Switch to live mode?</DialogTitle>
+                <DialogDescription>
+                  {isMerchant
+                    ? "Live mode uses production merchant APIs and can affect real money. Confirm you are ready to leave the sandbox."
+                    : "Live mode uses production platform data. Confirm you intend to leave testnet."}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button type="button" variant="outline" onClick={() => setLiveConfirmOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (isMerchant) {
+                      dispatch(setMerchantEnvironment("LIVE"));
+                      setStoredMerchantEnvironment("LIVE");
+                    } else {
+                      dispatch(setTestMode(false));
+                    }
+                    setLiveConfirmOpen(false);
+                  }}
+                >
+                  Switch to live
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
       ) : null}
 
       <header
         className={cn(
-          "flex h-14 shrink-0 items-center justify-between gap-4 px-6 text-white",
+          "relative z-[45] flex h-14 shrink-0 items-center justify-between gap-2 px-4 text-white sm:gap-4 sm:px-6",
           className
         )}
         style={{ backgroundColor: PLATFORM_PRIMARY_HEX }}
       >
-        <div className="flex flex-1 items-center gap-4">
-          <div className="relative max-w-xs flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-9 shrink-0 text-white/80 hover:bg-white/10 hover:text-white lg:hidden"
+            onClick={openMobileNav}
+            aria-label="Open navigation menu"
+          >
+            <LayoutPanelLeft className="size-5" aria-hidden />
+          </Button>
+          <div className="relative min-w-0 max-w-full flex-1 sm:max-w-xs">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <Input
               type="search"
               placeholder="Search"
@@ -148,7 +201,7 @@ export function Topbar({ className }: { className?: string }) {
             />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           {!isUnauthedShell ? (
             <Button
               variant="ghost"
@@ -169,11 +222,12 @@ export function Topbar({ className }: { className?: string }) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-1 text-sm text-white/90 hover:bg-white/10 hover:text-white"
+                  className="gap-1.5 text-sm text-white/90 hover:bg-white/10 hover:text-white"
                   aria-label="Account menu"
                 >
-                  {triggerLabel}
-                  <ChevronDown className="size-4" />
+                  <User className="size-4 shrink-0 md:hidden" aria-hidden />
+                  <span className="hidden max-w-[120px] truncate md:inline">{triggerLabel}</span>
+                  <ChevronDown className="hidden size-4 shrink-0 md:block" aria-hidden />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">

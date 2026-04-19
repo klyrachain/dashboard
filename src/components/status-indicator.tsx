@@ -42,7 +42,7 @@ export function StatusIndicator() {
       role="status"
       aria-live="polite"
       aria-atomic
-      className={`fixed z-50 flex items-center gap-2 rounded-full border bg-black text-white text-xs px-4 py-2.5 shadow-sm  ${positionClass}
+      className={`fixed z-[230] flex items-center gap-2 rounded-full border bg-black text-white text-xs px-4 py-2.5 shadow-sm  ${positionClass}
           `}
     >
       {isSaving && (
