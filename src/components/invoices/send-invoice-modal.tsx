@@ -57,41 +57,65 @@ export function SendInvoiceModal({
     setIsSubmitting(true);
     setError(null);
     if (invoiceId) {
-      const result = await sendInvoiceAction(invoiceId, email);
-      setIsSubmitting(false);
-      if (result.success) {
-        onOpenChange(false);
-        onSuccess?.();
+      if (hasMerchantInvoicesAuth()) {
+        const sent = await sendInvoiceViaMerchantProxy(invoiceId, email);
+        setIsSubmitting(false);
+        if (sent.success) {
+          onOpenChange(false);
+          onSuccess?.();
+          router.refresh();
+        } else {
+          setError(sent.error ?? "Failed to send");
+        }
       } else {
-        setError(result.error ?? "Failed to send");
+        const result = await sendInvoiceAction(invoiceId, email);
+        setIsSubmitting(false);
+        if (result.success) {
+          onOpenChange(false);
+          onSuccess?.();
+        } else {
+          setError(result.error ?? "Failed to send");
+        }
       }
     } else {
-      // New invoice (list page): create via Core API and optionally send
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + Math.max(1, parseInt(dueDays, 10) || 14));
       const amountNum = Math.max(0, parseFloat(amount) || 0);
-      try {
-        const result = await createInvoiceAction({
-          billedTo: email.trim(),
-          subject: subject.trim() || "Invoice",
-          dueDate: dueDate.toISOString(),
-          lineItems: [
-            {
-              productName: subject.trim() || "Invoice",
-              qty: 1,
-              unitPrice: amountNum,
-              amount: amountNum,
-            },
-          ],
-          sendNow: true,
-        });
+      const createBody = {
+        billedTo: email.trim(),
+        subject: subject.trim() || "Invoice",
+        dueDate: dueDate.toISOString(),
+        lineItems: [
+          {
+            productName: subject.trim() || "Invoice",
+            qty: 1,
+            unitPrice: amountNum,
+            amount: amountNum,
+          },
+        ],
+        sendNow: true as const,
+      };
+
+      if (hasMerchantInvoicesAuth()) {
+        const created = await createInvoiceViaMerchantProxy(createBody);
         setIsSubmitting(false);
-        // If we get here, creation failed (success path redirects and throws)
+        if (created.success) {
+          router.push(`/invoices/${created.id}`);
+          router.refresh();
+          onOpenChange(false);
+        } else {
+          setError(created.error ?? "Failed to create invoice");
+        }
+        return;
+      }
+
+      try {
+        const result = await createInvoiceAction(createBody);
+        setIsSubmitting(false);
         setError(result.error ?? "Failed to create invoice");
       } catch {
         setIsSubmitting(false);
         onOpenChange(false);
-        // Redirect threw; navigation to new invoice will happen
       }
     }
   };

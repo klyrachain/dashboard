@@ -12,7 +12,10 @@ import {
   duplicateCoreInvoice,
 } from "@/lib/core-api";
 import type { CreateCoreInvoiceBody } from "@/lib/core-api";
-import type { InvoiceUpdatePayload } from "@/lib/data-invoices";
+import {
+  buildInvoiceUpdatePatchBody,
+  type InvoiceUpdatePayload,
+} from "@/lib/data-invoices";
 
 export type InvoiceActionResult = { success: boolean; error?: string };
 
@@ -73,23 +76,9 @@ export async function updateInvoiceAction(
   id: string,
   payload: InvoiceUpdatePayload
 ): Promise<InvoiceActionResult> {
-  const body: Parameters<typeof updateCoreInvoice>[1] = {};
-  if (payload.subject != null) body.subject = payload.subject;
-  if (payload.dueDate != null) body.dueDate = payload.dueDate;
-  if (payload.notes !== undefined) body.notes = payload.notes;
-  if (payload.notesContent != null) body.notesContent = payload.notesContent;
-  if (payload.billedTo != null) body.billedTo = payload.billedTo;
-  if (payload.billingDetails != null) body.billingDetails = payload.billingDetails;
-  if (payload.termsAndConditions != null) body.termsAndConditions = payload.termsAndConditions;
-  if (payload.lineItems != null) {
-    body.lineItems = payload.lineItems.map((li) => ({
-      id: li.id,
-      productName: li.productName,
-      qty: li.qty,
-      unitPrice: li.unitPrice,
-      amount: li.amount,
-    }));
-  }
+  const body = buildInvoiceUpdatePatchBody(payload) as Parameters<
+    typeof updateCoreInvoice
+  >[1];
 
   const token = await getSessionToken();
   if (!token?.trim()) {
