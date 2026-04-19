@@ -67,7 +67,8 @@ export function MerchantVerificationPanel() {
         <CardHeader>
           <CardTitle>Personal verification (KYC)</CardTitle>
           <CardDescription>
-            Every member completes their own identity check. Status for your account on this business.
+            Every member completes their own identity check.
+            <br /> Status for your account on this business.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

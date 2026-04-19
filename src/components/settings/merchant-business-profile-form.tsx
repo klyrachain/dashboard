@@ -121,7 +121,7 @@ export function MerchantBusinessProfileForm({
           <CardTitle>Business</CardTitle>
           <CardDescription>
             Your company slug is {" "}
-            <span className="font-mono text-xs font-medium">{effectiveData.slug}</span>
+            <span className="font-mono text-xs font-bold">{effectiveData.slug}</span>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
