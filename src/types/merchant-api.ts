@@ -50,6 +50,77 @@ export interface MerchantCreateApiKeyResult {
   message?: string;
 }
 
+/** `GET /api/v1/merchant/webhooks/endpoints` row */
+export type MerchantWebhookEventType =
+  | "transaction.created"
+  | "transaction.status_updated"
+  | "invoice.created"
+  | "invoice.paid"
+  | "payout.status_updated"
+  | "payment_link.paid";
+
+export interface MerchantWebhookEndpointRow {
+  id: string;
+  displayName: string;
+  protocolVersion: string;
+  url: string;
+  events: string[];
+  isActive: boolean;
+  hasSecret: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type MerchantWebhookEndpointCreateBody = {
+  displayName: string;
+  url: string;
+  events: MerchantWebhookEventType[];
+  secret?: string;
+  isActive?: boolean;
+  protocolVersion?: "v1";
+};
+
+export type MerchantWebhookEndpointPatchBody = Partial<
+  Pick<MerchantWebhookEndpointCreateBody, "displayName" | "url" | "events" | "secret" | "isActive" | "protocolVersion">
+>;
+
+/** `GET /api/v1/merchant/webhooks/deliveries` row */
+export interface MerchantWebhookDeliveryRow {
+  id: string;
+  endpointId: string;
+  endpointUrl: string;
+  eventType: string;
+  status: string;
+  httpStatus: number | null;
+  attemptCount: number;
+  lastAttemptAt: string | null;
+  nextRetryAt: string | null;
+  transactionId: string | null;
+  createdAt: string;
+  /** Present when Core records outbound timing. */
+  durationMs?: number | null;
+  payload: unknown;
+  responseBodyPreview: string | null;
+}
+
+/** `GET /api/v1/merchant/webhooks/endpoints/:id/summary` */
+export type MerchantWebhookEndpointSummary = {
+  endpointId: string;
+  from: string;
+  to: string;
+  totalDeliveries: number;
+  failedDeliveries: number;
+  errorRatePct: number;
+  lastDeliveryAt: string | null;
+  avgLatencyMs: number | null;
+  buckets: { date: string; successCount: number; failureCount: number }[];
+  latencyByDay: { date: string; minMs: number; avgMs: number; maxMs: number }[] | null;
+};
+
+export type MerchantWebhookRevealSecretResult = {
+  secret: string;
+};
+
 export type MerchantListMeta = {
   page: number;
   limit: number;
@@ -154,10 +225,13 @@ export type MerchantWithdrawBody = {
   payoutMethodId: string;
 };
 
+/** Include on every tenant-scoped RTK arg so list/detail caches do not cross businesses or TEST/LIVE. */
+export type MerchantApiScopeKey = { merchantApiScopeKey: string };
+
 export type MerchantSummaryQueryParams = {
   days?: number;
   seriesDays?: number;
-};
+} & MerchantApiScopeKey;
 
 /** `GET /api/v1/merchant/products` row */
 export type MerchantProductRow = {

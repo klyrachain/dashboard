@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import {
 import {
   useGetMerchantApiKeysQuery,
   useCreateMerchantApiKeyMutation,
+  useGetMerchantWebhookEndpointsQuery,
 } from "@/store/merchant-api";
 import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 
@@ -25,9 +27,17 @@ type ManageMerchantApiContentProps = {
 export function ManageMerchantApiContent({
   docsHref = "#",
 }: ManageMerchantApiContentProps) {
-  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
+  const { effectiveBusinessId, skipMerchantApi, merchantApiScopeKey } = useMerchantTenantScope();
   const { data: keys, isLoading, isError } = useGetMerchantApiKeysQuery(
     undefined,
+    { skip: skipMerchantApi }
+  );
+  const {
+    data: webhookEndpoints,
+    isLoading: webhooksLoading,
+    isError: webhooksError,
+  } = useGetMerchantWebhookEndpointsQuery(
+    { merchantApiScopeKey },
     { skip: skipMerchantApi }
   );
   const [createKey, { isLoading: creating }] = useCreateMerchantApiKeyMutation();
@@ -175,6 +185,59 @@ export function ManageMerchantApiContent({
                           {k.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className={cardSurface}>
+            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="text-heading text-foreground">Webhooks</CardTitle>
+                <p className="mt-1 font-secondary text-caption text-muted-foreground">
+                  Destinations registered for this business (same environment as your keys).
+                </p>
+              </div>
+              <Button variant="outline" size="sm" asChild className="shrink-0">
+                <Link href="/developers/webhooks">Manage webhooks</Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {webhooksLoading ? (
+                <p className="font-secondary text-caption text-muted-foreground">Loading…</p>
+              ) : webhooksError ? (
+                <p className="text-caption text-destructive" role="alert">
+                  Could not load webhooks.
+                </p>
+              ) : !webhookEndpoints?.length ? (
+                <p className="font-secondary text-caption text-muted-foreground">
+                  No webhook destinations yet.{" "}
+                  <Link href="/developers/webhooks" className="font-medium text-primary underline-offset-4 hover:underline">
+                    Add one
+                  </Link>
+                  .
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {webhookEndpoints.map((w) => (
+                    <li
+                      key={w.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/30 p-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground">{w.displayName ?? "Webhook"}</p>
+                        <p className="mt-0.5 truncate font-mono text-caption text-muted-foreground" title={w.url}>
+                          {w.url}
+                        </p>
+                        <p className="mt-1 font-secondary text-caption text-muted-foreground">
+                          {(w.events?.length ?? 0).toString()} events · {w.protocolVersion ?? "v1"}
+                        </p>
+                      </div>
+                      <Badge variant={w.isActive ? "success" : "secondary"}>
+                        {w.isActive ? "Active" : "Disabled"}
+                      </Badge>
                     </li>
                   ))}
                 </ul>

@@ -20,7 +20,7 @@ import { MerchantWithdrawFundsDialog } from "./merchant-withdraw-funds-dialog";
 export function MerchantSettlementsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
+  const { effectiveBusinessId, skipMerchantApi, merchantApiScopeKey } = useMerchantTenantScope();
   const role = useMerchantRole();
   const canFinance = canManagePayoutMethods(role);
 
@@ -30,7 +30,7 @@ export function MerchantSettlementsClient() {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
   const summaryQ = useGetMerchantSummaryQuery(
-    { days: 90, seriesDays: 14 },
+    { days: 90, seriesDays: 14, merchantApiScopeKey },
     { skip: skipMerchantApi }
   );
 
@@ -42,6 +42,7 @@ export function MerchantSettlementsClient() {
     {
       page,
       limit: 20,
+      merchantApiScopeKey,
       ...(statusFilter !== "all" ? { status: statusFilter } : {}),
     },
     { skip: skipMerchantApi }

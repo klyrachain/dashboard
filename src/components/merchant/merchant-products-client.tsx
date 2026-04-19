@@ -11,7 +11,7 @@ import {
   usePostMerchantProductMutation,
 } from "@/store/merchant-api";
 import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
-import type { MerchantProductRow } from "@/types/merchant-api";
+import type { MerchantApiScopeKey, MerchantProductRow } from "@/types/merchant-api";
 import { isForbiddenMerchantRole } from "@/lib/merchant-api-error";
 import {
   aggregateProductPurchaseCounts,
@@ -64,7 +64,7 @@ function descPreview(desc: string | null | undefined, max = 48): string {
 }
 
 export function MerchantProductsClient() {
-  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
+  const { effectiveBusinessId, skipMerchantApi, merchantApiScopeKey } = useMerchantTenantScope();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -77,18 +77,19 @@ export function MerchantProductsClient() {
   const [productModalRow, setProductModalRow] =
     useState<MerchantProductRow | null>(null);
 
-  const params = useMemo(() => {
-    const p: Record<string, string | number> = {
+  const params = useMemo((): Record<string, string | number | undefined> & MerchantApiScopeKey => {
+    const p: Record<string, string | number | undefined> & MerchantApiScopeKey = {
       page,
       limit: pageSize,
       includeArchived: 1,
+      merchantApiScopeKey,
     };
     if (q.trim()) p.q = q.trim();
     if (statusFilter === "active") p.status = "active";
     if (statusFilter === "archived") p.status = "archived";
     if (typeFilter !== "all") p.type = typeFilter;
     return p;
-  }, [page, pageSize, q, statusFilter, typeFilter]);
+  }, [page, pageSize, q, statusFilter, typeFilter, merchantApiScopeKey]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -101,11 +102,11 @@ export function MerchantProductsClient() {
     { skip: skipMerchantApi }
   );
   const { data: summary } = useGetMerchantSummaryQuery(
-    { days: 30, seriesDays: 7 },
+    { days: 30, seriesDays: 7, merchantApiScopeKey },
     { skip: skipMerchantApi }
   );
   const { data: txData } = useGetMerchantTransactionsQuery(
-    { page: 1, limit: 200 },
+    { page: 1, limit: 200, merchantApiScopeKey },
     { skip: skipMerchantApi }
   );
 

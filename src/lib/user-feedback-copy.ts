@@ -58,7 +58,9 @@ export const invoiceSignInRequired =
   "Please sign in to your business account and select a business to see invoices.";
 
 export function mapInvoiceLoadError(raw: string | undefined | null): string {
-  if (!raw || !raw.trim()) return serverError;
+  if (!raw || !raw.trim()) {
+    return "We couldn't load that just now. Try refreshing the page.";
+  }
   const lower = raw.toLowerCase();
   if (lower.includes("timeout") || lower.includes("network")) return apiTimeout;
   if (lower.includes("500") || lower.includes("server")) return serverError;

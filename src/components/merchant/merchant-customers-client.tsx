@@ -69,7 +69,7 @@ function pickTxField(row: Record<string, unknown>, ...keys: string[]): string {
 
 export function MerchantCustomersClient() {
   const testMode = useSelector((s: RootState) => s.layout.testMode);
-  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
+  const { effectiveBusinessId, skipMerchantApi, merchantApiScopeKey } = useMerchantTenantScope();
   const [page] = useState(1);
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<"payers" | "crm">("payers");
@@ -88,9 +88,10 @@ export function MerchantCustomersClient() {
     () => ({
       page,
       limit: 200,
+      merchantApiScopeKey,
       ...(q.trim() ? { q: q.trim() } : {}),
     }),
-    [page, q]
+    [page, q, merchantApiScopeKey]
   );
 
   const derived = useGetMerchantCustomersQuery(listParams, {
@@ -100,7 +101,7 @@ export function MerchantCustomersClient() {
     skip: skipMerchantApi,
   });
   const { data: summary } = useGetMerchantSummaryQuery(
-    { days: 365, seriesDays: 30 },
+    { days: 365, seriesDays: 30, merchantApiScopeKey },
     { skip: skipMerchantApi }
   );
   const [postCrm, { isLoading: crmPosting, error: crmPostErr }] =
@@ -110,11 +111,12 @@ export function MerchantCustomersClient() {
     () => ({
       page: 1,
       limit: 80,
+      merchantApiScopeKey,
       ...(selectedPayer?.identifier
         ? { q: selectedPayer.identifier }
         : {}),
     }),
-    [selectedPayer]
+    [selectedPayer, merchantApiScopeKey]
   );
 
   const payerTx = useGetMerchantTransactionsQuery(txQueryParams, {

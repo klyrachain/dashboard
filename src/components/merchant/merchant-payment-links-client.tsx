@@ -34,6 +34,7 @@ import {
 } from "@/store/merchant-api";
 import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 import type {
+  MerchantApiScopeKey,
   MerchantBusinessProfile,
   MerchantPayPageRow,
   MerchantProductRow,
@@ -140,7 +141,7 @@ export function MerchantPaymentLinksClient({
   serverBusinessProfile = null,
 }: MerchantPaymentLinksClientProps) {
   const searchParams = useSearchParams();
-  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
+  const { effectiveBusinessId, skipMerchantApi, merchantApiScopeKey } = useMerchantTenantScope();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -182,15 +183,19 @@ export function MerchantPaymentLinksClient({
   const [qrOpen, setQrOpen] = useState(false);
   const [qrRow, setQrRow] = useState<MerchantPayPageRow | null>(null);
 
-  const params = useMemo(() => {
-    const p: Record<string, string | number> = { page, limit: pageSize };
+  const params = useMemo((): Record<string, string | number | undefined> & MerchantApiScopeKey => {
+    const p: Record<string, string | number | undefined> & MerchantApiScopeKey = {
+      page,
+      limit: pageSize,
+      merchantApiScopeKey,
+    };
     if (q.trim()) p.q = q.trim();
     if (statusFilter === "active") p.active = "true";
     if (statusFilter === "inactive") p.active = "false";
     if (amountFilter === "fixed") p.amountType = "fixed";
     if (amountFilter === "open") p.amountType = "open";
     return p;
-  }, [page, pageSize, q, statusFilter, amountFilter]);
+  }, [page, pageSize, q, statusFilter, amountFilter, merchantApiScopeKey]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -204,11 +209,11 @@ export function MerchantPaymentLinksClient({
     { skip: skipMerchantApi }
   );
   const { data: productsData } = useGetMerchantProductsQuery(
-    { page: 1, limit: 200, includeArchived: 1 },
+    { page: 1, limit: 200, includeArchived: 1, merchantApiScopeKey },
     { skip: skipMerchantApi }
   );
   const { data: summary } = useGetMerchantSummaryQuery(
-    { days: 30, seriesDays: 7 },
+    { days: 30, seriesDays: 7, merchantApiScopeKey },
     { skip: skipMerchantApi }
   );
   const { data: gasAccount } = useGetMerchantGasAccountQuery(undefined, {

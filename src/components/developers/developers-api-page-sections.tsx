@@ -122,11 +122,39 @@ export function DevelopersApiDocSections({
         >
           How to use our API
         </h2>
-      <section aria-labelledby="dash-dev-auth-heading" className="space-y-4 flex gap-4 scroll-smooth overflow-x-auto">
-        {DeveloperRequestExample({ requestHeader: "Send Payment Request", description: "Send your secret on every server-side request. Prefer headers over query strings so keys do not appear in logs or referrer headers.", curlBlock })}
-        {DeveloperRequestExample({ requestHeader: "Fetch Payment Details", description: "Route and price swaps or cross-border transfers before creating a user-facing transaction.", curlBlock })}
-        {DeveloperRequestExample({ requestHeader: "Validate Orders", description: "Payment links, hosted checkout, and order state for digital and physical goods.", curlBlock })}
-        {DeveloperRequestExample({ requestHeader: "Track Transactions", description: "Balances, payouts, fee schedules, and webhook endpoints for your integration.", curlBlock })}
+      <section
+        aria-labelledby="dash-dev-auth-heading"
+        className="flex gap-4 scroll-smooth overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <div className="min-w-[min(100%,22rem)] shrink-0 space-y-4">
+          {DeveloperRequestExample({
+            requestHeader: "Send Payment Request",
+            description:
+              "Send your secret on every server-side request. Prefer headers over query strings so keys do not appear in logs or referrer headers.",
+            curlBlock,
+          })}
+        </div>
+        <div className="min-w-[min(100%,22rem)] shrink-0 space-y-4">
+          {DeveloperRequestExample({
+            requestHeader: "Fetch Payment Details",
+            description: "Route and price swaps or cross-border transfers before creating a user-facing transaction.",
+            curlBlock,
+          })}
+        </div>
+        <div className="min-w-[min(100%,22rem)] shrink-0 space-y-4">
+          {DeveloperRequestExample({
+            requestHeader: "Validate Orders",
+            description: "Payment links, hosted checkout, and order state for digital and physical goods.",
+            curlBlock,
+          })}
+        </div>
+        <div className="min-w-[min(100%,22rem)] shrink-0 space-y-4">
+          {DeveloperRequestExample({
+            requestHeader: "Track Transactions",
+            description: "Balances, payouts, fee schedules, and webhook endpoints for your integration.",
+            curlBlock,
+          })}
+        </div>
       </section>
 
       <div className="h-4"/>

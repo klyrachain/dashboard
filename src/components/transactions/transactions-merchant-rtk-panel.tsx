@@ -9,7 +9,7 @@ import { TransactionsDataTable } from "@/components/transactions/transactions-da
 import { normalizeTransactionItemToRow } from "@/lib/data-transactions";
 import type { TransactionRow } from "@/lib/data-transactions";
 
-/** Aligns with Core `getTransactions` default cap for chart + table parity. */
+/** Core merchant list max is 100 per request; use max so dashboard sees full recent window. */
 const MERCHANT_TRANSACTIONS_FETCH_LIMIT = 100;
 
 function MerchantChartsSkeleton() {
@@ -22,14 +22,15 @@ function MerchantChartsSkeleton() {
 }
 
 export function TransactionsMerchantRtkPanel() {
-  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
+  const { effectiveBusinessId, skipMerchantApi, merchantApiScopeKey } = useMerchantTenantScope();
 
   const params = useMemo(
     () => ({
       page: 1,
       limit: MERCHANT_TRANSACTIONS_FETCH_LIMIT,
+      merchantApiScopeKey,
     }),
-    []
+    [merchantApiScopeKey]
   );
 
   const { data, isLoading, isError, error, isFetching, refetch } =

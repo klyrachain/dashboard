@@ -104,14 +104,17 @@ export const merchantNavGroups: NavGroupConfig[] = [
   },
   {
     title: "Developers",
-    items: [{ href: "/developers/api", label: "API keys", icon: Key }],
+    items: [
+      { href: "/developers/api", label: "API keys", icon: Key },
+      { href: "/developers/webhooks", label: "Webhooks", icon: Webhook },
+    ],
   },
   {
     title: "Settings",
     items: [
       {
         href: "/settings/general",
-        label: "Business & webhooks",
+        label: "Account",
         icon: Building2,
       },
       { href: "/settings/gas", label: "Gas sponsorship", icon: Fuel },

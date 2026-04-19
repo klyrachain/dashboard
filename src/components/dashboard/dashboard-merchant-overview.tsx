@@ -124,13 +124,13 @@ function MerchantOverviewLoadingSkeleton() {
 }
 
 function MerchantOverviewFallback() {
-  const { skipMerchantApi } = useMerchantTenantScope();
+  const { skipMerchantApi, merchantApiScopeKey } = useMerchantTenantScope();
   const txQ = useGetMerchantTransactionsQuery(
-    { page: 1, limit: 1 },
+    { page: 1, limit: 1, merchantApiScopeKey },
     { skip: skipMerchantApi }
   );
   const stQ = useGetMerchantSettlementsQuery(
-    { page: 1, limit: 1 },
+    { page: 1, limit: 1, merchantApiScopeKey },
     { skip: skipMerchantApi }
   );
 
@@ -181,13 +181,13 @@ function MerchantOverviewFallback() {
 export function DashboardMerchantOverview() {
   const mounted = useClientReady();
 
-  const { effectiveBusinessId, skipMerchantApi } = useMerchantTenantScope();
+  const { effectiveBusinessId, skipMerchantApi, merchantApiScopeKey } = useMerchantTenantScope();
   const [periodDays, setPeriodDays] = useState(30);
   const [seriesDays, setSeriesDays] = useState(14);
 
   const summaryArgs = useMemo(
-    () => ({ days: periodDays, seriesDays }),
-    [periodDays, seriesDays]
+    () => ({ days: periodDays, seriesDays, merchantApiScopeKey }),
+    [periodDays, seriesDays, merchantApiScopeKey]
   );
 
   const summaryQ = useGetMerchantSummaryQuery(summaryArgs, {

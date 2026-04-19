@@ -2,13 +2,18 @@
 
 import { useMemo } from "react";
 import { useGetMerchantWrappedSummaryQuery } from "@/store/merchant-api";
+import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type WrappedToken = { symbol: string; amount: number };
 type WrappedChain = { chain: string; count: number };
 
 export function MerchantWrappedPanel() {
-  const { data, isLoading } = useGetMerchantWrappedSummaryQuery({ period: "year" });
+  const { skipMerchantApi, merchantApiScopeKey } = useMerchantTenantScope();
+  const { data, isLoading } = useGetMerchantWrappedSummaryQuery(
+    { period: "year", merchantApiScopeKey },
+    { skip: skipMerchantApi }
+  );
   const topToken = useMemo(() => {
     const first = (data?.topTokens as WrappedToken[] | undefined)?.[0];
     return first ? `${first.symbol} (${first.amount.toFixed(2)})` : "—";

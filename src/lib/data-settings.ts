@@ -642,18 +642,38 @@ export async function getMerchantBusinessProfileSsr(): Promise<{
   data: MerchantBusinessProfile | null;
   error?: string;
 }> {
-  const portal = await getPortalSsrAuthForCore();
-  if (!portal) {
-    return { ok: false, data: null, error: undefined };
+  try {
+    const portal = await getPortalSsrAuthForCore();
+    if (!portal) {
+      return { ok: false, data: null, error: undefined };
+    }
+    const res = await getCoreMerchantBusiness(portal.bearerToken, portal.extraHeaders);
+    const out = extract<unknown>(res);
+    if (!out.ok) {
+      return {
+        ok: false,
+        data: null,
+        error: out.error?.trim() || "Could not load business profile from the server.",
+      };
+    }
+    if (out.data == null) {
+      return { ok: true, data: null, error: out.error };
+    }
+    const parsed = parseMerchantBusinessSsr(out.data);
+    return {
+      ok: true,
+      data: parsed,
+      error: parsed ? undefined : "Invalid business profile response.",
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      data: null,
+      error:
+        msg.includes("Core API base URL") || msg.includes("not configured")
+          ? "Application server is missing Core API URL configuration."
+          : "Could not reach the business profile service. Try again shortly.",
+    };
   }
-  const res = await getCoreMerchantBusiness(portal.bearerToken, portal.extraHeaders);
-  const out = extract<unknown>(res);
-  if (!out.ok) {
-    return { ok: false, data: null, error: out.error };
-  }
-  if (out.data == null) {
-    return { ok: true, data: null, error: out.error };
-  }
-  const parsed = parseMerchantBusinessSsr(out.data);
-  return { ok: true, data: parsed, error: parsed ? undefined : "Invalid business payload." };
 }

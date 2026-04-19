@@ -1,6 +1,7 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import type {
   MerchantApiKeyRow,
+  MerchantApiScopeKey,
   MerchantBusinessPatchBody,
   MerchantBusinessProfile,
   MerchantCreateApiKeyBody,
@@ -26,10 +27,31 @@ import type {
   CheckoutBaseUrlMeta,
   PublicCurrencyItem,
   MerchantFiatQuoteResult,
+  MerchantWebhookEndpointRow,
+  MerchantWebhookEndpointCreateBody,
+  MerchantWebhookEndpointPatchBody,
+  MerchantWebhookDeliveryRow,
+  MerchantWebhookEndpointSummary,
+  MerchantWebhookRevealSecretResult,
 } from "@/types/merchant-api";
 import { baseQueryWithStatus } from "./base-query-with-status";
 
 const PREFIX = "/api/v1/merchant";
+
+const MERCHANT_SCOPE_CACHE_KEY = "merchantApiScopeKey" satisfies keyof MerchantApiScopeKey;
+
+/** Drop cache-partition key before sending query params to Core. */
+function stripMerchantScopeParams(
+  params: Record<string, string | number | undefined>
+): Record<string, string> {
+  const q: Record<string, string> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (k === MERCHANT_SCOPE_CACHE_KEY) continue;
+    if (v === undefined || v === "") continue;
+    q[k] = String(v);
+  }
+  return q;
+}
 
 function unwrapList<T>(raw: unknown): { items: T[]; meta: MerchantListMeta } {
   if (!raw || typeof raw !== "object") {
@@ -81,20 +103,19 @@ export const merchantApi = createApi({
     "MerchantPayoutMethods",
     "MerchantGas",
     "MerchantWrapped",
+    "MerchantWebhookEndpoints",
+    "MerchantWebhookDeliveries",
+    "MerchantWebhookSummary",
   ],
   keepUnusedDataFor: 120,
   refetchOnFocus: false,
   refetchOnReconnect: false,
   endpoints: (builder) => ({
-    getMerchantSummary: builder.query<
-      MerchantSummary | null,
-      MerchantSummaryQueryParams | void
-    >({
+    getMerchantSummary: builder.query<MerchantSummary | null, MerchantSummaryQueryParams>({
       query: (params) => {
-        const p = params ?? {};
         const q: Record<string, string> = {};
-        if (p.days != null) q.days = String(p.days);
-        if (p.seriesDays != null) q.seriesDays = String(p.seriesDays);
+        if (params.days != null) q.days = String(params.days);
+        if (params.seriesDays != null) q.seriesDays = String(params.seriesDays);
         return {
           url: `${PREFIX}/summary`,
           params: q,
@@ -106,11 +127,11 @@ export const merchantApi = createApi({
     }),
     getMerchantWrappedSummary: builder.query<
       MerchantWrappedSummary | null,
-      { period?: "month" | "quarter" | "year" } | void
+      { period?: "month" | "quarter" | "year" } & MerchantApiScopeKey
     >({
       query: (params) => ({
         url: `${PREFIX}/wrapped/summary`,
-        params: params ? (params as Record<string, string>) : undefined,
+        params: stripMerchantScopeParams(params as Record<string, string | number | undefined>),
       }),
       transformResponse: (raw: unknown) =>
         unwrapData<MerchantWrappedSummary>(raw),
@@ -118,11 +139,11 @@ export const merchantApi = createApi({
     }),
     getMerchantTransactions: builder.query<
       { items: Record<string, unknown>[]; meta: MerchantListMeta },
-      Record<string, string | number | undefined>
+      Record<string, string | number | undefined> & MerchantApiScopeKey
     >({
       query: (params) => ({
         url: `${PREFIX}/transactions`,
-        params: params as Record<string, string>,
+        params: stripMerchantScopeParams(params),
       }),
       transformResponse: (raw: unknown) =>
         unwrapList<Record<string, unknown>>(raw),
@@ -140,11 +161,11 @@ export const merchantApi = createApi({
     }),
     getMerchantSettlements: builder.query<
       { items: Record<string, unknown>[]; meta: MerchantListMeta },
-      Record<string, string | number | undefined>
+      Record<string, string | number | undefined> & MerchantApiScopeKey
     >({
       query: (params) => ({
         url: `${PREFIX}/settlements`,
-        params: params as Record<string, string>,
+        params: stripMerchantScopeParams(params),
       }),
       transformResponse: (raw: unknown) =>
         unwrapList<Record<string, unknown>>(raw),
@@ -173,6 +194,30 @@ export const merchantApi = createApi({
       query: (body) => ({
         url: `${PREFIX}/business`,
         method: "PATCH",
+        body,
+      }),
+      transformResponse: (raw: unknown) =>
+        unwrapData<MerchantBusinessProfile>(raw),
+      invalidatesTags: ["MerchantBusiness"],
+    }),
+    postMerchantSupportEmailRequestCode: builder.mutation<
+      { sent?: boolean } | null,
+      { email: string }
+    >({
+      query: (body) => ({
+        url: `${PREFIX}/business/support-email/request-code`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (raw: unknown) => unwrapData<{ sent?: boolean }>(raw),
+    }),
+    postMerchantSupportEmailVerify: builder.mutation<
+      MerchantBusinessProfile | null,
+      { email: string; code: string }
+    >({
+      query: (body) => ({
+        url: `${PREFIX}/business/support-email/verify`,
+        method: "POST",
         body,
       }),
       transformResponse: (raw: unknown) =>
@@ -215,13 +260,108 @@ export const merchantApi = createApi({
       },
       invalidatesTags: ["MerchantApiKeys"],
     }),
+    getMerchantWebhookEndpoints: builder.query<MerchantWebhookEndpointRow[], MerchantApiScopeKey>({
+      query: () => ({ url: `${PREFIX}/webhooks/endpoints` }),
+      transformResponse: (raw: unknown) => {
+        const { items } = unwrapList<MerchantWebhookEndpointRow>(raw);
+        return items;
+      },
+      providesTags: ["MerchantWebhookEndpoints"],
+    }),
+    getMerchantWebhookDeliveries: builder.query<
+      { items: MerchantWebhookDeliveryRow[]; meta: MerchantListMeta },
+      ({ page?: number; limit?: number; endpointId?: string; from?: string; to?: string } & MerchantApiScopeKey) | void
+    >({
+      query: (params) => {
+        const p = (params ?? {}) as Record<string, string | number | undefined>;
+        return { url: `${PREFIX}/webhooks/deliveries`, params: stripMerchantScopeParams(p) };
+      },
+      transformResponse: (raw: unknown) => unwrapList<MerchantWebhookDeliveryRow>(raw),
+      providesTags: ["MerchantWebhookDeliveries"],
+    }),
+    getMerchantWebhookEndpointSummary: builder.query<
+      MerchantWebhookEndpointSummary | null,
+      { id: string; from?: string; to?: string }
+    >({
+      query: ({ id, from, to }) => {
+        const q: Record<string, string> = {};
+        if (from) q.from = from;
+        if (to) q.to = to;
+        return {
+          url: `${PREFIX}/webhooks/endpoints/${encodeURIComponent(id)}/summary`,
+          params: q,
+        };
+      },
+      transformResponse: (raw: unknown) => unwrapData<MerchantWebhookEndpointSummary>(raw),
+      providesTags: (_r, _e, arg) => [{ type: "MerchantWebhookSummary", id: arg.id }],
+    }),
+    postMerchantWebhookRevealSecret: builder.mutation<
+      MerchantWebhookRevealSecretResult | null,
+      string
+    >({
+      query: (id) => ({
+        url: `${PREFIX}/webhooks/endpoints/${encodeURIComponent(id)}/reveal-secret`,
+        method: "POST",
+        /** Required: base query sets `Content-Type: application/json`; empty body is rejected by the API. */
+        body: {},
+      }),
+      transformResponse: (raw: unknown) => unwrapData<MerchantWebhookRevealSecretResult>(raw),
+    }),
+    createMerchantWebhookEndpoint: builder.mutation<
+      MerchantWebhookEndpointRow | null,
+      MerchantWebhookEndpointCreateBody
+    >({
+      query: (body) => ({
+        url: `${PREFIX}/webhooks/endpoints`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (raw: unknown) => {
+        if (!raw || typeof raw !== "object") return null;
+        const o = raw as { success?: boolean; data?: MerchantWebhookEndpointRow };
+        if (o.success === true && o.data) return o.data;
+        return unwrapData<MerchantWebhookEndpointRow>(raw);
+      },
+      invalidatesTags: ["MerchantWebhookEndpoints", "MerchantWebhookDeliveries"],
+    }),
+    patchMerchantWebhookEndpoint: builder.mutation<
+      MerchantWebhookEndpointRow | null,
+      { id: string; patch: MerchantWebhookEndpointPatchBody }
+    >({
+      query: ({ id, patch }) => ({
+        url: `${PREFIX}/webhooks/endpoints/${encodeURIComponent(id)}`,
+        method: "PATCH",
+        body: patch,
+      }),
+      transformResponse: (raw: unknown) => unwrapData<MerchantWebhookEndpointRow>(raw),
+      invalidatesTags: (_r, _e, arg) => [
+        "MerchantWebhookEndpoints",
+        "MerchantWebhookDeliveries",
+        { type: "MerchantWebhookSummary", id: arg.id },
+      ],
+    }),
+    deleteMerchantWebhookEndpoint: builder.mutation<
+      { deleted?: boolean; id?: string } | null,
+      string
+    >({
+      query: (id) => ({
+        url: `${PREFIX}/webhooks/endpoints/${encodeURIComponent(id)}`,
+        method: "DELETE",
+      }),
+      transformResponse: (raw: unknown) => unwrapData<{ deleted?: boolean; id?: string }>(raw),
+      invalidatesTags: (_r, _e, id) => [
+        "MerchantWebhookEndpoints",
+        "MerchantWebhookDeliveries",
+        { type: "MerchantWebhookSummary", id },
+      ],
+    }),
     getMerchantProducts: builder.query<
       { items: MerchantProductRow[]; meta: MerchantListMeta },
-      Record<string, string | number | undefined>
+      Record<string, string | number | undefined> & MerchantApiScopeKey
     >({
       query: (params) => ({
         url: `${PREFIX}/products`,
-        params: params as Record<string, string>,
+        params: stripMerchantScopeParams(params),
       }),
       transformResponse: (raw: unknown) =>
         unwrapList<MerchantProductRow>(raw),
@@ -255,11 +395,11 @@ export const merchantApi = createApi({
     }),
     getMerchantCustomers: builder.query<
       { items: MerchantDerivedCustomerRow[]; meta: MerchantListMeta },
-      Record<string, string | number | undefined>
+      Record<string, string | number | undefined> & MerchantApiScopeKey
     >({
       query: (params) => ({
         url: `${PREFIX}/customers`,
-        params: params as Record<string, string>,
+        params: stripMerchantScopeParams(params),
       }),
       transformResponse: (raw: unknown) =>
         unwrapList<MerchantDerivedCustomerRow>(raw),
@@ -267,11 +407,11 @@ export const merchantApi = createApi({
     }),
     getMerchantCrmCustomers: builder.query<
       { items: MerchantCrmCustomerRow[]; meta: MerchantListMeta },
-      Record<string, string | number | undefined>
+      Record<string, string | number | undefined> & MerchantApiScopeKey
     >({
       query: (params) => ({
         url: `${PREFIX}/crm/customers`,
-        params: params as Record<string, string>,
+        params: stripMerchantScopeParams(params),
       }),
       transformResponse: (raw: unknown) =>
         unwrapList<MerchantCrmCustomerRow>(raw),
@@ -326,11 +466,11 @@ export const merchantApi = createApi({
     }),
     getMerchantPayPages: builder.query<
       { items: MerchantPayPageRow[]; meta: MerchantListMeta },
-      Record<string, string | number | undefined>
+      Record<string, string | number | undefined> & MerchantApiScopeKey
     >({
       query: (params) => ({
         url: `${PREFIX}/pay-pages`,
-        params: params as Record<string, string>,
+        params: stripMerchantScopeParams(params),
       }),
       transformResponse: (raw: unknown) =>
         unwrapList<MerchantPayPageRow>(raw),
@@ -531,8 +671,17 @@ export const {
   useLazyGetMerchantSettlementByIdQuery,
   useGetMerchantBusinessQuery,
   usePatchMerchantBusinessMutation,
+  usePostMerchantSupportEmailRequestCodeMutation,
+  usePostMerchantSupportEmailVerifyMutation,
   useGetMerchantApiKeysQuery,
   useCreateMerchantApiKeyMutation,
+  useGetMerchantWebhookEndpointsQuery,
+  useGetMerchantWebhookDeliveriesQuery,
+  useGetMerchantWebhookEndpointSummaryQuery,
+  usePostMerchantWebhookRevealSecretMutation,
+  useCreateMerchantWebhookEndpointMutation,
+  usePatchMerchantWebhookEndpointMutation,
+  useDeleteMerchantWebhookEndpointMutation,
   useGetMerchantProductsQuery,
   usePostMerchantProductMutation,
   usePatchMerchantProductMutation,

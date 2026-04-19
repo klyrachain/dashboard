@@ -29,10 +29,12 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     showClose?: boolean;
+    /** When true, no backdrop is rendered (e.g. nested dialog where the parent already dimmed the page). */
+    hideOverlay?: boolean;
   }
->(({ className, children, showClose = true, ...props }, ref) => (
+>(({ className, children, showClose = true, hideOverlay = false, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    {!hideOverlay ? <DialogOverlay /> : null}
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
