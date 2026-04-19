@@ -245,7 +245,8 @@ export function HeaderNoSidebar() {
                     </div>
                     {sessionType === "merchant" && businesses.length > 0 ? (
                       <>
-                        {businesses.map((b: MerchantBusiness) => (
+                        {businesses.map((b: MerchantBusiness) => {
+                          if (b.id !== activeBusinessId) {
                           <DropdownMenuItem
                             key={b.id}
                             onClick={() => {
@@ -255,7 +256,8 @@ export function HeaderNoSidebar() {
                           >
                             {b.name?.trim() || "Your business"}
                           </DropdownMenuItem>
-                        ))}
+                          }
+                        })}
                         <DropdownMenuSeparator />
                       </>
                     ) : null}

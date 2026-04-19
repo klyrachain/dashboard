@@ -38,7 +38,7 @@ export function ManageApiContent({
 
   return (
     <div className="space-y-8">
-      {rotationNotice ? (
+      {/* {rotationNotice ? (
         <div
           className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/30"
           role="alert"
@@ -54,7 +54,7 @@ export function ManageApiContent({
             Notice
           </Badge>
         </div>
-      ) : null}
+      ) : null} */}
       <section
         aria-labelledby="platform-keys-tiers"
         className="rounded-lg text-card-foreground transition-colors duration-300 ease-out space-y-6"

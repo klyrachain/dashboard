@@ -1,8 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useSearchParams } from "next/navigation";
-import { Copy, Loader2, Plus, QrCode } from "lucide-react";
+import { Copy, Loader2, MoreHorizontal, Plus, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import {
   useGetCheckoutBaseUrlQuery,
@@ -22,6 +29,16 @@ import {
 } from "@/lib/merchant-api-error";
 import { buildPaymentLinkPublicUrl } from "@/lib/merchant-commerce-helpers";
 import { PaymentLinkCurrencyPicker } from "@/components/merchant/payment-link-currency-picker";
+import {
+  ActionTooltip,
+  actionTooltipContentClassName,
+} from "@/components/ui/ActionTooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,6 +67,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTablePaginationBar } from "@/components/ui/data-table-pagination-bar";
 
@@ -109,7 +132,6 @@ export function MerchantPaymentLinksClient() {
   const [qrOpen, setQrOpen] = useState(false);
   const [qrUrl, setQrUrl] = useState("");
   const [qrTitle, setQrTitle] = useState("");
-  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const params = useMemo(() => {
     const p: Record<string, string | number> = { page, limit: pageSize };
@@ -328,8 +350,6 @@ export function MerchantPaymentLinksClient() {
     if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
-      setCopiedId(row.id);
-      window.setTimeout(() => setCopiedId(null), 2000);
     } catch {
       /* ignore */
     }
@@ -409,8 +429,6 @@ export function MerchantPaymentLinksClient() {
     );
   }
 
-  const baseDisplay = paymentLinkBase || "Not configured";
-  const baseConfigured = Boolean(paymentLinkBase);
   const gasToggleDisabledReason =
     chargeKind !== "CRYPTO"
       ? "Gas sponsorship is available only for crypto links."
@@ -473,7 +491,7 @@ export function MerchantPaymentLinksClient() {
         </Card>
       </section>
 
-      {baseConfigured ? (
+      {/* {baseConfigured ? (
         <p className="text-xs text-muted-foreground">
           Checkout base: <span className="font-mono">{baseDisplay}</span>
         </p>
@@ -484,7 +502,7 @@ export function MerchantPaymentLinksClient() {
           <span className="font-mono">NEXT_PUBLIC_PAYMENT_LINK_BASE_URL</span>. Copy and QR are
           disabled.
         </p>
-      )}
+      )} */}
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-2">
@@ -692,137 +710,246 @@ export function MerchantPaymentLinksClient() {
         </Dialog>
       </div>
 
-      <div className="rounded-md bg-white overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead scope="col">Title</TableHead>
-              <TableHead scope="col">Checkout URL</TableHead>
-              <TableHead scope="col">Kind</TableHead>
-              <TableHead scope="col">Linked product</TableHead>
-              <TableHead scope="col" className="text-right">
-                Amount
-              </TableHead>
-              <TableHead scope="col" className="text-right">
-                ~ USD
-              </TableHead>
-              <TableHead scope="col">Status</TableHead>
-              <TableHead scope="col" className="text-right">
-                Uses
-              </TableHead>
-              <TableHead scope="col" className="text-right">
-                Actions
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground">
-                  No payment links match your filters.
+      <div className="overflow-hidden rounded-md bg-white">
+        <TooltipProvider delayDuration={200}>
+          <div className="w-full overflow-x-auto">
+    {/* The table-fixed class forces the browser to respect our exact column widths */}
+    <Table className="table-fixed min-w-[1000px] lg:min-w-full">
+      <TableHeader>
+        <TableRow>
+          {/* Strict widths for the heaviest columns */}
+          <TableHead scope="col" className="w-[14rem]">
+            Title
+          </TableHead>
+          <TableHead scope="col" className="w-[22rem]">
+            Checkout URL
+          </TableHead>
+          
+          {/* Let the browser distribute the remaining space automatically */}
+          <TableHead scope="col">Kind</TableHead>
+          <TableHead scope="col">Linked product</TableHead>
+          <TableHead scope="col" className="text-right">Amount</TableHead>
+          <TableHead scope="col" className="text-right">~ USD</TableHead>
+          <TableHead scope="col">Status</TableHead>
+          <TableHead scope="col" className="text-right">Uses</TableHead>
+          <TableHead scope="col" className="text-right w-[4rem]">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={9} className="text-center text-muted-foreground">
+              No payment links match your filters.
+            </TableCell>
+          </TableRow>
+        ) : (
+          rows.map((row) => {
+            const url = buildPaymentLinkPublicUrl(
+              row.publicCode?.trim() || row.slug,
+              paymentLinkBase
+            );
+            const pid = row.productId ?? undefined;
+            const pname = pid ? productNameById.get(pid) : undefined;
+            
+            return (
+              <TableRow key={row.id}>
+                
+                {/* Truncate ensures long titles do not stretch the column */}
+                <TableCell className="font-medium truncate" title={row.title}>
+                  {row.title}
                 </TableCell>
-              </TableRow>
-            ) : (
-              rows.map((row) => {
-                const url = buildPaymentLinkPublicUrl(
-                  row.publicCode?.trim() || row.slug,
-                  paymentLinkBase
-                );
-                const pid = row.productId ?? undefined;
-                const pname = pid ? productNameById.get(pid) : undefined;
-                return (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.title}</TableCell>
-                    <TableCell className="max-w-[240px]">
-                      <span className="break-all font-mono text-xs text-muted-foreground">
-                        {url || row.slug}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-sm tabular-nums">
-                      {row.chargeKind === "CRYPTO" ? "Crypto" : "Fiat"}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {pid ? (
-                        <span title={pid}>{pname ?? pid.slice(0, 8) + "…"}</span>
-                      ) : (
-                        <span className="text-muted-foreground">Open amount</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums text-sm">
-                      {isOpenAmount(row) ? (
-                        <span className="text-muted-foreground">Customer decides</span>
-                      ) : (
-                        <>
-                          {row.amount} {row.currency ?? ""}
-                        </>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums text-sm text-muted-foreground">
-                      {usdByRowId[row.id] ?? "…"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={row.isOneTime && row.paidAt ? "outline" : row.isActive !== false ? "success" : "secondary"}>
-                        {row.isOneTime && row.paidAt
-                          ? "Paid"
-                          : row.isActive !== false
-                            ? "Active"
-                            : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums text-sm">
-                      {row.isOneTime ? (row.paidAt ? "1" : "0") : (row.usageCount ?? 0)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex flex-wrap justify-end gap-1">
+                
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {/* min-w-0 and truncate work together to clip the URL properly inside a flex container */}
+                    <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-muted-foreground lg:text-xs" title={url || row.slug}>
+                      {url || row.slug}
+                    </span>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <ActionTooltip
+                        label="Copy checkout URL"
+                        actionLabel="Copied"
+                        onClick={() => {
+                          void copyUrl(row);
+                        }}
+                        side="top"
+                      >
                         <Button
                           type="button"
                           variant="outline"
-                          size="sm"
-                          className="gap-1"
-                          onClick={() => copyUrl(row)}
+                          size="icon"
+                          className="size-8 shrink-0"
                           disabled={!url}
+                          aria-label="Copy checkout URL"
                         >
                           <Copy className="size-3.5" aria-hidden />
-                          {copiedId === row.id ? "Copied" : "Copy link"}
                         </Button>
+                      </ActionTooltip>
+                      <ActionTooltip
+                        label="Show QR code"
+                        actionLabel="QR code generated"
+                        onClick={() => {
+                          showQr(row);
+                        }}
+                        side="top"
+                      >
                         <Button
                           type="button"
                           variant="outline"
-                          size="sm"
-                          className="gap-1"
-                          onClick={() => showQr(row)}
+                          size="icon"
+                          className="size-8 shrink-0"
                           disabled={!url}
+                          aria-label="Show QR code"
                         >
                           <QrCode className="size-3.5" aria-hidden />
-                          QR
                         </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggle(row)}
-                        >
-                          {row.isActive !== false ? "Deactivate" : "Activate"}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-        <DataTablePaginationBar
-          className="mt-4"
-          page={page}
-          pageSize={pageSize}
-          total={totalLinks}
-          onPageChange={setPage}
-          onPageSizeChange={(n) => {
-            setPageSize(n);
-            setPage(1);
-          }}
-        />
+                      </ActionTooltip>
+                    </div>
+                  </div>
+                </TableCell>
+                
+                <TableCell className="text-sm tabular-nums">
+                  {row.chargeKind === "CRYPTO" ? "Crypto" : "Fiat"}
+                </TableCell>
+                
+                <TableCell className="text-sm truncate">
+                  {pid ? (
+                    <span title={pname ?? pid}>
+                      {pname ?? pid.slice(0, 8) + "…"}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Open amount</span>
+                  )}
+                </TableCell>
+                
+                <TableCell className="text-right text-sm tabular-nums truncate">
+                  {isOpenAmount(row) ? (
+                    <span className="text-muted-foreground">Customer decides</span>
+                  ) : (
+                    <>
+                      {row.amount} {row.currency ?? ""}
+                    </>
+                  )}
+                </TableCell>
+                
+                <TableCell className="text-right text-sm tabular-nums text-muted-foreground truncate">
+                  {usdByRowId[row.id] ?? "…"}
+                </TableCell>
+                
+                <TableCell>
+                  <Badge variant={row.isOneTime && row.paidAt ? "outline" : row.isActive !== false ? "success" : "secondary"}>
+                    {row.isOneTime && row.paidAt
+                      ? "Paid"
+                      : row.isActive !== false
+                        ? "Active"
+                        : "Inactive"}
+                  </Badge>
+                </TableCell>
+                
+                <TableCell className="text-right text-sm tabular-nums">
+                  {row.isOneTime ? (row.paidAt ? "1" : "0") : (row.usageCount ?? 0)}
+                </TableCell>
+                
+                <TableCell className="text-right">
+                    <DropdownMenu modal={false}>
+                      <ActionTooltip label="Open actions menu" side="left">
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="size-8"
+                            aria-label={`Actions for ${row.title || "payment link"}`}
+                          >
+                            <MoreHorizontal className="size-4" aria-hidden />
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </ActionTooltip>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <DropdownMenuItem
+                              disabled={!url}
+                              onSelect={() => {
+                                void copyUrl(row);
+                              }}
+                            >
+                              <Copy className="mr-2 size-4" aria-hidden />
+                              Copy link
+                            </DropdownMenuItem>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="left"
+                            sideOffset={8}
+                            className={actionTooltipContentClassName}
+                          >
+                            Copy checkout URL
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <DropdownMenuItem
+                              disabled={!url}
+                              onSelect={() => {
+                                showQr(row);
+                              }}
+                            >
+                              <QrCode className="mr-2 size-4" aria-hidden />
+                              QR code
+                            </DropdownMenuItem>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="left"
+                            sideOffset={8}
+                            className={actionTooltipContentClassName}
+                          >
+                            Show QR code
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <DropdownMenuItem
+                              onSelect={() => {
+                                void toggle(row);
+                              }}
+                            >
+                              {row.isActive !== false ? "Deactivate" : "Activate"}
+                            </DropdownMenuItem>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="left"
+                            sideOffset={8}
+                            className={actionTooltipContentClassName}
+                          >
+                            {row.isActive !== false
+                              ? "Stop accepting payments on this link"
+                              : "Resume accepting payments on this link"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                </TableCell>
+                
+              </TableRow>
+            );
+          })
+        )}
+      </TableBody>
+    </Table>
+          </div>
+
+          <DataTablePaginationBar
+    className="mt-0"
+    page={page}
+    pageSize={pageSize}
+    total={totalLinks}
+    onPageChange={setPage}
+    onPageSizeChange={(n) => {
+      setPageSize(n);
+      setPage(1);
+    }}
+          />
+        </TooltipProvider>
       </div>
 
       <Dialog open={qrOpen} onOpenChange={setQrOpen}>
