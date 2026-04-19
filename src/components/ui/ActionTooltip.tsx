@@ -9,9 +9,13 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-/** Glass surface + motion for TooltipContent (above dropdown menus at z 120). */
+/**
+ * Glass surface + motion for TooltipContent.
+ * Radix portals content to `document.body`, so z-index competes globally — must clear
+ * `DialogContent` at z-[210] (`dialog.tsx`). Keep above dropdown menus at z-[120].
+ */
 export const actionTooltipContentClassName =
-  "z-[130] border border-white/15 bg-black text-white shadow-[0_8px_30px_rgb(0,0,0,0.35)] backdrop-blur-md backdrop-saturate-150 transition-[opacity,transform,filter] duration-200 ease-out data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95 data-[state=instant-open]:animate-in data-[state=instant-open]:fade-in-0 data-[state=instant-open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-1.5 data-[side=left]:slide-in-from-right-1.5 data-[side=right]:slide-in-from-left-1.5 data-[side=top]:slide-in-from-bottom-1.5";
+  "z-[230] border border-white/15 bg-black text-white shadow-[0_8px_30px_rgb(0,0,0,0.35)] backdrop-blur-md backdrop-saturate-150 transition-[opacity,transform,filter] duration-200 ease-out data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95 data-[state=instant-open]:animate-in data-[state=instant-open]:fade-in-0 data-[state=instant-open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-1.5 data-[side=left]:slide-in-from-right-1.5 data-[side=right]:slide-in-from-left-1.5 data-[side=top]:slide-in-from-bottom-1.5";
 
 export interface ActionTooltipProps {
   children: React.ReactElement<React.HTMLAttributes<HTMLElement>>;

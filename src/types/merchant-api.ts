@@ -250,6 +250,20 @@ export type MerchantWrappedSummary = {
   timeline?: Array<Record<string, unknown>>;
 };
 
+/** Stored on `PaymentLink.metadata` when the dashboard builds a multi item cart. */
+export type MerchantPayPageCartSnapshot = {
+  v: 1;
+  lines: Array<{
+    /** Present for catalog products; omitted for one-off custom lines. */
+    productId?: string;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+  }>;
+  discountPercent?: number;
+  discountAmount?: number;
+};
+
 /** `GET /api/v1/merchant/pay-pages` (payment links) */
 export type MerchantPayPageRow = {
   id: string;
@@ -271,6 +285,8 @@ export type MerchantPayPageRow = {
   usageCount?: number;
   isActive?: boolean;
   environment?: string;
+  /** Core JSON; may include `{ cart: MerchantPayPageCartSnapshot }`. */
+  metadata?: Record<string, unknown> | null;
 };
 
 export type MerchantPayPageCreateBody = {
@@ -279,7 +295,7 @@ export type MerchantPayPageCreateBody = {
   slug?: string;
   description?: string;
   type?: string;
-  productId?: string;
+  productId?: string | null;
   chargeKind?: "FIAT" | "CRYPTO";
   gasSponsorshipEnabled?: boolean;
   isOneTime?: boolean;
@@ -287,6 +303,7 @@ export type MerchantPayPageCreateBody = {
   amount?: number;
   currency?: string;
   isActive?: boolean;
+  metadata?: Record<string, unknown>;
 };
 
 export type MerchantPayPagePatchBody = Partial<MerchantPayPageCreateBody>;
