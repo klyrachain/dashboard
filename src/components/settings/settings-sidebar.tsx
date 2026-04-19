@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   Building2,
+  BadgeCheck,
   DollarSign,
   Route,
   Shield,
@@ -15,6 +16,7 @@ import {
 
 const SETTINGS_TABS = [
   { href: "/settings/account", label: "Account", icon: UserCircle },
+  { href: "/settings/kyc", label: "Identity (KYC)", icon: BadgeCheck },
   { href: "/settings/general", label: "General", icon: Building2 },
   { href: "/settings/financials", label: "Financials", icon: DollarSign },
   { href: "/settings/providers", label: "Providers & Routing", icon: Route },

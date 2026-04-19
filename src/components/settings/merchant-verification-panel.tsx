@@ -119,12 +119,14 @@ export function MerchantVerificationPanel() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground max-w-prose">
-                Start or continue verification using the secure link from your invite or reminder email.
-                If you did not receive one, ask a business owner to resend your invite, or use the options
-                below.
+                Open the secure identity flow (same provider experience as our consumer app). You can also
+                use Team & invites or support if you need help.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button asChild type="button">
+                  <Link href="/settings/kyc">Start or continue KYC</Link>
+                </Button>
+                <Button asChild type="button" variant="outline">
                   <Link href="/settings/team">Team & invites</Link>
                 </Button>
                 {supportUrl ? (
