@@ -15,6 +15,24 @@ function hrefMatchesPath(pathname: string, href: string): boolean {
   return p === h || p.startsWith(`${h}/`);
 }
 
+/**
+ * KYC runs at `/settings/kyc` while the sidebar only lists `/settings/verification`.
+ * Map the KYC path so the Verification item stays highlighted.
+ */
+export function pathnameForSidebarNavHighlight(
+  pathname: string | null | undefined,
+  sessionType: "merchant" | "platform"
+): string {
+  const p = pathname || "/";
+  if (
+    sessionType === "merchant" &&
+    (p === "/settings/kyc" || p.startsWith("/settings/kyc/"))
+  ) {
+    return "/settings/verification";
+  }
+  return p;
+}
+
 /** Longest matching `href` wins so parent `/foo` is not active on `/foo/bar`. */
 export function longestMatchingNavHref(
   pathname: string,

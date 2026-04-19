@@ -376,10 +376,11 @@ export function InventoryAssetContainer({ compact }: InventoryAssetContainerProp
   const [ratesLoading, setRatesLoading] = useState(false);
 
   useEffect(() => {
-    setQuote(platformBase);
+    queueMicrotask(() => setQuote(platformBase));
   }, [platformBase]);
 
   const fetchRatesForAssets = useCallback(async () => {
+    await Promise.resolve();
     if (assets.length === 0) {
       setRatesMap(null);
       setRatesLoading(false);
@@ -406,8 +407,10 @@ export function InventoryAssetContainer({ compact }: InventoryAssetContainerProp
   }, [assets]);
 
   useEffect(() => {
-    setRatesLoading(true);
-    fetchRatesForAssets();
+    queueMicrotask(() => {
+      setRatesLoading(true);
+      void fetchRatesForAssets();
+    });
   }, [fetchRatesForAssets]);
 
   const filteredAssets = useMemo(() => {

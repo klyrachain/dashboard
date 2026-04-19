@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:webpack": "next dev --webpack",
     "build": "pnpm run lint && next build --webpack",
     "start": "next start",
     "lint": "eslint --max-warnings 0",

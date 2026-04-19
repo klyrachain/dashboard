@@ -14,6 +14,7 @@ import {
   getStoredActiveBusinessId,
   getStoredMerchantEnvironment,
 } from "@/lib/businessAuthStorage";
+import { ChevronLeft } from "lucide-react";
 import { mapInvoiceLoadError } from "@/lib/user-feedback-copy";
 import { InvoiceDetailView } from "@/components/invoices/invoice-detail-view";
 
@@ -28,6 +29,7 @@ export function InvoiceDetailMerchantClient({ id }: InvoiceDetailMerchantClientP
 
   const loadInvoice = useCallback(
     async (opts?: { silent?: boolean }) => {
+      await Promise.resolve();
       const silent = opts?.silent === true;
       if (!silent) {
         setLoading(true);
@@ -94,7 +96,9 @@ export function InvoiceDetailMerchantClient({ id }: InvoiceDetailMerchantClientP
   );
 
   useEffect(() => {
-    void loadInvoice();
+    queueMicrotask(() => {
+      void loadInvoice();
+    });
   }, [loadInvoice]);
 
   if (loading) {
@@ -116,7 +120,10 @@ export function InvoiceDetailMerchantClient({ id }: InvoiceDetailMerchantClientP
           {mapInvoiceLoadError(error)}
         </div>
         <Button asChild variant="outline">
-          <Link href="/invoices">Back to invoices</Link>
+          <Link href="/invoices" className="inline-flex items-center gap-1.5">
+            <ChevronLeft className="size-4 shrink-0" aria-hidden />
+            Back to invoices
+          </Link>
         </Button>
       </div>
     );

@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ChevronDown, Fingerprint, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, Fingerprint, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   BUSINESS_ROLES,
@@ -283,22 +284,24 @@ export function BusinessSignupFlow() {
     if (!portalToken) return;
 
     let cancelled = false;
-    setIsResolvingPortal(true);
-    setStepError(null);
-
-    void consumePortalOrMagicTokenOnce(portalToken)
-      .then(async ({ accessToken }) => {
-        if (cancelled) return;
-        await applyPortalJwtHandoff(accessToken, "portal");
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setStepError(formatApiError(err));
-        router.replace("/business/signup", { scroll: false });
-      })
-      .finally(() => {
-        if (!cancelled) setIsResolvingPortal(false);
-      });
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setIsResolvingPortal(true);
+      setStepError(null);
+      void consumePortalOrMagicTokenOnce(portalToken)
+        .then(async ({ accessToken }) => {
+          if (cancelled) return;
+          await applyPortalJwtHandoff(accessToken, "portal");
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setStepError(formatApiError(err));
+          router.replace("/business/signup", { scroll: false });
+        })
+        .finally(() => {
+          if (!cancelled) setIsResolvingPortal(false);
+        });
+    });
 
     return () => {
       cancelled = true;
@@ -322,11 +325,12 @@ export function BusinessSignupFlow() {
     }
 
     let cancelled = false;
-    setStepError(null);
-
-    void fetchBusinessSession(token)
-      .then((session) => {
-        if (cancelled) return;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setStepError(null);
+      void fetchBusinessSession(token)
+        .then((session) => {
+          if (cancelled) return;
         const businesses = session.businesses;
         const activeId = businesses.length > 0 ? businesses[0].id : null;
         const activeRole =
@@ -357,9 +361,10 @@ export function BusinessSignupFlow() {
         setStep(4);
         router.replace("/business/signup", { scroll: false });
       })
-      .catch(() => {
-        if (!cancelled) router.replace("/business/signin");
-      });
+        .catch(() => {
+          if (!cancelled) router.replace("/business/signin");
+        });
+    });
 
     return () => {
       cancelled = true;
@@ -368,36 +373,43 @@ export function BusinessSignupFlow() {
 
   /** Debounced email check while user types (step 1). */
   useEffect(() => {
-    const normalized = email.trim().toLowerCase();
-    if (!isValidEmail(email)) {
-      emailCheckSeqRef.current += 1;
-      setEmailAvailability(null);
-      setEmailCheckLoading(false);
-      return;
-    }
+    let cancelled = false;
+    let timerId: number | undefined;
 
-    const seq = ++emailCheckSeqRef.current;
-    setEmailCheckLoading(true);
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      const normalized = email.trim().toLowerCase();
+      if (!isValidEmail(email)) {
+        emailCheckSeqRef.current += 1;
+        setEmailAvailability(null);
+        setEmailCheckLoading(false);
+        return;
+      }
 
-    const timerId = window.setTimeout(() => {
-      void checkBusinessEmail(normalized)
-        .then((result) => {
-          if (seq !== emailCheckSeqRef.current) return;
-          setEmailAvailability({ email: normalized, result });
-        })
-        .catch(() => {
-          if (seq !== emailCheckSeqRef.current) return;
-          setEmailAvailability(null);
-        })
-        .finally(() => {
-          if (seq === emailCheckSeqRef.current) {
-            setEmailCheckLoading(false);
-          }
-        });
-    }, EMAIL_CHECK_DEBOUNCE_MS);
+      const seq = ++emailCheckSeqRef.current;
+      setEmailCheckLoading(true);
+
+      timerId = window.setTimeout(() => {
+        void checkBusinessEmail(normalized)
+          .then((result) => {
+            if (seq !== emailCheckSeqRef.current) return;
+            setEmailAvailability({ email: normalized, result });
+          })
+          .catch(() => {
+            if (seq !== emailCheckSeqRef.current) return;
+            setEmailAvailability(null);
+          })
+          .finally(() => {
+            if (seq === emailCheckSeqRef.current) {
+              setEmailCheckLoading(false);
+            }
+          });
+      }, EMAIL_CHECK_DEBOUNCE_MS);
+    });
 
     return () => {
-      window.clearTimeout(timerId);
+      cancelled = true;
+      if (timerId !== undefined) window.clearTimeout(timerId);
     };
   }, [email]);
 
@@ -825,7 +837,7 @@ export function BusinessSignupFlow() {
               disabled={isSubmitting}
               aria-label="Go to previous step"
             >
-              <ArrowLeft className="size-4" aria-hidden />
+              <ChevronLeft className="size-4" aria-hidden />
             </Button>
           ) : (
             <span className="w-8 shrink-0" aria-hidden />
@@ -1285,10 +1297,9 @@ export function BusinessSignupFlow() {
 
                 <div className="space-y-2">
                   <Label htmlFor={`${formId}-profilePassword`}>Password</Label>
-                  <Input
+                  <PasswordInput
                     id={`${formId}-profilePassword`}
                     name="password"
-                    type="password"
                     autoComplete="new-password"
                     placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
                     value={profilePassword}

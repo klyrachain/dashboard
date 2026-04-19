@@ -118,10 +118,11 @@ export function DashboardInventoryAndGlance({
   const [ratesLoading, setRatesLoading] = useState(false);
 
   useEffect(() => {
-    setQuote(platformBase);
+    queueMicrotask(() => setQuote(platformBase));
   }, [platformBase]);
 
   const fetchRatesForAssets = useCallback(async () => {
+    await Promise.resolve();
     if (assets.length === 0) {
       setRatesMap(null);
       return;
@@ -148,7 +149,9 @@ export function DashboardInventoryAndGlance({
   }, [assets]);
 
   useEffect(() => {
-    fetchRatesForAssets();
+    queueMicrotask(() => {
+      void fetchRatesForAssets();
+    });
   }, [fetchRatesForAssets]);
 
   const atAGlanceCards = atAGlanceFromAssets(assets, ratesMap, quote);

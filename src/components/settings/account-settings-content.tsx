@@ -10,6 +10,7 @@ import { LogOut, KeyRound, Lock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { postLogout, postChangePassword, getPasskeyOptions, postPasskeyVerify } from "@/lib/auth-api";
 import { clearMerchantPortalHttpOnlyCookie } from "@/lib/portal-auth-client";
@@ -252,9 +253,8 @@ export function AccountSettingsContent() {
           <form onSubmit={handleChangePassword} className="space-y-4 max-w-sm">
             <div className="space-y-2">
               <Label htmlFor="account-current-password">Current password</Label>
-              <Input
+              <PasswordInput
                 id="account-current-password"
-                type="password"
                 autoComplete="current-password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
@@ -264,9 +264,8 @@ export function AccountSettingsContent() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="account-new-password">New password</Label>
-              <Input
+              <PasswordInput
                 id="account-new-password"
-                type="password"
                 autoComplete="new-password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -277,9 +276,8 @@ export function AccountSettingsContent() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="account-confirm-password">Confirm new password</Label>
-              <Input
+              <PasswordInput
                 id="account-confirm-password"
-                type="password"
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}

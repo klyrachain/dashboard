@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 
 const DRAFT_KEY = "klyra_login_draft";
@@ -45,8 +45,7 @@ export function LoginPasswordStep({ email }: { email: string }) {
       </h1>
       <p className="mt-4 text-caption text-muted-foreground">{email}</p>
       <form onSubmit={handleNext} className="mt-8 space-y-4">
-        <Input
-          type="password"
+        <PasswordInput
           autoComplete="current-password"
           placeholder="••••••••"
           value={password}

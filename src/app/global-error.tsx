@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PLATFORM_PRIMARY_HEX } from "@/lib/platform-theme";
 import "./globals.css";
@@ -46,7 +47,10 @@ export default function GlobalError({
                 Try again
               </Button>
               <Button variant="outline" asChild>
-                <Link href="/">Back to dashboard</Link>
+                <Link href="/" className="inline-flex items-center gap-1.5">
+                  <ChevronLeft className="size-4 shrink-0" aria-hidden />
+                  Back to dashboard
+                </Link>
               </Button>
             </div>
           </section>

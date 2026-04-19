@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -22,6 +22,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -157,8 +158,7 @@ function SortableProviderCard({
             {provider.apiKeyMasked ?? "—"}
           </p>
           <div className="flex items-center gap-2 mt-1">
-            <Input
-              type="password"
+            <PasswordInput
               placeholder="Set or rotate key"
               className="h-8 font-mono text-xs max-w-[200px]"
               value={apiKeyByProvider[provider.id] ?? ""}
@@ -168,6 +168,7 @@ function SortableProviderCard({
                   [provider.id]: e.target.value,
                 }))
               }
+              aria-label={`API key for ${provider.name}`}
             />
             <Button
               type="button"
@@ -227,28 +228,27 @@ export function ProvidersSettingsContent({ initialProviders }: ProvidersSettings
   const [savingOrder, setSavingOrder] = useState(false);
   const [apiKeyByProvider, setApiKeyByProvider] = useState<Record<string, string>>({});
   const [updatingKeyFor, setUpdatingKeyFor] = useState<string | null>(null);
-  const initialOrderRef = useRef<string[] | null>(null);
+  const [initialOrder, setInitialOrder] = useState<string[] | null>(null);
 
   useEffect(() => {
-    if (initialProviders?.length) {
+    if (!initialProviders?.length) return;
+    queueMicrotask(() => {
       const sorted = sortByPriority(initialProviders);
       setProviders(sorted);
-      if (initialOrderRef.current === null) {
-        initialOrderRef.current = sorted.map((p) => p.id);
-      }
-    }
+      setInitialOrder((prev) => (prev == null ? sorted.map((p) => p.id) : prev));
+    });
   }, [initialProviders]);
 
   const sortedProviders = useMemo(() => sortByPriority(providers), [providers]);
 
   const orderDirty = useMemo(() => {
     const current = sortedProviders.map((p) => p.id);
-    const initial = initialOrderRef.current ?? [];
+    const initial = initialOrder ?? [];
     return (
       current.length !== initial.length ||
       current.some((id, i) => id !== initial[i])
     );
-  }, [sortedProviders]);
+  }, [sortedProviders, initialOrder]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -285,7 +285,7 @@ export function ProvidersSettingsContent({ initialProviders }: ProvidersSettings
     setSaveError(err);
     setSavingOrder(false);
     if (!err) {
-      initialOrderRef.current = sortedProviders.map((p) => p.id);
+      setInitialOrder(sortedProviders.map((p) => p.id));
       router.refresh();
     }
   };

@@ -86,6 +86,7 @@ export function InvoicesMerchantList({
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    await Promise.resolve();
     setLoading(true);
     setError(null);
     const token = getBusinessAccessToken();
@@ -138,7 +139,9 @@ export function InvoicesMerchantList({
   }, [page, limit, status]);
 
   useEffect(() => {
-    void load();
+    queueMicrotask(() => {
+      void load();
+    });
   }, [load]);
 
   const empty = !loading && !error && items.length === 0;

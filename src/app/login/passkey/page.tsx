@@ -13,7 +13,7 @@ export default async function LoginPasskeyPage({ searchParams }: Props) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-8 py-16">
       <div className="w-full max-w-sm">
-        <LoginPasskeyStep email={email} />
+        <LoginPasskeyStep key={email} email={email} />
       </div>
     </div>
   );

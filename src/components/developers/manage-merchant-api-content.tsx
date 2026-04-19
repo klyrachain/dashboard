@@ -18,11 +18,6 @@ import {
 } from "@/store/merchant-api";
 import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 
-function merchantApiBaseDisplay(): string {
-  if (typeof window === "undefined") return "";
-  return `${window.location.origin}/api/v1/merchant`;
-}
-
 type ManageMerchantApiContentProps = {
   docsHref?: string;
 };
@@ -39,11 +34,8 @@ export function ManageMerchantApiContent({
   const [name, setName] = React.useState("Dashboard");
   const [revealed, setRevealed] = React.useState<string | null>(null);
   const [inlineError, setInlineError] = React.useState<string | null>(null);
-  const [baseUrl, setBaseUrl] = React.useState("");
-
-  React.useEffect(() => {
-    setBaseUrl(merchantApiBaseDisplay());
-  }, []);
+  const baseUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/api/v1/merchant` : "";
 
   const handleCreate = async () => {
     const n = name.trim();

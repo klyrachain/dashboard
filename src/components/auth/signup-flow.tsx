@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { getInvite, postSetup, postSetupConfirmTotp } from "@/lib/auth-api";
 import { isAuthSuccess } from "@/types/auth";
@@ -212,8 +213,7 @@ export function SignupFlow({ token, step: stepParam }: SignupFlowProps) {
           At least 8 characters
         </p>
         <form onSubmit={handlePasswordSubmit} className="mt-8 space-y-4">
-          <Input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             placeholder="••••••••"
             value={password}
@@ -225,8 +225,7 @@ export function SignupFlow({ token, step: stepParam }: SignupFlowProps) {
             minLength={8}
             required
           />
-          <Input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             placeholder="Confirm password"
             value={confirmPassword}

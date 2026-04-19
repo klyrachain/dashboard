@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logClientErrorToServer } from "@/lib/client-error-log-client";
 
@@ -42,7 +43,10 @@ export default function Error({
             Try again
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/">Back to dashboard</Link>
+            <Link href="/" className="inline-flex items-center gap-1.5">
+              <ChevronLeft className="size-4 shrink-0" aria-hidden />
+              Back to dashboard
+            </Link>
           </Button>
         </div>
       </section>

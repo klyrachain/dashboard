@@ -7,6 +7,7 @@ import { useDispatch } from "react-redux";
 import { Fingerprint, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   BusinessAuthApiError,
@@ -290,10 +291,9 @@ export function BusinessSigninFlow() {
 
             <div className="space-y-2">
               <Label htmlFor={`${formId}-password`}>Password</Label>
-              <Input
+              <PasswordInput
                 id={`${formId}-password`}
                 name="password"
-                type="password"
                 autoComplete="current-password"
                 placeholder="Your password"
                 value={password}

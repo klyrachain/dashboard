@@ -14,14 +14,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PlatformTestModeSwitch } from "@/components/layout/platform-test-mode-switch";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useShellNav } from "@/hooks/use-shell-nav";
-import { longestMatchingNavHref } from "@/lib/nav-active";
+import {
+  longestMatchingNavHref,
+  pathnameForSidebarNavHighlight,
+} from "@/lib/nav-active";
 import { MerchantEnvironmentSwitch } from "@/components/merchant/merchant-environment-switch";
 import { setStoredActiveBusinessId } from "@/lib/businessAuthStorage";
 import {
@@ -100,6 +102,7 @@ export function AppSidebar() {
   const activeBusinessId = useSelector((s: RootState) => s.merchantSession.activeBusinessId);
 
   const { navGroups, isUnauthedShell } = useShellNav();
+  const pathnameForNav = pathnameForSidebarNavHighlight(pathname, sessionType);
   const activeBusiness =
     businesses.find((b: MerchantBusiness) => b.id === activeBusinessId) ?? businesses[0];
   const workspaceLabel = isUnauthedShell
@@ -159,27 +162,25 @@ export function AppSidebar() {
                 {sessionType === "merchant" ? "Business" : "Workspace"}
               </div>
               {sessionType === "merchant" && businesses.length > 0 ? (
-                <>
-                  {businesses.map((b: MerchantBusiness) => (
-                    <DropdownMenuItem
-                      key={b.id}
-                      onClick={() => {
-                        dispatch(setActiveBusinessId(b.id));
-                        setStoredActiveBusinessId(b.id);
-                      }}
-                      className={b.id === activeBusinessId ? "bg-slate-100 font-medium" : ""}
-                    >
-                      {b.name?.trim() || "Your business"}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                </>
-              ) : null}
-              <div className="rounded-md bg-slate-50 px-2 py-1.5 text-sm text-slate-700">
-                {sessionType === "merchant"
-                  ? activeBusiness?.name?.trim() || "Your business"
-                  : "Platform admin"}
-              </div>
+                businesses.map((b: MerchantBusiness) => (
+                  <DropdownMenuItem
+                    key={b.id}
+                    onClick={() => {
+                      dispatch(setActiveBusinessId(b.id));
+                      setStoredActiveBusinessId(b.id);
+                    }}
+                    className={b.id === activeBusinessId ? "bg-slate-100 font-medium" : ""}
+                  >
+                    {b.name?.trim() || "Your business"}
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <div className="rounded-md bg-slate-50 px-2 py-1.5 text-sm text-slate-700">
+                  {sessionType === "merchant"
+                    ? activeBusiness?.name?.trim() || "Your business"
+                    : "Platform admin"}
+                </div>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -191,7 +192,7 @@ export function AppSidebar() {
             key={group.title}
             title={group.title}
             items={group.items}
-            pathname={pathname}
+            pathname={pathnameForNav}
             onItemClick={closeMobileSidebar}
           />
         ))}

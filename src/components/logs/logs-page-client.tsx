@@ -80,6 +80,7 @@ export function LogsPageClient() {
   const limit = 50;
 
   const fetchLogs = React.useCallback(async () => {
+    await Promise.resolve();
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -101,16 +102,18 @@ export function LogsPageClient() {
 
   React.useEffect(() => {
     if (selected && !logs.some((e) => e.id === selected.id)) {
-      setSelected(null);
+      queueMicrotask(() => setSelected(null));
     }
   }, [logs, selected]);
 
   React.useEffect(() => {
-    setPage(1);
+    queueMicrotask(() => setPage(1));
   }, [methodFilter, pathFilter, sinceFilter]);
 
   React.useEffect(() => {
-    fetchLogs();
+    queueMicrotask(() => {
+      void fetchLogs();
+    });
   }, [fetchLogs]);
 
   React.useEffect(() => {

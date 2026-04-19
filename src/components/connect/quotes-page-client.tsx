@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   DndContext,
   closestCenter,
@@ -41,9 +41,6 @@ type QuotesPageClientProps = {
 };
 
 export function QuotesPageClient({ pairs }: QuotesPageClientProps) {
-  const pairsRef = useRef(pairs);
-  pairsRef.current = pairs;
-
   const [order, setOrder] = useState<string[]>(() =>
     pairs.map((p) => p.label)
   );
@@ -76,17 +73,21 @@ export function QuotesPageClient({ pairs }: QuotesPageClientProps) {
   }, [results]);
 
   const fetchQuotes = useCallback(async () => {
+    await Promise.resolve();
     setLoading(true);
     try {
-      const data = await getQuotesAction(pairsRef.current, provider);
+      const data = await getQuotesAction(pairs, provider);
       setResults(data);
     } finally {
       setLoading(false);
     }
-  }, [provider]);
+  }, [pairs, provider]);
 
   useEffect(() => {
-    if (pairs.length > 0) void fetchQuotes();
+    if (pairs.length === 0) return;
+    queueMicrotask(() => {
+      void fetchQuotes();
+    });
   }, [pairs.length, pairSignature, provider, fetchQuotes]);
 
   const sensors = useSensors(

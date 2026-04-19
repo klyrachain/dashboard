@@ -47,6 +47,7 @@ export function DashboardVolumeSection() {
       gran: VolumeGranularity,
       isBackgroundRefetch: boolean
     ) => {
+      await Promise.resolve();
       if (!isBackgroundRefetch) {
         setLoading(true);
       }
@@ -76,12 +77,16 @@ export function DashboardVolumeSection() {
   );
 
   React.useEffect(() => {
-    void fetchVolume(dateRange, granularity, false);
+    queueMicrotask(() => {
+      void fetchVolume(dateRange, granularity, false);
+    });
   }, [dateRange, granularity, fetchVolume]);
 
   React.useEffect(() => {
     if (webhookTrigger === 0) return;
-    void fetchVolume(dateRange, granularity, true);
+    queueMicrotask(() => {
+      void fetchVolume(dateRange, granularity, true);
+    });
   }, [webhookTrigger, dateRange, granularity, fetchVolume]);
 
   const handleRangeChange = (value: string) => {

@@ -109,7 +109,7 @@ export function UserDetailSection({ user, transactions: userTransactions, onAnal
 
   // Reset to first page when user or transaction list changes
   React.useEffect(() => {
-    setPage(1);
+    queueMicrotask(() => setPage(1));
   }, [user?.id, userTransactions.length]);
 
   if (!user) {

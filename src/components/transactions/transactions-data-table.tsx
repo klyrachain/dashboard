@@ -654,6 +654,8 @@ export function TransactionsDataTable({
     return columnsForViewerScope(base, viewerScope);
   }, [hideFailedRetry, viewerScope]);
 
+  // TanStack Table returns unstable function identities; React Compiler skips memoization.
+  // eslint-disable-next-line react-hooks/incompatible-library -- useReactTable is the supported API
   const table = useReactTable({
     data: filteredData,
     columns: tableColumns,

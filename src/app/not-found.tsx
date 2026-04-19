@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
@@ -24,7 +25,10 @@ export default function NotFound() {
         </p>
         <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <Button asChild>
-            <Link href="/">Back to dashboard</Link>
+            <Link href="/" className="inline-flex items-center gap-1.5">
+              <ChevronLeft className="size-4 shrink-0" aria-hidden />
+              Back to dashboard
+            </Link>
           </Button>
         </div>
       </section>

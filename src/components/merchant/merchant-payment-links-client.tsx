@@ -286,7 +286,6 @@ export function MerchantPaymentLinksClient() {
   const forbidden =
     isForbiddenMerchantRole(error) || isForbiddenMerchantRole(postErr);
 
-  const completedInPeriod = summary?.transactions?.completedCountInPeriod;
   const volumeAll30 = summary?.transactions?.volumeUsdInPeriod;
   const plStats = summary?.paymentLinks;
   const linkVolume30 = plStats?.volumeUsdInPeriod;
@@ -493,11 +492,6 @@ export function MerchantPaymentLinksClient() {
               {totalPaymentLinksCatalog === 1 ? "" : "s"} completed sale in
               this period.
             </p>
-            {/* {completedInPeriod != null ? (
-              <p className="mt-1 text-xs text-muted-foreground">
-                All completed transactions in period: {completedInPeriod}
-              </p>
-            ) : null} */}
           </CardContent>
         </Card>
       </section>

@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -35,20 +34,6 @@ export function DataTablePaginationBar({
 }: DataTablePaginationBarProps) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(Math.max(1, page), totalPages);
-  const [pageSizeInput, setPageSizeInput] = useState(String(pageSize));
-
-  useEffect(() => {
-    setPageSizeInput(String(pageSize));
-  }, [pageSize]);
-
-  const applyCustomPageSize = useCallback(() => {
-    const n = parseInt(pageSizeInput.trim(), 10);
-    if (Number.isFinite(n) && n >= 1 && n <= 200) {
-      onPageSizeChange(n);
-    } else {
-      setPageSizeInput(String(pageSize));
-    }
-  }, [pageSizeInput, pageSize, onPageSizeChange]);
 
   const handlePreset = useCallback(
     (value: string) => {

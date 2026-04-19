@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,14 +97,13 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
     return tokenOptions.filter((o) => o.label.toLowerCase().includes(q));
   }, [tokenOptions, tokenSearch]);
   const [token, setToken] = useState("USDC");
-  useEffect(() => {
-    if (
-      tokenOptions.length > 0 &&
-      !tokenOptions.some((tokenOption) => tokenOption.value === token)
-    ) {
-      setToken(tokenOptions[0].value);
+  const effectiveToken = useMemo(() => {
+    if (tokenOptions.length === 0) return token;
+    if (tokenOptions.some((tokenOption) => tokenOption.value === token)) {
+      return token;
     }
-  }, [chainId, tokenOptions, token]);
+    return tokenOptions[0]!.value;
+  }, [token, tokenOptions]);
   const [amount, setAmount] = useState("100");
   const [amountIn, setAmountIn] = useState<"fiat" | "crypto">("fiat");
   const [purchaseMethod, setPurchaseMethod] = useState<"buy" | "sell">("buy");
@@ -125,7 +124,7 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
       const data = await getOnrampQuoteAction({
         country,
         chain_id: chainId,
-        token: token.trim(),
+        token: (tokens.length > 0 ? effectiveToken : token).trim(),
         amount: num,
         amount_in: amountIn,
         purchase_method: purchaseMethod,
@@ -228,8 +227,9 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
                     className="h-9 w-full justify-between font-normal"
                   >
                     <span className="truncate">
-                      {tokenOptions.find((tokenOption) => tokenOption.value === token)?.label ??
-                        token ??
+                      {tokenOptions.find((tokenOption) => tokenOption.value === effectiveToken)
+                        ?.label ??
+                        effectiveToken ??
                         "Token"}
                     </span>
                     <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
@@ -252,7 +252,7 @@ export function OnrampQuoteSection({ chains = [], tokens = [] }: OnrampQuoteSect
                           type="button"
                           className={cn(
                             "flex w-full cursor-pointer items-center rounded-sm py-1.5 pl-2 pr-2 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                            tokenOption.value === token && "bg-accent"
+                            tokenOption.value === effectiveToken && "bg-accent"
                           )}
                           onClick={() => {
                             setToken(tokenOption.value);

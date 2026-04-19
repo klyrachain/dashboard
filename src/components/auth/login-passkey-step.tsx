@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useDispatch } from "react-redux";
@@ -26,10 +26,6 @@ export function LoginPasskeyStep({ email: initialEmail }: { email: string }) {
   const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setEmail(initialEmail);
-  }, [initialEmail]);
 
   const handlePasskey = async (e: React.FormEvent) => {
     e.preventDefault();

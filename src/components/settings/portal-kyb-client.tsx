@@ -12,53 +12,42 @@ import {
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "@/store";
 import { merchantApi } from "@/store/merchant-api";
-import { ChevronLeft, ExternalLink, Loader2, RefreshCw, Shield } from "lucide-react";
+import { ChevronLeft, ExternalLink, Loader2, Shield } from "lucide-react";
 
 const MERCHANT_PREFIX = "/api/v1/merchant";
 
-type KycInitData = {
+type KybInitData = {
   provider: string;
   verificationUrl?: string;
   externalId?: string;
   workflowId?: string;
 };
 
-type NormalisedKycStatus =
-  | "approved"
-  | "declined"
-  | "in_review"
-  | "pending"
-  | "resubmitting"
-  | null;
+type KybStatusEnum = "NOT_STARTED" | "PENDING" | "APPROVED" | "REJECTED" | "RESTRICTED";
 
-function normaliseStatus(raw: string | null | undefined): NormalisedKycStatus {
-  if (!raw?.trim()) return null;
-  const s = raw.trim().toLowerCase();
-  if (s === "approved") return "approved";
-  if (s === "declined" || s.includes("declin") || s === "failed") return "declined";
-  if (s === "in_review" || s.includes("review")) return "in_review";
-  if (s === "resubmitting" || s.includes("resubmit")) return "resubmitting";
-  if (s === "pending" || s.includes("pend")) return "pending";
-  return "pending";
-}
-
-function needsVerificationFlow(status: NormalisedKycStatus): boolean {
-  return status === null || status === "pending" || status === "resubmitting";
-}
-
-type PortalKycStatusPayload = {
-  portalKycStatus?: string | null;
-  portalKycVerifiedAt?: string | null;
+type KybStatusPayload = {
+  kybStatus?: KybStatusEnum | string;
 };
 
-/** DB can have `portalKycVerifiedAt` set slightly before status string updates (webhook / sync race). */
-function resolvedKycStatusFromPayload(payload: PortalKycStatusPayload | null | undefined): NormalisedKycStatus {
-  const at = payload?.portalKycVerifiedAt;
-  if (at != null && String(at).trim() !== "") return "approved";
-  return normaliseStatus(payload?.portalKycStatus ?? null);
+function normaliseKybStatus(raw: string | null | undefined): KybStatusEnum {
+  const t = (raw ?? "").trim().toUpperCase();
+  if (
+    t === "NOT_STARTED" ||
+    t === "PENDING" ||
+    t === "APPROVED" ||
+    t === "REJECTED" ||
+    t === "RESTRICTED"
+  ) {
+    return t as KybStatusEnum;
+  }
+  return "NOT_STARTED";
 }
 
-function merchantKycHeaders(): HeadersInit {
+function needsKybVerificationFlow(status: KybStatusEnum): boolean {
+  return status === "NOT_STARTED" || status === "PENDING" || status === "REJECTED";
+}
+
+function merchantKybHeaders(): HeadersInit {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -71,16 +60,15 @@ function merchantKycHeaders(): HeadersInit {
   return headers;
 }
 
-export function PortalKycClient() {
+export function PortalKybClient() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-  const [initData, setInitData] = useState<KycInitData | null>(null);
+  const [initData, setInitData] = useState<KybInitData | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const [callbackSyncError, setCallbackSyncError] = useState<string | null>(null);
   const [callbackSyncing, setCallbackSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [kycStatus, setKycStatus] = useState<NormalisedKycStatus>(null);
-  const [statusRefreshing, setStatusRefreshing] = useState(false);
+  const [kybStatus, setKybStatus] = useState<KybStatusEnum>("NOT_STARTED");
   const [providerChecking, setProviderChecking] = useState(false);
   const [diditIframeLoaded, setDiditIframeLoaded] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -90,45 +78,40 @@ export function PortalKycClient() {
     dispatch(merchantApi.util.invalidateTags(["MerchantBusiness"]));
   }, [dispatch]);
 
-  const refreshStatus = useCallback(async (): Promise<NormalisedKycStatus | null> => {
-    setStatusRefreshing(true);
-    try {
-      const res = await fetch(`${MERCHANT_PREFIX}/kyc/status`, {
-        credentials: "include",
-        headers: merchantKycHeaders(),
-      });
-      const body = (await res.json().catch(() => ({}))) as {
-        success?: boolean;
-        data?: PortalKycStatusPayload;
-      };
-      const st = resolvedKycStatusFromPayload(body.data);
-      setKycStatus(st);
-      return st;
-    } finally {
-      setStatusRefreshing(false);
-    }
+  const refreshStatus = useCallback(async (): Promise<KybStatusEnum | null> => {
+    const res = await fetch(`${MERCHANT_PREFIX}/kyb/status`, {
+      credentials: "include",
+      headers: merchantKybHeaders(),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      success?: boolean;
+      data?: KybStatusPayload;
+    };
+    const st = normaliseKybStatus(body.data?.kybStatus ?? null);
+    setKybStatus(st);
+    return st;
   }, []);
 
   const syncWithDidit = useCallback(
     async (verificationSessionId?: string | null): Promise<boolean> => {
       setProviderChecking(true);
       try {
-        const res = await fetch(`${MERCHANT_PREFIX}/kyc/sync`, {
+        const res = await fetch(`${MERCHANT_PREFIX}/kyb/sync`, {
           method: "POST",
           credentials: "include",
-          headers: merchantKycHeaders(),
+          headers: merchantKybHeaders(),
           body: JSON.stringify(
             verificationSessionId ? { verificationSessionId } : {}
           ),
         });
         const body = (await res.json().catch(() => ({}))) as {
           success?: boolean;
-          data?: PortalKycStatusPayload;
+          data?: KybStatusPayload;
           error?: string;
         };
         if (res.ok && body.success === true && body.data) {
-          const st = resolvedKycStatusFromPayload(body.data);
-          setKycStatus(st);
+          const st = normaliseKybStatus(body.data.kybStatus ?? null);
+          setKybStatus(st);
           setCallbackSyncError(null);
           invalidateBusiness();
           return true;
@@ -156,88 +139,103 @@ export function PortalKycClient() {
     if (vSid) lastCallbackId.current = vSid;
 
     try {
-      const statusRes = await fetch(`${MERCHANT_PREFIX}/kyc/status`, {
+      const statusRes = await fetch(`${MERCHANT_PREFIX}/kyb/status`, {
         credentials: "include",
-        headers: merchantKycHeaders(),
+        headers: merchantKybHeaders(),
       });
       const statusBody = (await statusRes.json().catch(() => ({}))) as {
         success?: boolean;
-        data?: PortalKycStatusPayload;
+        data?: KybStatusPayload;
         error?: string;
         code?: string;
       };
 
       if (statusRes.status === 401 || statusBody.code === "UNAUTHORIZED") {
-        setInitError(statusBody.error ?? "Sign in to the business dashboard to verify your identity.");
+        setInitError(statusBody.error ?? "Sign in to the business dashboard to verify your company.");
         setLoading(false);
         return;
       }
 
       if (!statusRes.ok || statusBody.success === false) {
-        setInitError(statusBody.error ?? "Could not load verification status.");
+        setInitError(statusBody.error ?? "Could not load company verification status.");
         setLoading(false);
         return;
       }
 
-      let st = resolvedKycStatusFromPayload(statusBody.data);
+      let st = normaliseKybStatus(statusBody.data?.kybStatus ?? null);
 
-      if (vSid && needsVerificationFlow(st)) {
+      if (vSid && needsKybVerificationFlow(st)) {
         setCallbackSyncing(true);
         try {
           const ok = await syncWithDidit(vSid);
           if (!ok) {
-            setKycStatus(st);
+            setKybStatus(st);
             setLoading(false);
             return;
           }
           st = (await refreshStatus()) ?? st;
           lastCallbackId.current = null;
-          router.replace("/settings/kyc");
+          router.replace("/settings/kyc?flow=kyb");
         } finally {
           setCallbackSyncing(false);
         }
-      } else if (vSid && !needsVerificationFlow(st)) {
-        router.replace("/settings/kyc");
+      } else if (vSid && !needsKybVerificationFlow(st)) {
+        router.replace("/settings/kyc?flow=kyb");
       }
 
-      setKycStatus(st);
+      setKybStatus(st);
 
-      if (needsVerificationFlow(st)) {
+      if (needsKybVerificationFlow(st)) {
         const pulledOk = await syncWithDidit(null);
         if (pulledOk) {
           const refreshed = await refreshStatus();
           if (refreshed != null) {
             st = refreshed;
           }
-          if (!needsVerificationFlow(st)) {
+          if (!needsKybVerificationFlow(st)) {
             setLoading(false);
             return;
           }
         }
       }
 
-      if (!needsVerificationFlow(st)) {
+      if (!needsKybVerificationFlow(st)) {
+        setLoading(false);
+        return;
+      }
+
+      if (st === "RESTRICTED") {
+        setInitError("Company verification is not available for this business status.");
         setLoading(false);
         return;
       }
 
       const callbackUrl =
         typeof window !== "undefined"
-          ? `${window.location.origin}/settings/kyc`
+          ? `${window.location.origin}/settings/kyc?flow=kyb`
           : undefined;
-      const initRes = await fetch(`${MERCHANT_PREFIX}/kyc/init`, {
+      const initRes = await fetch(`${MERCHANT_PREFIX}/kyb/init`, {
         method: "POST",
         credentials: "include",
-        headers: merchantKycHeaders(),
+        headers: merchantKybHeaders(),
         body: JSON.stringify(callbackUrl ? { callbackUrl } : {}),
       });
       const initBody = (await initRes.json().catch(() => ({}))) as {
         success?: boolean;
-        data?: KycInitData;
+        data?: KybInitData;
         error?: string;
+        code?: string;
       };
+      if (initRes.status === 403 || initBody.code === "KYB_FORBIDDEN") {
+        setInitError(
+          initBody.error ??
+            "Only the founding team lead can start company verification for this business."
+        );
+        setLoading(false);
+        return;
+      }
       if (!initRes.ok || initBody.success === false || !initBody.data) {
-        setInitError(initBody.error ?? "Failed to start verification. Try again or contact support.");
+        setInitError(initBody.error ?? "Failed to start company verification. Try again or contact support.");
         setLoading(false);
         return;
       }
@@ -254,12 +252,11 @@ export function PortalKycClient() {
     });
   }, [bootstrap]);
 
-  /** So the verification hub can show "Continue KYC" after the user has opened this flow once. */
   useEffect(() => {
     const bid = getStoredActiveBusinessId()?.trim();
     if (!bid) return;
     try {
-      sessionStorage.setItem(`klyra_merchant_kyc_started:${bid}`, "1");
+      sessionStorage.setItem(`klyra_merchant_kyb_started:${bid}`, "1");
     } catch {
       /* ignore */
     }
@@ -271,19 +268,18 @@ export function PortalKycClient() {
     }
   }, [initData?.provider, initData?.verificationUrl]);
 
-  /** After completing KYC on another device, tab focus pulls latest status before showing a stale iframe. */
   useEffect(() => {
     const onBecameVisible = () => {
       if (typeof document === "undefined" || document.visibilityState !== "visible") return;
       void refreshStatus().then((s) => {
-        if (s === "approved" || s === "declined") {
+        if (s === "APPROVED" || s === "REJECTED") {
           invalidateBusiness();
         }
       });
     };
     const onWinFocus = () => {
       void refreshStatus().then((s) => {
-        if (s === "approved" || s === "declined") {
+        if (s === "APPROVED" || s === "REJECTED") {
           invalidateBusiness();
         }
       });
@@ -300,16 +296,16 @@ export function PortalKycClient() {
     if (pollingRef.current) return;
     pollingRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`${MERCHANT_PREFIX}/kyc/status`, {
+        const res = await fetch(`${MERCHANT_PREFIX}/kyb/status`, {
           credentials: "include",
-          headers: merchantKycHeaders(),
+          headers: merchantKybHeaders(),
         });
         const body = (await res.json().catch(() => ({}))) as {
-          data?: PortalKycStatusPayload;
+          data?: KybStatusPayload;
         };
-        const st = resolvedKycStatusFromPayload(body.data);
-        setKycStatus(st);
-        if (st === "approved" || st === "declined") {
+        const st = normaliseKybStatus(body.data?.kybStatus ?? null);
+        setKybStatus(st);
+        if (st === "APPROVED" || st === "REJECTED") {
           if (pollingRef.current) clearInterval(pollingRef.current);
           pollingRef.current = null;
           invalidateBusiness();
@@ -326,8 +322,8 @@ export function PortalKycClient() {
     };
   }, []);
 
-  const showFlow = needsVerificationFlow(kycStatus);
-  const isTerminal = kycStatus === "approved" || kycStatus === "declined";
+  const showFlow = needsKybVerificationFlow(kybStatus);
+  const isTerminal = kybStatus === "APPROVED" || kybStatus === "REJECTED";
 
   const iframeMinHeight = "min-h-[calc(560px*1.08)]";
 
@@ -376,15 +372,15 @@ export function PortalKycClient() {
         </div>
       ) : null}
 
-      {!loading && !callbackSyncing && !initError && !showFlow && kycStatus === "approved" ? (
+      {!loading && !callbackSyncing && !initError && !showFlow && kybStatus === "APPROVED" ? (
         <div className="flex gap-3 rounded-xl border border-green-600/35 bg-green-600/10 px-4 py-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-600/15 text-green-700">
             <Shield className="h-5 w-5" aria-hidden />
           </div>
           <div>
-            <p className="text-sm font-medium text-green-800">Verified</p>
+            <p className="text-sm font-medium text-green-800">Company verified</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Your identity check is complete for this workspace.
+              Your organization&apos;s verification is complete for this workspace.
             </p>
             <Button type="button" className="mt-3" size="sm" asChild>
               <Link href="/settings/verification" className="inline-flex items-center gap-1.5">
@@ -396,28 +392,12 @@ export function PortalKycClient() {
         </div>
       ) : null}
 
-      {!loading && !callbackSyncing && !initError && !showFlow && kycStatus && kycStatus !== "approved" ? (
+      {!loading && !callbackSyncing && !initError && !showFlow && kybStatus === "RESTRICTED" ? (
         <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
-          <p className="font-medium capitalize">{kycStatus.replace(/_/g, " ")}</p>
+          <p className="font-medium">Restricted</p>
           <p className="mt-1 text-muted-foreground">
-            If you still need to submit documents, use &quot;Refresh&quot; or start again from verification
-            settings.
+            Company verification cannot proceed for this business. Contact support if you need help.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={statusRefreshing}
-              onClick={() => void refreshStatus()}
-            >
-              {statusRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-              Refresh status
-            </Button>
-            <Button type="button" size="sm" variant="outline" asChild>
-              <Link href="/settings/verification">Verification settings</Link>
-            </Button>
-          </div>
         </div>
       ) : null}
 
@@ -436,7 +416,7 @@ export function PortalKycClient() {
                 {!diditIframeLoaded ? (
                   <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-card/95 p-6 text-center">
                     <Loader2 className="h-9 w-9 animate-spin text-primary" aria-hidden />
-                    <p className="text-sm font-medium">Loading verification…</p>
+                    <p className="text-sm font-medium">Loading company verification…</p>
                     <Button type="button" size="sm" asChild>
                       <a
                         href={initData.verificationUrl}
@@ -454,7 +434,7 @@ export function PortalKycClient() {
                   src={initData.verificationUrl}
                   allow="camera; microphone; fullscreen; autoplay; encrypted-media"
                   className={`relative z-0 w-full rounded-xl bg-background ${iframeMinHeight}`}
-                  title="Identity verification"
+                  title="Company verification"
                   onLoad={() => {
                     setDiditIframeLoaded(true);
                     startPolling();
@@ -490,8 +470,7 @@ export function PortalKycClient() {
       initData?.provider === "didit" &&
       !initData.verificationUrl ? (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
-          Missing verification link from provider. Check Core Didit configuration (DIDIT_PORTAL_KYC_WORKFLOW_ID
-          or DIDIT_WORKFLOW_ID).
+          Missing verification link from provider. Check Core Didit configuration (DIDIT_KYB_WORKFLOW_ID).
         </div>
       ) : null}
     </div>
