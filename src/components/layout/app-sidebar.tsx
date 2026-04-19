@@ -8,12 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Settings, ChevronDown, ChevronRight, LayoutPanelLeft, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RootState } from "@/store";
-import {
-  setTheme,
-  setMobileSidebarOpen,
-  setSidebarCollapsed,
-  type LayoutTheme,
-} from "@/store/layout-slice";
+import { setTheme, setMobileSidebarOpen, type LayoutTheme } from "@/store/layout-slice";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -94,7 +89,6 @@ export function AppSidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const mobileSidebarOpen = useSelector((s: RootState) => s.layout.mobileSidebarOpen);
-  const sidebarCollapsed = useSelector((s: RootState) => s.layout.sidebarCollapsed);
   const returnPath =
     (pathname || "/") +
     (searchParams.toString() ? `?${searchParams.toString()}` : "");
@@ -128,15 +122,10 @@ export function AppSidebar() {
     <aside
       data-dashboard-sidebar
       className={cn(
-        "flex h-full min-h-0 shrink-0 flex-col bg-platform-primary text-white transition-[transform,width,opacity] duration-200 ease-out",
-        "w-64 max-w-[85vw]",
-        /* Mobile drawer: off-canvas; desktop width toggles with sidebarCollapsed */
+        "flex h-full min-h-0 w-64 max-w-[85vw] shrink-0 flex-col bg-platform-primary text-white transition-transform duration-200 ease-out",
         "max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50 max-lg:shadow-xl",
         mobileSidebarOpen ? "max-lg:translate-x-0" : "max-lg:-translate-x-full",
-        "lg:relative lg:z-auto lg:translate-x-0 lg:shadow-none",
-        sidebarCollapsed
-          ? "lg:w-0 lg:min-w-0 lg:max-w-0 lg:overflow-hidden lg:opacity-0 lg:shadow-none lg:pointer-events-none"
-          : "lg:w-64 lg:max-w-none lg:opacity-100",
+        "lg:relative lg:z-auto lg:max-w-none lg:translate-x-0 lg:shadow-none",
         !mobileSidebarOpen && "max-lg:pointer-events-none"
       )}
     >
@@ -246,7 +235,6 @@ export function AppSidebar() {
               <DropdownMenuItem
                 onSelect={() => {
                   dispatch(setTheme("sidebar" as LayoutTheme));
-                  dispatch(setSidebarCollapsed(false));
                   closeMobileSidebar();
                 }}
               >

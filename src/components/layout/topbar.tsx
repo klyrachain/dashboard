@@ -31,11 +31,7 @@ import {
   setStoredMerchantEnvironment,
 } from "@/lib/businessAuthStorage";
 import { setMerchantEnvironment } from "@/store/merchant-session-slice";
-import {
-  setTestMode,
-  toggleMobileSidebar,
-  toggleSidebarCollapsed,
-} from "@/store/layout-slice";
+import { setTestMode, toggleMobileSidebar } from "@/store/layout-slice";
 import { useShellNav } from "@/hooks/use-shell-nav";
 import {
   Dialog,
@@ -55,7 +51,6 @@ export function Topbar({ className }: { className?: string }) {
   const shellBusinessSignInHref = businessSignInHref(returnPath);
   const dispatch = useDispatch();
   const mobileSidebarOpen = useSelector((s: RootState) => s.layout.mobileSidebarOpen);
-  const sidebarCollapsed = useSelector((s: RootState) => s.layout.sidebarCollapsed);
   const admin = useAdmin();
   const sessionType = useSelector((s: RootState) => s.merchantSession.sessionType);
   const merchantEnvironment = useSelector(
@@ -191,16 +186,6 @@ export function Topbar({ className }: { className?: string }) {
             className="size-9 shrink-0 text-white/80 hover:bg-white/10 hover:text-white lg:hidden"
             onClick={() => dispatch(toggleMobileSidebar())}
             aria-label={mobileSidebarOpen ? "Close navigation menu" : "Open navigation menu"}
-          >
-            <LayoutPanelLeft className="size-5" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="hidden size-9 shrink-0 text-white/80 hover:bg-white/10 hover:text-white lg:inline-flex"
-            onClick={() => dispatch(toggleSidebarCollapsed())}
-            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <LayoutPanelLeft className="size-5" aria-hidden />
           </Button>
