@@ -8,12 +8,15 @@ type LayoutState = {
   testMode: boolean;
   /** Sidebar layout only: flyout open on small viewports (not persisted). */
   mobileSidebarOpen: boolean;
+  /** Sidebar layout only (lg+): primary nav rail hidden to widen content (not persisted). */
+  sidebarCollapsed: boolean;
 };
 
 const initialState: LayoutState = {
   theme: "sidebar",
   testMode: true,
   mobileSidebarOpen: false,
+  sidebarCollapsed: false,
 };
 
 export const layoutSlice = createSlice({
@@ -32,8 +35,20 @@ export const layoutSlice = createSlice({
     toggleMobileSidebar: (state) => {
       state.mobileSidebarOpen = !state.mobileSidebarOpen;
     },
+    setSidebarCollapsed: (state, action: { payload: boolean }) => {
+      state.sidebarCollapsed = action.payload;
+    },
+    toggleSidebarCollapsed: (state) => {
+      state.sidebarCollapsed = !state.sidebarCollapsed;
+    },
   },
 });
 
-export const { setTheme, setTestMode, setMobileSidebarOpen, toggleMobileSidebar } =
-  layoutSlice.actions;
+export const {
+  setTheme,
+  setTestMode,
+  setMobileSidebarOpen,
+  toggleMobileSidebar,
+  setSidebarCollapsed,
+  toggleSidebarCollapsed,
+} = layoutSlice.actions;

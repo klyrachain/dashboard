@@ -68,7 +68,7 @@ export function DataTablePaginationBar({
       className={className}
       aria-label="Table pagination"
     >
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border p-4">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm text-muted-foreground">Rows per page</span>
           <Select value={presetValue} onValueChange={handlePreset}>
