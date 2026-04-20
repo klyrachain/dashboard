@@ -155,6 +155,8 @@ export function MerchantPaymentLinksClient({
   const [amount, setAmount] = useState("");
   const [productId, setProductId] = useState<string | undefined>(undefined);
   const [currencyCode, setCurrencyCode] = useState("USDC");
+  /** Single-amount link (no cart): whether the customer is charged in crypto or fiat. */
+  const [chargeKindTab, setChargeKindTab] = useState<"CRYPTO" | "FIAT">("CRYPTO");
   const [gasSponsorshipEnabled, setGasSponsorshipEnabled] = useState(false);
 
   type OrderCartLine = {
@@ -545,6 +547,7 @@ export function MerchantPaymentLinksClient({
       setCustomItemUnitPrice("");
       setCustomItemQty("1");
       setCustomItemCurrency("USDC");
+      setChargeKindTab("CRYPTO");
       setOrderSectionOpen(true);
       setSummarySectionOpen(true);
       urlCatalogProductAppliedRef.current = false;
@@ -570,7 +573,7 @@ export function MerchantPaymentLinksClient({
     const base: Parameters<typeof postLink>[0] = {
       title: title.trim(),
       currency: currencyCode.trim().toUpperCase() || "USDC",
-      chargeKind: "CRYPTO",
+      chargeKind: orderCartLines.length > 0 ? "CRYPTO" : chargeKindTab,
       gasSponsorshipEnabled:
         gasSponsorshipEnabled === true && globalGasToggleOn === true,
       isOneTime: linkUsage === "onetime",
@@ -627,6 +630,7 @@ export function MerchantPaymentLinksClient({
       setAmount("");
       setProductId(undefined);
       setCurrencyCode("USDC");
+      setChargeKindTab("CRYPTO");
       setGasSponsorshipEnabled(false);
       setLinkUsage("unlimited");
       handlePaymentLinkDialogOpenChange(false);
@@ -1073,7 +1077,7 @@ export function MerchantPaymentLinksClient({
                             <PaymentLinkCurrencyPicker
                               value={customItemCurrency}
                               onChange={setCustomItemCurrency}
-                              chargeKind="CRYPTO"
+                              chargeKind={chargeKindTab}
                               disabled={posting}
                               triggerPlaceholder="Search currency…"
                             />
@@ -1197,13 +1201,52 @@ export function MerchantPaymentLinksClient({
               </div>
               {orderCartLines.length === 0 ? (
                 <div className="space-y-2">
+                  <div className="space-y-1.5">
+                    <span className="text-sm font-medium">Charge in</span>
+                    <div
+                      className="grid grid-cols-2 gap-2 rounded-lg border border-border p-1"
+                      role="group"
+                      aria-label="Charge in crypto or fiat"
+                    >
+                      <Button
+                        type="button"
+                        variant={chargeKindTab === "CRYPTO" ? "default" : "ghost"}
+                        className="h-9 text-sm"
+                        style={{
+                          backgroundColor:
+                            chargeKindTab === "CRYPTO" ? PLATFORM_PRIMARY_HEX : undefined,
+                        }}
+                        onClick={() => {
+                          setChargeKindTab("CRYPTO");
+                          setCurrencyCode("USDC");
+                        }}
+                      >
+                        Crypto
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={chargeKindTab === "FIAT" ? "default" : "ghost"}
+                        className="h-9 text-sm"
+                        style={{
+                          backgroundColor:
+                            chargeKindTab === "FIAT" ? PLATFORM_PRIMARY_HEX : undefined,
+                        }}
+                        onClick={() => {
+                          setChargeKindTab("FIAT");
+                          setCurrencyCode("USD");
+                        }}
+                      >
+                        Fiat
+                      </Button>
+                    </div>
+                  </div>
 
                   <div className="grid gap-3 sm:grid-cols-[1fr_1.1fr] sm:items-end">
                     <div className="min-w-0">
                       <PaymentLinkCurrencyPicker
                         value={currencyCode}
                         onChange={setCurrencyCode}
-                        chargeKind="CRYPTO"
+                        chargeKind={chargeKindTab}
                         disabled={posting}
                         triggerPlaceholder="Search currency…"
                       />
@@ -1418,6 +1461,7 @@ export function MerchantPaymentLinksClient({
           
           {/* Let the browser distribute the remaining space automatically */}
           <TableHead scope="col">Kind</TableHead>
+          <TableHead scope="col">Usage</TableHead>
           <TableHead scope="col">Linked product</TableHead>
           <TableHead scope="col" className="text-right">Amount</TableHead>
           <TableHead scope="col" className="text-right">~ USD</TableHead>
@@ -1429,7 +1473,7 @@ export function MerchantPaymentLinksClient({
       <TableBody>
         {rows.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={9} className="text-center text-muted-foreground">
+            <TableCell colSpan={10} className="text-center text-muted-foreground">
               No payment links match your filters.
             </TableCell>
           </TableRow>
@@ -1503,6 +1547,10 @@ export function MerchantPaymentLinksClient({
                 
                 <TableCell className="text-sm tabular-nums">
                   {row.chargeKind === "CRYPTO" ? "Crypto" : "Fiat"}
+                </TableCell>
+
+                <TableCell className="text-sm text-muted-foreground">
+                  {row.isOneTime ? "One-time" : "Unlimited"}
                 </TableCell>
                 
                 <TableCell className="text-sm truncate">

@@ -87,7 +87,7 @@ export function ManageMerchantApiContent({
           <KeysRateTiersIntro variant="merchant" />
         </div>
 
-        <div className="space-y-6 border-t border-border p-6">
+        <div className="space-y-6 p-6">
           {revealed ? (
             <div
               className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/30"
