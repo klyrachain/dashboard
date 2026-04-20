@@ -26,7 +26,9 @@ type UsersPageClientProps = {
 };
 
 export function UsersPageClient({ initialUsers, allTransactions }: UsersPageClientProps) {
-  const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = React.useState<string | null>(() =>
+    initialUsers[0]?.id ?? null
+  );
   const detailRef = React.useRef<HTMLDivElement>(null);
 
   const selectedUser = selectedUserId
@@ -36,6 +38,7 @@ export function UsersPageClient({ initialUsers, allTransactions }: UsersPageClie
   const userTransactions = React.useMemo((): UserTransactionRow[] => {
     if (!selectedUser) return [];
     const filtered = filterTransactionsForUser(allTransactions, {
+      id: selectedUser.id,
       email: selectedUser.email,
       address: selectedUser.address,
     });
@@ -58,6 +61,7 @@ export function UsersPageClient({ initialUsers, allTransactions }: UsersPageClie
       <section>
         <UsersDataTable
           initialData={initialUsers}
+          allTransactions={allTransactions}
           selectedUserId={selectedUserId}
           onSelectUser={handleSelectUser}
           onAnalyze={handleAnalyze}

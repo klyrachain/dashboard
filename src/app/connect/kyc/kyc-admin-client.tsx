@@ -2,9 +2,12 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useDispatch } from "react-redux";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { PeerRampKycUserRow } from "@/lib/data-peer-ramp-kyc";
+import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { showStatus } from "@/store/status-indicator-slice";
 import { overridePeerRampKycByEmail, resetPeerRampKycByEmail } from "./actions";
 
 type Props = {
@@ -12,12 +15,17 @@ type Props = {
   rows: PeerRampKycUserRow[];
 };
 
+type ConfirmState =
+  | null
+  | { action: "reset" | "approve" | "decline"; email: string };
+
 export function KycAdminClient({ initialQ, rows }: Props) {
+  const dispatch = useDispatch();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [q, setQ] = useState(initialQ);
-  const [banner, setBanner] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const [confirm, setConfirm] = useState<ConfirmState>(null);
 
   function applySearch(e: React.FormEvent) {
     e.preventDefault();
@@ -27,30 +35,75 @@ export function KycAdminClient({ initialQ, rows }: Props) {
     router.push(`/connect/kyc${next.toString() ? `?${next}` : ""}`);
   }
 
+  function runConfirmedAction() {
+    if (!confirm) return;
+    const { action, email } = confirm;
+    setConfirm(null);
+    startTransition(async () => {
+      let out: { ok: boolean; message?: string };
+      if (action === "reset") {
+        out = await resetPeerRampKycByEmail(email);
+      } else {
+        out = await overridePeerRampKycByEmail(
+          email,
+          action === "approve" ? "approved" : "declined"
+        );
+      }
+      dispatch(
+        showStatus({
+          message: out.message ?? (out.ok ? "Updated." : "Request failed."),
+          type: out.ok ? "saved" : "error",
+        })
+      );
+      if (out.ok) router.refresh();
+    });
+  }
+
+  const confirmCopy =
+    confirm == null
+      ? { title: "", description: "", confirmLabel: "", variant: "default" as const }
+      : confirm.action === "reset"
+        ? {
+            title: "Reset KYC?",
+            description: `Clear verification state for ${confirm.email}?`,
+            confirmLabel: "Reset",
+            variant: "default" as const,
+          }
+        : confirm.action === "approve"
+          ? {
+              title: "Approve (database only)?",
+              description: `Set ${confirm.email} to approved in the database.`,
+              confirmLabel: "Approve",
+              variant: "secondary" as const,
+            }
+          : {
+              title: "Decline (database only)?",
+              description: `Set ${confirm.email} to declined in the database.`,
+              confirmLabel: "Decline",
+              variant: "destructive" as const,
+            };
+
   return (
-    <div className="space-y-4 font-primary text-body">
-      <h2 className="text-lg font-semibold tracking-tight">Person verification queue</h2>
-      <p className="max-w-3xl text-caption text-muted-foreground leading-relaxed">
-        In the business product, <strong>each member</strong> completes their own user KYC on the dashboard when
-        required. <strong>Ramp consumer</strong> rows are separate: they use the Peer Ramp app only. This queue is
-        for <strong>platform operators</strong> (search, reset, DB overrides) — not where end users file KYC.
-      </p>
-      {banner ? (
-        <div
-          className={`rounded-lg px-4 py-3 font-secondary text-caption ${
-            banner.type === "ok"
-              ? "border border-emerald-200 bg-emerald-50 text-emerald-900"
-              : "border border-amber-200 bg-amber-50 text-amber-900"
-          }`}
-        >
-          {banner.text}
-        </div>
-      ) : null}
+    <div className="space-y-3 font-primary text-body">
+      <h2 className="text-lg font-semibold tracking-tight">Person verification</h2>
+
+      <AdminConfirmDialog
+        open={confirm != null}
+        onOpenChange={(open) => {
+          if (!open) setConfirm(null);
+        }}
+        title={confirmCopy.title}
+        description={confirmCopy.description}
+        confirmLabel={confirmCopy.confirmLabel}
+        confirmVariant={confirmCopy.variant}
+        pending={pending}
+        onConfirm={runConfirmedAction}
+      />
 
       <form onSubmit={applySearch} className="flex max-w-xl flex-wrap items-end gap-2">
         <div className="min-w-[200px] flex-1 space-y-1">
           <label htmlFor="kyc-q" className="font-secondary text-caption text-muted-foreground">
-            Search email
+            Email
           </label>
           <Input
             id="kyc-q"
@@ -58,6 +111,7 @@ export function KycAdminClient({ initialQ, rows }: Props) {
             onChange={(e) => setQ(e.target.value)}
             placeholder="user@example.com"
             autoComplete="off"
+            className="border border-slate-200 bg-white shadow-sm focus-visible:ring-2 focus-visible:ring-slate-200"
           />
         </div>
         <Button type="submit" variant="secondary" size="sm">
@@ -109,18 +163,7 @@ export function KycAdminClient({ initialQ, rows }: Props) {
                         variant="outline"
                         size="sm"
                         disabled={pending}
-                        onClick={() => {
-                          if (!window.confirm(`Reset KYC for ${r.email}?`)) return;
-                          startTransition(async () => {
-                            setBanner(null);
-                            const out = await resetPeerRampKycByEmail(r.email);
-                            setBanner({
-                              type: out.ok ? "ok" : "err",
-                              text: out.message ?? (out.ok ? "Done." : "Failed."),
-                            });
-                            if (out.ok) router.refresh();
-                          });
-                        }}
+                        onClick={() => setConfirm({ action: "reset", email: r.email })}
                       >
                         Reset
                       </Button>
@@ -129,18 +172,7 @@ export function KycAdminClient({ initialQ, rows }: Props) {
                         variant="secondary"
                         size="sm"
                         disabled={pending}
-                        onClick={() => {
-                          if (!window.confirm(`Approve KYC (database only) for ${r.email}?`)) return;
-                          startTransition(async () => {
-                            setBanner(null);
-                            const out = await overridePeerRampKycByEmail(r.email, "approved");
-                            setBanner({
-                              type: out.ok ? "ok" : "err",
-                              text: out.message ?? (out.ok ? "Done." : "Failed."),
-                            });
-                            if (out.ok) router.refresh();
-                          });
-                        }}
+                        onClick={() => setConfirm({ action: "approve", email: r.email })}
                       >
                         Approve
                       </Button>
@@ -149,18 +181,7 @@ export function KycAdminClient({ initialQ, rows }: Props) {
                         variant="destructive"
                         size="sm"
                         disabled={pending}
-                        onClick={() => {
-                          if (!window.confirm(`Decline KYC (database only) for ${r.email}?`)) return;
-                          startTransition(async () => {
-                            setBanner(null);
-                            const out = await overridePeerRampKycByEmail(r.email, "declined");
-                            setBanner({
-                              type: out.ok ? "ok" : "err",
-                              text: out.message ?? (out.ok ? "Done." : "Failed."),
-                            });
-                            if (out.ok) router.refresh();
-                          });
-                        }}
+                        onClick={() => setConfirm({ action: "decline", email: r.email })}
                       >
                         Decline
                       </Button>

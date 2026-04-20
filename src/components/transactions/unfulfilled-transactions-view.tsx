@@ -72,8 +72,9 @@ export function UnfulfilledTransactionsView({
 
   return (
     <div className="space-y-6 font-primary text-body">
-      <p className="font-secondary text-caption text-muted-foreground">
-        Rejected orders that reached the webhook but failed validation.
+      <p className="font-secondary text-caption text-muted-foreground max-w-prose">
+        Validation inbox: orders that hit your pipeline but did not pass automated checks. This is{" "}
+        <strong className="font-medium text-foreground">not</strong> a filter on the main transaction list.
       </p>
 
       {report && (
@@ -126,9 +127,7 @@ export function UnfulfilledTransactionsView({
       <Card className="bg-white">
         <CardHeader>
           <CardTitle className="text-base">Failed validations</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Paginated list from GET /api/validation/failed.
-          </p>
+          <p className="text-sm text-muted-foreground">Recent failures (paginated).</p>
         </CardHeader>
         <CardContent>
           {items.length === 0 ? (

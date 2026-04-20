@@ -136,29 +136,34 @@ export function normalizeTransactionItemToRow(item: unknown): TransactionRow | n
 
 /**
  * Filters transactions to those where the user is involved as sender or receiver.
- * Matches by fromIdentifier or toIdentifier equal to user's email or address (case-insensitive for email).
+ * Matches by fromIdentifier / toIdentifier (email or address), or by platform user id on the row.
  */
 export function filterTransactionsForUser(
   transactions: TransactionRow[],
-  user: { email: string | null; address: string | null }
+  user: { email: string | null; address: string | null; id?: string | null }
 ): TransactionRow[] {
   const email = user.email?.trim().toLowerCase() ?? "";
   const address = user.address?.trim() ?? "";
-  if (!email && !address) return [];
+  const uid = user.id?.trim() ?? "";
+  if (!email && !address && !uid) return [];
   return transactions.filter((tx) => {
     const f = (tx.fromIdentifier ?? "").trim();
     const t = (tx.toIdentifier ?? "").trim();
     const matchEmail = email && (f.toLowerCase() === email || t.toLowerCase() === email);
     const matchAddress = address && (f === address || t === address);
-    return !!matchEmail || !!matchAddress;
+    const matchUserId =
+      !!uid &&
+      ((tx.fromUserId && tx.fromUserId === uid) || (tx.toUserId && tx.toUserId === uid));
+    return !!matchEmail || !!matchAddress || matchUserId;
   });
 }
 
 /** Fetches transactions from Core API only. Returns [] if Core is unavailable or returns no data. */
-export async function getTransactions(): Promise<TransactionRow[]> {
+export async function getTransactions(options?: { limit?: number }): Promise<TransactionRow[]> {
   try {
     const token = await getSessionToken();
-    const result = await getCoreTransactions({ limit: 100 }, token ?? undefined);
+    const limit = Math.min(5000, Math.max(1, options?.limit ?? 500));
+    const result = await getCoreTransactions({ limit }, token ?? undefined);
     const raw = result.ok && result.data && typeof result.data === "object" && Array.isArray((result.data as { data?: unknown[] }).data)
       ? (result.data as { data: unknown[] }).data
       : [];

@@ -32,13 +32,25 @@ import {
 } from "@/components/ui/table";
 import { CopyButton } from "@/components/ui/copy-button";
 import type { UserWithTransactions } from "@/lib/data-users";
+import { filterTransactionsForUser, type TransactionRow } from "@/lib/data-transactions";
 import { format } from "date-fns";
+
+function effectiveTransactionCount(user: UserWithTransactions, allTransactions: TransactionRow[]) {
+  if (allTransactions.length > 0) {
+    return filterTransactionsForUser(allTransactions, {
+      id: user.id,
+      email: user.email,
+      address: user.address,
+    }).length;
+  }
+  return user.transactions.length;
+}
 
 const defaultColumnVisibility: VisibilityState = {
   address: true,
 };
 
-const columns: ColumnDef<UserWithTransactions>[] = [
+const baseColumns: ColumnDef<UserWithTransactions>[] = [
   {
     accessorKey: "id",
     header: "ID",
@@ -72,6 +84,18 @@ const columns: ColumnDef<UserWithTransactions>[] = [
     },
   },
   {
+    id: "customerSource",
+    header: "Account",
+    meta: { headerLabel: "Account" },
+    accessorFn: (row) =>
+      row.customerSource === "peer_ramp" ? "Peer Ramp" : "Morapay",
+    cell: ({ row }) => (
+      <span className="text-xs text-muted-foreground">
+        {row.original.customerSource === "peer_ramp" ? "Peer Ramp" : "Morapay"}
+      </span>
+    ),
+  },
+  {
     accessorKey: "address",
     header: "Address",
     meta: { headerLabel: "Address" },
@@ -99,26 +123,34 @@ const columns: ColumnDef<UserWithTransactions>[] = [
       </span>
     ),
   },
-  {
+];
+
+function makeTransactionColumn(allTransactions: TransactionRow[]): ColumnDef<UserWithTransactions> {
+  return {
     id: "transactionCount",
     header: "Transactions",
     meta: { headerLabel: "Transactions" },
-    accessorFn: (row) => row.transactions.length,
+    accessorFn: (row) => effectiveTransactionCount(row, allTransactions),
     cell: ({ row }) => (
       <span className="text-muted-foreground tabular-nums">
-        {row.original.transactions.length}
+        {effectiveTransactionCount(row.original, allTransactions)}
       </span>
     ),
-  },
-];
+  };
+}
 
 function getColumnLabel(col: { id: string; columnDef: { meta?: { headerLabel?: string } } }): string {
   return col.columnDef.meta?.headerLabel ?? col.id;
 }
 
-function exportToCsv(rows: UserWithTransactions[], visibleColumns: string[]) {
+function exportToCsv(
+  rows: UserWithTransactions[],
+  visibleColumns: string[],
+  allTransactions: TransactionRow[]
+) {
   const headers = visibleColumns.map((id) => {
     if (id === "transactionCount") return "Transactions";
+    if (id === "customerSource") return "Account";
     return id.charAt(0).toUpperCase() + id.slice(1);
   });
   const csvRows = rows.map((row) =>
@@ -130,7 +162,10 @@ function exportToCsv(rows: UserWithTransactions[], visibleColumns: string[]) {
         return row.createdAt instanceof Date
           ? row.createdAt.toISOString()
           : String(row.createdAt);
-      if (colId === "transactionCount") return String(row.transactions.length);
+      if (colId === "transactionCount")
+        return String(effectiveTransactionCount(row, allTransactions));
+      if (colId === "customerSource")
+        return row.customerSource === "peer_ramp" ? "Peer Ramp" : "Morapay";
       return "";
     }).map((c) => `"${c}"`).join(",")
   );
@@ -164,6 +199,8 @@ function EmptyUsersState() {
 
 export type UsersDataTableProps = {
   initialData: UserWithTransactions[];
+  /** When provided, transaction counts match the platform transaction list (GET /api/transactions). */
+  allTransactions?: TransactionRow[];
   selectedUserId: string | null;
   onSelectUser: (user: UserWithTransactions | null) => void;
   onAnalyze?: (user: UserWithTransactions) => void;
@@ -171,6 +208,7 @@ export type UsersDataTableProps = {
 
 export function UsersDataTable({
   initialData,
+  allTransactions = [],
   selectedUserId,
   onSelectUser,
   onAnalyze,
@@ -181,6 +219,11 @@ export function UsersDataTable({
     React.useState<VisibilityState>(defaultColumnVisibility);
   const [globalFilter, setGlobalFilter] = React.useState("");
 
+  const columns = React.useMemo(
+    () => [...baseColumns, makeTransactionColumn(allTransactions)],
+    [allTransactions]
+  );
+
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table returns unstable function refs; safe here
   const table = useReactTable({
     data: initialData,
@@ -189,9 +232,9 @@ export function UsersDataTable({
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     globalFilterFn: (row, _columnId, filterValue) => {
       const v = String(filterValue).toLowerCase().trim();
@@ -199,7 +242,14 @@ export function UsersDataTable({
       const id = String(row.original.id).toLowerCase();
       const email = (row.original.email ?? "").toLowerCase();
       const address = (row.original.address ?? "").toLowerCase();
-      return id.includes(v) || email.includes(v) || address.includes(v);
+      const account =
+        row.original.customerSource === "peer_ramp" ? "peer ramp morapay" : "morapay portal";
+      return (
+        id.includes(v) ||
+        email.includes(v) ||
+        address.includes(v) ||
+        account.includes(v)
+      );
     },
     initialState: { pagination: { pageSize: 10 } },
     state: {
@@ -213,7 +263,7 @@ export function UsersDataTable({
   const visibleColumnIds = table.getVisibleLeafColumns().map((c) => c.id);
   const handleExport = () => {
     const rows = table.getFilteredRowModel().rows.map((r) => r.original);
-    exportToCsv(rows, visibleColumnIds);
+    exportToCsv(rows, visibleColumnIds, allTransactions);
   };
 
   const selectedUser = selectedUserId
@@ -232,12 +282,13 @@ export function UsersDataTable({
     <div className="space-y-4">
       <div className="flex flex-wrap justify-between items-center gap-4 w-full">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by email, address, or ID…"
             value={globalFilter ?? ""}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            className="pl-9"
+            className="border border-slate-200 bg-white pl-9 shadow-sm placeholder:text-slate-400 focus-visible:border-slate-300 focus-visible:ring-2 focus-visible:ring-slate-200"
+            aria-label="Filter customers"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -279,7 +330,7 @@ export function UsersDataTable({
         </div>
       </div>
 
-      <div className="rounded-md bg-white">
+      <div className="rounded-md border border-slate-200 bg-white">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

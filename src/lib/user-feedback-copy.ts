@@ -65,7 +65,14 @@ export function mapInvoiceLoadError(raw: string | undefined | null): string {
   if (lower.includes("timeout") || lower.includes("network")) return apiTimeout;
   if (lower.includes("500") || lower.includes("server")) return serverError;
   if (lower.includes("404") || lower.includes("not found")) return notFound;
-  if (lower.includes("sign in")) return invoiceSignInRequired;
+  if (
+    lower.includes("not signed") ||
+    lower.includes("unauthorized") ||
+    lower.includes("401") ||
+    lower.includes("sign in")
+  ) {
+    return invoiceSignInRequired;
+  }
   if (
     lower.includes("403") ||
     lower.includes("forbidden") ||
@@ -74,7 +81,7 @@ export function mapInvoiceLoadError(raw: string | undefined | null): string {
   ) {
     return invoiceAccessDenied;
   }
-  return serverError;
+  return "We couldn't load that just now. Try refreshing the page.";
 }
 
 export const teamAccessDenied =

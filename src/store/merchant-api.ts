@@ -589,9 +589,12 @@ export const merchantApi = createApi({
         businessName?: string;
         slug?: string;
       } | null,
-      void
+      MerchantApiScopeKey
     >({
-      query: () => `${PREFIX}/gas/account`,
+      query: (params) => ({
+        url: `${PREFIX}/gas/account`,
+        params: stripMerchantScopeParams(params as Record<string, string | number | undefined>),
+      }),
       transformResponse: (raw: unknown) => unwrapData(raw),
       providesTags: ["MerchantGas"],
     }),

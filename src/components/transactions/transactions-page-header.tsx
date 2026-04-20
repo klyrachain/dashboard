@@ -11,9 +11,10 @@ import { ChevronDown, Check } from "lucide-react";
 
 export type TransactionsView = "fulfilled" | "unfulfilled";
 
+/** `fulfilled` = platform payment list; `unfulfilled` = validation-failure inbox (not the same filters). */
 const VIEW_OPTIONS: { value: TransactionsView; label: string }[] = [
-  { value: "fulfilled", label: "Fulfilled" },
-  { value: "unfulfilled", label: "Unfulfilled" },
+  { value: "fulfilled", label: "All transactions" },
+  { value: "unfulfilled", label: "Failed validations" },
 ];
 
 type TransactionsPageHeaderProps = {
@@ -38,7 +39,7 @@ export function TransactionsPageHeader({ currentView }: TransactionsPageHeaderPr
     router.push(q ? `/transactions?${q}` : "/transactions");
   };
 
-  const currentLabel = VIEW_OPTIONS.find((o) => o.value === currentView)?.label ?? "Fulfilled";
+  const currentLabel = VIEW_OPTIONS.find((o) => o.value === currentView)?.label ?? "All transactions";
 
   return (
     <div className="flex flex-wrap items-center gap-3">

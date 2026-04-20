@@ -29,19 +29,6 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
     redirect("/transactions");
   }
 
-  const page = isUnfulfilled
-    ? Math.max(1, parseInt(params.page ?? "1", 10) || 1)
-    : 1;
-  const limit = isUnfulfilled
-    ? Math.min(100, Math.max(1, parseInt(params.limit ?? "20", 10) || 20))
-    : 20;
-
-  const [transactions, validationResult, validationReport] = await Promise.all([
-    isUnfulfilled ? [] : getTransactions(),
-    isUnfulfilled ? getValidationFailedList({ page, limit }) : { items: [], meta: { page: 1, limit: 20, total: 0 } },
-    isUnfulfilled ? getValidationFailedReport({ days: 7 }) : null,
-  ]);
-
   if (isMerchant && !isUnfulfilled) {
     return (
       <div className="space-y-6 font-primary text-body">
@@ -58,17 +45,25 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
     );
   }
 
+  const page = isUnfulfilled
+    ? Math.max(1, parseInt(params.page ?? "1", 10) || 1)
+    : 1;
+  const limit = isUnfulfilled
+    ? Math.min(100, Math.max(1, parseInt(params.limit ?? "20", 10) || 20))
+    : 20;
+
+  const [transactions, validationResult, validationReport] = await Promise.all([
+    isUnfulfilled ? [] : getTransactions({ limit: 5000 }),
+    isUnfulfilled ? getValidationFailedList({ page, limit }) : { items: [], meta: { page: 1, limit: 20, total: 0 } },
+    isUnfulfilled ? getValidationFailedReport({ days: 7 }) : null,
+  ]);
+
   return (
     <div className="space-y-6 font-primary text-body">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Suspense fallback={<h1 className="text-display font-semibold tracking-tight">Transactions</h1>}>
           <TransactionsPageHeader currentView={view} />
         </Suspense>
-        {!isUnfulfilled && (
-          <p className="font-secondary text-caption text-muted-foreground">
-            View and manage all crypto payment transactions.
-          </p>
-        )}
       </div>
 
       {isUnfulfilled ? (

@@ -29,16 +29,8 @@ export default async function KycAdminPage({ searchParams }: PageProps) {
   ]);
 
   return (
-    <div className="space-y-10 font-primary text-body">
-      <div className="space-y-3">
-        <h1 className="text-display font-semibold tracking-tight">Verification oversight</h1>
-        <p className="max-w-3xl font-secondary text-caption text-muted-foreground leading-relaxed">
-          Merchants complete <strong>user KYC</strong> (every member) and <strong>KYB</strong> (company, by the
-          founding member) in the <strong>business dashboard</strong> when they choose — KYB is not done
-          immediately after KYC. This Connect area is for <strong>platform operators</strong> only: search,
-          reset, and database overrides — not where businesses file verification.
-        </p>
-      </div>
+    <div className="space-y-8 font-primary text-body">
+      <h1 className="text-display font-semibold tracking-tight">Verification</h1>
       {!kycRes.ok && kycRes.error ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 font-secondary text-caption text-amber-900">
           KYC: {kycRes.error}

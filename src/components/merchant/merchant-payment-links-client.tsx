@@ -216,9 +216,10 @@ export function MerchantPaymentLinksClient({
     { days: 30, seriesDays: 7, merchantApiScopeKey },
     { skip: skipMerchantApi }
   );
-  const { data: gasAccount } = useGetMerchantGasAccountQuery(undefined, {
-    skip: skipMerchantApi,
-  });
+  const { data: gasAccount } = useGetMerchantGasAccountQuery(
+    { merchantApiScopeKey },
+    { skip: skipMerchantApi }
+  );
   const { data: merchantBusinessFromQuery } = useGetMerchantBusinessQuery(
     undefined,
     { skip: skipMerchantApi }

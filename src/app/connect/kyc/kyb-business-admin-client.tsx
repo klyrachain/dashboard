@@ -2,9 +2,12 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useDispatch } from "react-redux";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { KybBusinessAdminRow } from "@/lib/data-kyb-admin";
+import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { showStatus } from "@/store/status-indicator-slice";
 import { overrideBusinessKybById, resetBusinessKybById } from "./kyb-admin-actions";
 
 type Props = {
@@ -12,12 +15,15 @@ type Props = {
   rows: KybBusinessAdminRow[];
 };
 
+type ConfirmState = null | { action: "reset" | "approve" | "decline"; id: string; name: string };
+
 export function KybBusinessAdminClient({ initialBq, rows }: Props) {
+  const dispatch = useDispatch();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [bq, setBq] = useState(initialBq);
-  const [banner, setBanner] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const [confirm, setConfirm] = useState<ConfirmState>(null);
 
   function applySearch(e: React.FormEvent) {
     e.preventDefault();
@@ -27,25 +33,67 @@ export function KybBusinessAdminClient({ initialBq, rows }: Props) {
     router.push(`/connect/kyc${next.toString() ? `?${next}` : ""}`);
   }
 
+  function runConfirmedAction() {
+    if (!confirm) return;
+    const { action, id } = confirm;
+    setConfirm(null);
+    startTransition(async () => {
+      let out: { ok: boolean; message?: string };
+      if (action === "reset") {
+        out = await resetBusinessKybById(id);
+      } else {
+        out = await overrideBusinessKybById(id, action === "approve" ? "approved" : "declined");
+      }
+      dispatch(
+        showStatus({
+          message: out.message ?? (out.ok ? "Updated." : "Request failed."),
+          type: out.ok ? "saved" : "error",
+        })
+      );
+      if (out.ok) router.refresh();
+    });
+  }
+
+  const confirmCopy =
+    confirm == null
+      ? { title: "", description: "", confirmLabel: "", variant: "default" as const }
+      : confirm.action === "reset"
+        ? {
+            title: "Reset KYB?",
+            description: `Clear KYB state for ${confirm.name}?`,
+            confirmLabel: "Reset",
+            variant: "default" as const,
+          }
+        : confirm.action === "approve"
+          ? {
+              title: "Approve (database only)?",
+              description: `Set ${confirm.name} to approved in the database.`,
+              confirmLabel: "Approve",
+              variant: "secondary" as const,
+            }
+          : {
+              title: "Decline (database only)?",
+              description: `Set ${confirm.name} to declined in the database.`,
+              confirmLabel: "Decline",
+              variant: "destructive" as const,
+            };
+
   return (
-    <div className="space-y-4 font-primary text-body">
-      <h2 className="text-lg font-semibold tracking-tight">KYB state (merchants)</h2>
-      <p className="max-w-3xl text-caption text-muted-foreground leading-relaxed">
-        Businesses complete company KYB on the dashboard (founding member). This table is for{" "}
-        <strong>support and compliance oversight</strong> — reset or DB-only approve/decline — not the merchant KYB
-        flow itself.
-      </p>
-      {banner ? (
-        <div
-          className={`rounded-lg px-4 py-3 font-secondary text-caption ${
-            banner.type === "ok"
-              ? "border border-emerald-200 bg-emerald-50 text-emerald-900"
-              : "border border-amber-200 bg-amber-50 text-amber-900"
-          }`}
-        >
-          {banner.text}
-        </div>
-      ) : null}
+    <div className="space-y-3 font-primary text-body">
+      <h2 className="text-lg font-semibold tracking-tight">Business KYB</h2>
+
+      <AdminConfirmDialog
+        open={confirm != null}
+        onOpenChange={(open) => {
+          if (!open) setConfirm(null);
+        }}
+        title={confirmCopy.title}
+        description={confirmCopy.description}
+        confirmLabel={confirmCopy.confirmLabel}
+        confirmVariant={confirmCopy.variant}
+        pending={pending}
+        onConfirm={runConfirmedAction}
+      />
 
       <form onSubmit={applySearch} className="flex max-w-xl flex-wrap items-end gap-2">
         <div className="min-w-[200px] flex-1 space-y-1">
@@ -58,6 +106,7 @@ export function KybBusinessAdminClient({ initialBq, rows }: Props) {
             onChange={(e) => setBq(e.target.value)}
             placeholder="Name, slug, email, id"
             autoComplete="off"
+            className="border border-slate-200 bg-white shadow-sm focus-visible:ring-2 focus-visible:ring-slate-200"
           />
         </div>
         <Button type="submit" variant="secondary" size="sm">
@@ -102,18 +151,7 @@ export function KybBusinessAdminClient({ initialBq, rows }: Props) {
                         variant="outline"
                         size="sm"
                         disabled={pending}
-                        onClick={() => {
-                          if (!window.confirm("Reset KYB for this business?")) return;
-                          startTransition(async () => {
-                            setBanner(null);
-                            const out = await resetBusinessKybById(r.id);
-                            setBanner({
-                              type: out.ok ? "ok" : "err",
-                              text: out.message ?? (out.ok ? "Done." : "Failed."),
-                            });
-                            if (out.ok) router.refresh();
-                          });
-                        }}
+                        onClick={() => setConfirm({ action: "reset", id: r.id, name: r.name })}
                       >
                         Reset
                       </Button>
@@ -122,18 +160,7 @@ export function KybBusinessAdminClient({ initialBq, rows }: Props) {
                         variant="secondary"
                         size="sm"
                         disabled={pending}
-                        onClick={() => {
-                          if (!window.confirm("Approve KYB (database only)?")) return;
-                          startTransition(async () => {
-                            setBanner(null);
-                            const out = await overrideBusinessKybById(r.id, "approved");
-                            setBanner({
-                              type: out.ok ? "ok" : "err",
-                              text: out.message ?? (out.ok ? "Done." : "Failed."),
-                            });
-                            if (out.ok) router.refresh();
-                          });
-                        }}
+                        onClick={() => setConfirm({ action: "approve", id: r.id, name: r.name })}
                       >
                         Approve
                       </Button>
@@ -142,18 +169,7 @@ export function KybBusinessAdminClient({ initialBq, rows }: Props) {
                         variant="destructive"
                         size="sm"
                         disabled={pending}
-                        onClick={() => {
-                          if (!window.confirm("Decline KYB (database only)?")) return;
-                          startTransition(async () => {
-                            setBanner(null);
-                            const out = await overrideBusinessKybById(r.id, "declined");
-                            setBanner({
-                              type: out.ok ? "ok" : "err",
-                              text: out.message ?? (out.ok ? "Done." : "Failed."),
-                            });
-                            if (out.ok) router.refresh();
-                          });
-                        }}
+                        onClick={() => setConfirm({ action: "decline", id: r.id, name: r.name })}
                       >
                         Decline
                       </Button>

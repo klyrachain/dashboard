@@ -21,10 +21,17 @@ import {
   usePostMerchantGasTopupFromClearingMutation,
   usePostMerchantGasTopupPrepareMutation,
 } from "@/store/merchant-api";
+import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
 
 export function MerchantGasSettingsContent() {
-  const { data, isLoading, error, refetch } = useGetMerchantGasAccountQuery();
-  const { data: business } = useGetMerchantBusinessQuery();
+  const { skipMerchantApi, merchantApiScopeKey } = useMerchantTenantScope();
+  const { data, isLoading, error, refetch } = useGetMerchantGasAccountQuery(
+    { merchantApiScopeKey },
+    { skip: skipMerchantApi }
+  );
+  const { data: business } = useGetMerchantBusinessQuery(undefined, {
+    skip: skipMerchantApi,
+  });
   const [patch, { isLoading: saving }] = usePatchMerchantGasAccountMutation();
   const [topupClearing, { isLoading: toppingClearing }] =
     usePostMerchantGasTopupFromClearingMutation();
@@ -135,6 +142,22 @@ export function MerchantGasSettingsContent() {
     }
   }
 
+  if (skipMerchantApi) {
+    return (
+      <section
+        className="rounded-md border border-dashed border-border bg-muted/30 px-4 py-10 text-center"
+        aria-labelledby="gas-no-tenant-title"
+      >
+        <h2 id="gas-no-tenant-title" className="text-sm font-medium text-foreground">
+          Select a business
+        </h2>
+        <p className="mt-2 font-secondary text-caption text-muted-foreground" role="status">
+          Choose a business in the header to load gas sponsorship and balances.
+        </p>
+      </section>
+    );
+  }
+
   if (isLoading) {
     return <p className="font-secondary text-caption text-muted-foreground">Loading gas settings…</p>;
   }
@@ -142,6 +165,9 @@ export function MerchantGasSettingsContent() {
     return (
       <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert">
         Could not load gas account.
+        {error && typeof error === "object" && "status" in error ? (
+          <span className="ml-1 font-mono text-xs">({String((error as { status: unknown }).status)})</span>
+        ) : null}
       </p>
     );
   }

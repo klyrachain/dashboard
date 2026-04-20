@@ -3,9 +3,10 @@
  * (e.g. `/connect` vs `/connect/merchants`).
  */
 function normalizePath(p: string): string {
-  const t = (p || "/").trim();
+  const t = (p || "/").replace(/^\ufeff/, "").trim();
   if (!t || t === "/") return "/";
-  return t.replace(/\/+$/, "") || "/";
+  const collapsed = t.replace(/^\/+/, "/");
+  return collapsed.replace(/\/+$/, "") || "/";
 }
 
 function hrefMatchesPath(pathname: string, href: string): boolean {
@@ -23,12 +24,19 @@ export function pathnameForSidebarNavHighlight(
   pathname: string | null | undefined,
   sessionType: "merchant" | "platform"
 ): string {
-  const p = pathname || "/";
+  const p = normalizePath(pathname || "/");
   if (
     sessionType === "merchant" &&
     (p === "/settings/kyc" || p.startsWith("/settings/kyc/"))
   ) {
     return "/settings/verification";
+  }
+  /**
+   * Merchant IA uses `/customers` (derived payers). `/users` is the platform list; merchants
+   * are redirected there when `/customers` rejects access, so keep the Sales → Customers item lit.
+   */
+  if (sessionType === "merchant" && (p === "/users" || p.startsWith("/users/"))) {
+    return "/customers";
   }
   return p;
 }
