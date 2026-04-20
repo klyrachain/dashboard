@@ -1,12 +1,19 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ChainCardWithChart } from "@/components/balances/chain-card-with-chart";
 import { RecentActivityTable } from "@/components/balances/recent-activity-table";
 import { useGetInventoryQuery } from "@/store/inventory-api";
+import { useGetMerchantSummaryQuery, useGetMerchantTransactionsQuery } from "@/store/merchant-api";
+import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
+import { MerchantPayoutOverviewSection } from "@/components/merchant/merchant-payout-overview-section";
+import { MerchantWalletsCommerceSection } from "@/components/merchant/merchant-wallets-commerce-section";
+import { normalizeTransactionItemToRow } from "@/lib/data-transactions";
+import type { TransactionRow } from "@/lib/data-transactions";
 import {
   buildBalancesFromAssets,
   formatTokenAmount,
@@ -78,6 +85,8 @@ type BalancesContentClientProps = {
   recentActivity: BalanceActivity[];
   pageTitle?: string;
   pageDescription?: string;
+  /** Merchant portal: use summary + payouts data instead of platform inventory (`/api/inventory`). */
+  isMerchant?: boolean;
 };
 
 export function BalancesContentClient({
@@ -86,8 +95,36 @@ export function BalancesContentClient({
   recentActivity,
   pageTitle = "Balances",
   pageDescription = "Real-time overview of assets across all chains and liquidity pools.",
+  isMerchant = false,
 }: BalancesContentClientProps) {
-  const { data: assets = [], isLoading } = useGetInventoryQuery();
+  const router = useRouter();
+  const { effectiveBusinessId, skipMerchantApi, merchantApiScopeKey } =
+    useMerchantTenantScope();
+  const merchantSummaryDays = 90;
+  const summaryQ = useGetMerchantSummaryQuery(
+    { days: merchantSummaryDays, seriesDays: 14, merchantApiScopeKey },
+    { skip: !isMerchant || skipMerchantApi }
+  );
+  const txParams = useMemo(
+    () => ({
+      page: 1,
+      limit: 100,
+      merchantApiScopeKey,
+    }),
+    [merchantApiScopeKey]
+  );
+  const merchantTxQ = useGetMerchantTransactionsQuery(txParams, {
+    skip: !isMerchant || skipMerchantApi,
+  });
+  const merchantTxRows: TransactionRow[] = useMemo(() => {
+    const items = merchantTxQ.data?.items ?? [];
+    return items
+      .map((item) => normalizeTransactionItemToRow(item))
+      .filter((r): r is TransactionRow => r !== null);
+  }, [merchantTxQ.data?.items]);
+  const { data: assets = [], isLoading } = useGetInventoryQuery(undefined, {
+    skip: isMerchant,
+  });
   const [ratesMap, setRatesMap] = useState<RatesMap | null>(null);
 
   const fetchRates = useCallback(async () => {
@@ -127,6 +164,77 @@ export function BalancesContentClient({
     pending.floatingAmountUsd > 0 || pending.activeOrdersCount > 0;
   const hasClaimable =
     claimable.totalUsd > 0 || claimable.byCurrency.length > 0;
+
+  if (isMerchant) {
+    if (!effectiveBusinessId) {
+      return (
+        <p className="text-sm text-muted-foreground" role="status">
+          Select a business in the header to view balances for that workspace.
+        </p>
+      );
+    }
+    if (summaryQ.isLoading && !summaryQ.data) {
+      return <BalancesSkeleton />;
+    }
+    if (summaryQ.isError) {
+      return (
+        <div
+          className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+          role="alert"
+        >
+          Could not load wallet balances. Check your connection and portal session,
+          then try again.
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-8 font-primary text-body">
+        <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-display font-semibold tracking-tight">
+              {pageTitle}
+            </h1>
+            <p className="font-secondary text-caption text-muted-foreground max-w-prose">
+              {pageDescription}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-2"
+            type="button"
+            onClick={() => {
+              void summaryQ.refetch();
+              router.refresh();
+            }}
+          >
+            <RefreshCcw className="size-4" aria-hidden />
+            Refresh
+          </Button>
+        </header>
+        <MerchantPayoutOverviewSection
+          summary={summaryQ.data ?? null}
+          isLoading={summaryQ.isLoading || summaryQ.isFetching}
+          onWithdraw={() => {}}
+          canWithdraw={false}
+          primaryAction="link_payouts"
+        />
+        <MerchantWalletsCommerceSection
+          summary={summaryQ.data ?? null}
+          summaryLoading={summaryQ.isLoading || summaryQ.isFetching}
+          transactions={merchantTxRows}
+          transactionsLoading={merchantTxQ.isLoading || merchantTxQ.isFetching}
+          periodDays={summaryQ.data?.periodDays ?? merchantSummaryDays}
+        />
+        <p className="text-sm text-muted-foreground max-w-prose">
+          Fiat “available / pending” matches Payouts. USD volume matches the dashboard for the same
+          reporting window. Token rows sum recorded on-chain legs from completed transactions (see
+          Transactions for detail); they do not subtract gas sponsorship—you can reconcile volume,
+          gas, and payouts separately.
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return <BalancesSkeleton />;

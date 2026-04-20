@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { Wallet, Landmark, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,8 @@ type MerchantPayoutOverviewSectionProps = {
   isLoading: boolean;
   onWithdraw: () => void;
   canWithdraw: boolean;
+  /** Wallets page: link to payouts instead of withdraw CTA. */
+  primaryAction?: "withdraw" | "link_payouts";
 };
 
 const EMPTY_AMOUNT = "Nothing yet";
@@ -47,6 +50,7 @@ export function MerchantPayoutOverviewSection({
   isLoading,
   onWithdraw,
   canWithdraw,
+  primaryAction = "withdraw",
 }: MerchantPayoutOverviewSectionProps) {
   if (isLoading) {
     return (
@@ -106,15 +110,27 @@ export function MerchantPayoutOverviewSection({
             Your Balances
           </h2>
         </div>
-        <Button
-          type="button"
-          size="lg"
-          className="shrink-0 font-semibold w-full sm:w-auto"
-          onClick={onWithdraw}
-          disabled={!canWithdraw}
-        >
-          Withdraw funds
-        </Button>
+        {primaryAction === "link_payouts" ? (
+          <Button
+            type="button"
+            size="lg"
+            variant="outline"
+            className="shrink-0 font-semibold w-full sm:w-auto"
+            asChild
+          >
+            <Link href="/settlements">Payouts & withdrawals</Link>
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            size="lg"
+            className="shrink-0 font-semibold w-full sm:w-auto"
+            onClick={onWithdraw}
+            disabled={!canWithdraw}
+          >
+            Withdraw funds
+          </Button>
+        )}
       </div>
 
       <div

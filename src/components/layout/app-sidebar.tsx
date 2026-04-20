@@ -5,7 +5,14 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { businessSignInHref } from "@/lib/business-portal-urls";
 import { useDispatch, useSelector } from "react-redux";
-import { Settings, ChevronDown, ChevronRight, LayoutPanelLeft, LayoutDashboard } from "lucide-react";
+import {
+  Settings,
+  ChevronDown,
+  ChevronRight,
+  LayoutPanelLeft,
+  LayoutDashboard,
+  Plus,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RootState } from "@/store";
 import { setTheme, setMobileSidebarOpen, type LayoutTheme } from "@/store/layout-slice";
@@ -14,8 +21,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MerchantCreateBusinessDialog } from "@/components/merchant/merchant-create-business-dialog";
 import { PlatformTestModeSwitch } from "@/components/layout/platform-test-mode-switch";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -105,6 +114,7 @@ export function AppSidebar() {
   const pathnameForNav = pathnameForSidebarNavHighlight(pathname, sessionType);
   const activeBusiness =
     businesses.find((b: MerchantBusiness) => b.id === activeBusinessId) ?? businesses[0];
+  const [createBusinessOpen, setCreateBusinessOpen] = useState(false);
   const workspaceLabel = isUnauthedShell
     ? "Not signed in"
     : sessionType === "merchant"
@@ -181,10 +191,28 @@ export function AppSidebar() {
                     : "Platform admin"}
                 </div>
               )}
+              {sessionType === "merchant" ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setCreateBusinessOpen(true);
+                    }}
+                  >
+                    <Plus className="size-4 shrink-0" aria-hidden />
+                    Create new business
+                  </DropdownMenuItem>
+                </>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
       </div>
+      <MerchantCreateBusinessDialog
+        open={createBusinessOpen}
+        onOpenChange={setCreateBusinessOpen}
+      />
 
       <nav className="scrollbar-dashboard-sidebar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden p-3">
         {navGroups.map((group) => (

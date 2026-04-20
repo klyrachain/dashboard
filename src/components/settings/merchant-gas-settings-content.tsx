@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -22,6 +21,54 @@ import {
   usePostMerchantGasTopupPrepareMutation,
 } from "@/store/merchant-api";
 import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function MerchantGasSettingsSkeleton() {
+  return (
+    <div className="space-y-6 font-primary text-body" role="status" aria-live="polite">
+      <header className="space-y-2">
+        <Skeleton className="h-9 w-[min(280px,70%)] max-w-md" />
+        <Skeleton className="h-4 w-full max-w-prose" />
+        <Skeleton className="h-4 w-[min(480px,90%)] max-w-prose" />
+      </header>
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-4 w-full max-w-md" />
+            <Skeleton className="h-4 w-full max-w-sm" />
+          </div>
+          <Skeleton className="h-10 w-[140px] shrink-0 rounded-md" />
+        </div>
+        <div className="mt-6 grid gap-6 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-8 w-36" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-8 w-36" />
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="mt-2 h-4 w-full max-w-lg" />
+        <Skeleton className="mt-1 h-4 w-full max-w-md" />
+        <div className="mt-6 space-y-4">
+          <Skeleton className="h-5 w-64" />
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-10 w-48 rounded-md" />
+            </div>
+            <Skeleton className="h-10 w-32 rounded-md" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function MerchantGasSettingsContent() {
   const { skipMerchantApi, merchantApiScopeKey } = useMerchantTenantScope();
@@ -75,6 +122,11 @@ export function MerchantGasSettingsContent() {
     const amountUsd = parseFloat(amountStr.trim());
     if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
       setFundError("Enter a valid amount.");
+      return;
+    }
+    const clearingNum = parseFloat(String(clearing).replace(/,/g, ""));
+    if (Number.isFinite(clearingNum) && amountUsd > clearingNum + 1e-9) {
+      setFundError("That amount is more than your Morapay clearing balance.");
       return;
     }
     try {
@@ -159,7 +211,7 @@ export function MerchantGasSettingsContent() {
   }
 
   if (isLoading) {
-    return <p className="font-secondary text-caption text-muted-foreground">Loading gas settings…</p>;
+    return <MerchantGasSettingsSkeleton />;
   }
   if (error || data == null) {
     return (
@@ -250,28 +302,38 @@ export function MerchantGasSettingsContent() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add prepaid gas</DialogTitle>
-            <DialogDescription>
-              Choose how to fund your gas balance. Clearing transfers are instant; Paystack opens
-              card/bank pay; crypto opens a one-time checkout in a new tab.
-            </DialogDescription>
           </DialogHeader>
 
           {fundStep === "pick" && (
             <div className="grid gap-2 py-2">
               <Button type="button" variant="secondary" onClick={() => setFundStep("balance")}>
-                Use Morapay clearing balance
+                Morapay balance
               </Button>
               <Button type="button" variant="secondary" onClick={() => setFundStep("fiat")}>
-                Pay with fiat (Paystack)
+                Pay with fiat
               </Button>
               <Button type="button" variant="secondary" onClick={() => setFundStep("crypto")}>
-                Pay with crypto (checkout)
+                Pay with crypto
               </Button>
             </div>
           )}
 
           {(fundStep === "balance" || fundStep === "fiat" || fundStep === "crypto") && (
             <div className="space-y-3 py-2">
+              {fundStep === "balance" ? (
+                <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Morapay clearing balance
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
+                    {clearing} USD
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Current gas prepaid: <span className="font-medium text-foreground">{balance} USD</span>.
+                    Enter how much to move from clearing into gas.
+                  </p>
+                </div>
+              ) : null}
               <div className="space-y-2">
                 <Label htmlFor="gas-amt">Amount (USD)</Label>
                 <Input

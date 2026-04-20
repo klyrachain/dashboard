@@ -18,6 +18,7 @@ import {
   LogOut,
   MoreHorizontal,
   Building2,
+  Plus,
 } from "lucide-react";
 import type { RootState } from "@/store";
 import { useAdmin } from "@/hooks/use-admin";
@@ -48,6 +49,7 @@ import { clearMerchantPortalHttpOnlyCookie } from "@/lib/portal-auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlatformTestModeSwitch } from "@/components/layout/platform-test-mode-switch";
+import { MerchantCreateBusinessDialog } from "@/components/merchant/merchant-create-business-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -160,6 +162,7 @@ export function HeaderNoSidebar() {
   const portalUserDisplayName = useSelector(
     (s: RootState) => s.merchantSession.portalUserDisplayName
   );
+  const [createBusinessOpen, setCreateBusinessOpen] = useState(false);
 
   const { navGroups, isUnauthedShell } = useShellNav();
   const pathnameForNav = pathnameForSidebarNavHighlight(pathname, sessionType);
@@ -267,6 +270,20 @@ export function HeaderNoSidebar() {
                           : "Platform admin"}
                       </div>
                     )}
+                    {sessionType === "merchant" ? (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            setCreateBusinessOpen(true);
+                          }}
+                        >
+                          <Plus className="size-4 shrink-0" aria-hidden />
+                          Create new business
+                        </DropdownMenuItem>
+                      </>
+                    ) : null}
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <DropdownMenu>
@@ -334,6 +351,20 @@ export function HeaderNoSidebar() {
                         : "Platform admin"}
                     </div>
                   )}
+                  {sessionType === "merchant" ? (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          setCreateBusinessOpen(true);
+                        }}
+                      >
+                        <Plus className="size-4 shrink-0" aria-hidden />
+                        Create new business
+                      </DropdownMenuItem>
+                    </>
+                  ) : null}
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
                     Layout
@@ -546,6 +577,10 @@ export function HeaderNoSidebar() {
           <span className="hidden sm:inline">AI Assistant</span>
         </Button>
       </div>
+      <MerchantCreateBusinessDialog
+        open={createBusinessOpen}
+        onOpenChange={setCreateBusinessOpen}
+      />
     </header>
   );
 }

@@ -447,6 +447,64 @@ export async function completeBusinessOnboarding(
   };
 }
 
+export type CreatePortalBusinessResult = {
+  businessId: string;
+  slug: string;
+  accessToken: string;
+  landingHint: string;
+};
+
+/** Authenticated portal user: register an additional business (Core `POST /api/business-auth/businesses`). */
+export async function createPortalBusiness(
+  accessToken: string,
+  input: {
+    companyName: string;
+    website?: string;
+    signupRole: string;
+    primaryGoal: string;
+  }
+): Promise<CreatePortalBusinessResult> {
+  const payload: Record<string, string> = {
+    companyName: input.companyName.trim(),
+    signupRole: input.signupRole,
+    primaryGoal: input.primaryGoal,
+  };
+  const w = input.website?.trim();
+  if (w) payload.website = w;
+
+  const body = await requestJson("/api/business-auth/businesses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = unwrapSuccessData(body);
+  if (!data) {
+    throw new BusinessAuthApiError(
+      "Invalid response from create business",
+      500,
+      body
+    );
+  }
+  const businessId = typeof data.businessId === "string" ? data.businessId : "";
+  const slug = typeof data.slug === "string" ? data.slug : "";
+  if (!businessId) {
+    throw new BusinessAuthApiError("Missing business id in response", 500, body);
+  }
+  const newToken = pickAccessToken(body) ?? accessToken;
+  const landingHint =
+    typeof data.landingHint === "string" ? data.landingHint : "dashboard_overview";
+
+  return {
+    businessId,
+    slug,
+    accessToken: newToken,
+    landingHint,
+  };
+}
+
 export type BusinessSessionBusiness = {
   id: string;
   name: string;

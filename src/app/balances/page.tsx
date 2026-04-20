@@ -23,10 +23,11 @@ export default async function BalancesPage() {
         pending={pending}
         claimable={claimable}
         recentActivity={recentActivity}
+        isMerchant={isMerchant}
         pageTitle={isMerchant ? "Wallets" : "Balances"}
         pageDescription={
           isMerchant
-            ? "What you have collected and what you can move next."
+            ? "Payout balances, commerce volume (same basis as your dashboard), and recorded token flows from completed checkouts."
             : "Real-time overview of assets across all chains and liquidity pools."
         }
       />

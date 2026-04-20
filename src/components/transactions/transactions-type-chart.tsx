@@ -96,7 +96,7 @@ export function TransactionsTypeChart({
 }: {
   transactions?: TransactionRow[] | null;
 }) {
-  const [range, setRange] = useState<TypeChartRangeKey>("14");
+  const [range, setRange] = useState<TypeChartRangeKey>("30");
   const transactions = useMemo(
     () => normalizeTransactions(rawTransactions),
     [rawTransactions]
@@ -106,7 +106,11 @@ export function TransactionsTypeChart({
     [transactions, range]
   );
   const chartData = useMemo(() => buildChartData(filtered), [filtered]);
-  const hasAnyCount = chartData.some((d) => d.count > 0);
+  const maxCount = useMemo(
+    () => Math.max(0, ...chartData.map((d) => d.count)),
+    [chartData]
+  );
+  const yMax = Math.max(1, maxCount);
 
   return (
     <Card className="bg-white">
@@ -154,6 +158,7 @@ export function TransactionsTypeChart({
                 tickLine={false}
                 allowDecimals={false}
                 width={28}
+                domain={[0, yMax]}
               />
               <Tooltip
                 contentStyle={{
@@ -166,7 +171,12 @@ export function TransactionsTypeChart({
                 formatter={(value: number) => [value, "Count"]}
                 labelFormatter={(label) => `Type: ${label}`}
               />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]} name="Count">
+              <Bar
+                dataKey="count"
+                radius={[4, 4, 0, 0]}
+                name="Count"
+                minPointSize={maxCount === 0 ? 4 : 0}
+              >
                 {chartData.map((entry) => (
                   <Cell key={entry.type} fill={entry.fill} />
                 ))}
@@ -174,11 +184,6 @@ export function TransactionsTypeChart({
             </BarChart>
           </ResponsiveContainer>
         </div>
-        {!hasAnyCount && (
-          <p className="mt-2 text-center text-xs text-slate-500">
-            No transactions yet. Chart shows counts per type when data is available.
-          </p>
-        )}
       </CardContent>
     </Card>
   );

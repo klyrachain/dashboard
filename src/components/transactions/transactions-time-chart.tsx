@@ -221,21 +221,12 @@ function getRangeSubtitle(range: TimeRangeKey): string {
   return `By type · count per day (last ${range} days)`;
 }
 
-function EmptyChart() {
-  return (
-    <div className="flex h-[220px] flex-col items-center justify-center gap-2 rounded-md border border-dashed border-slate-200 bg-slate-50/50 text-center">
-      <p className="text-sm font-medium text-slate-500">No data</p>
-      <p className="text-xs text-slate-400">Transactions over time will appear here.</p>
-    </div>
-  );
-}
-
 export function TransactionsTimeChart({
   transactions: rawTransactions,
 }: {
   transactions?: TransactionRow[] | null;
 }) {
-  const [range, setRange] = useState<TimeRangeKey>("14");
+  const [range, setRange] = useState<TimeRangeKey>("30");
   const transactions = useMemo(
     () => normalizeTransactions(rawTransactions),
     [rawTransactions]
@@ -244,7 +235,14 @@ export function TransactionsTimeChart({
     () => buildTimeChartData(transactions, range),
     [transactions, range]
   );
-  const hasData = chartData.some((d) => d.total > 0);
+  const maxStack = useMemo(() => {
+    let m = 0;
+    for (const d of chartData) {
+      const stack = TYPE_ORDER.reduce((s, t) => s + (d[t] ?? 0), 0);
+      m = Math.max(m, stack, d.total);
+    }
+    return Math.max(1, m);
+  }, [chartData]);
 
   return (
     <Card className="bg-white">
@@ -268,8 +266,7 @@ export function TransactionsTimeChart({
       </CardHeader>
       <CardContent className="pt-0">
         <div className="h-[220px] w-full min-w-0">
-          {hasData ? (
-            <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={chartData}
                 margin={{ top: 4, right: 4, left: 4, bottom: 4 }}
@@ -308,7 +305,14 @@ export function TransactionsTimeChart({
                   tickLine={false}
                   tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                 />
-                <YAxis hide domain={["auto", "auto"]} />
+                <YAxis
+                  width={36}
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  axisLine={false}
+                  tickLine={false}
+                  allowDecimals={false}
+                  domain={[0, maxStack]}
+                />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload?.[0]?.payload) {
@@ -355,9 +359,6 @@ export function TransactionsTimeChart({
                 ))}
               </AreaChart>
             </ResponsiveContainer>
-          ) : (
-            <EmptyChart />
-          )}
         </div>
       </CardContent>
     </Card>

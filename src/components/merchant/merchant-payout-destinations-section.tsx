@@ -122,7 +122,7 @@ export function MerchantPayoutDestinationsSection({
           className="shrink-0 gap-2 w-full sm:w-auto"
         >
           <Plus className="size-4 shrink-0" aria-hidden />
-          + Add Account
+          Add account
         </Button>
       </div>
 
