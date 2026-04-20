@@ -1,52 +1,16 @@
 "use client";
 
-import {
-  useCallback,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useEffect,
-} from "react";
+import { useCallback, useRef } from "react";
 import { Copy, Download } from "lucide-react";
-import { motion, useAnimationControls } from "framer-motion";
 import { domToBlob, waitUntilLoad } from "modern-screenshot";
 import { QRCodeSVG } from "qrcode.react";
-import {
-  NetworkArbitrumOne,
-  NetworkBase,
-  NetworkBinanceSmartChain,
-  NetworkEthereum,
-  NetworkPolygon,
-  NetworkTron,
-} from "@web3icons/react";
-import type { IconComponent } from "@web3icons/react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ActionTooltip } from "@/components/ui/ActionTooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { buildPaymentLinkPublicUrl } from "@/lib/merchant-commerce-helpers";
-import { cn } from "@/lib/utils";
 import type { MerchantPayPageRow } from "@/types/merchant-api";
-
-const BASE_CHAINS: { id: string; label: string; Icon: IconComponent }[] = [
-  { id: "ethereum", label: "Ethereum", Icon: NetworkEthereum },
-  { id: "tron", label: "Tron", Icon: NetworkTron },
-  { id: "polygon", label: "Polygon", Icon: NetworkPolygon },
-  { id: "arbitrum", label: "Arbitrum", Icon: NetworkArbitrumOne },
-  { id: "base", label: "Base", Icon: NetworkBase },
-  { id: "bsc", label: "BNB Chain", Icon: NetworkBinanceSmartChain },
-];
-
-const CHAIN_COUNT = BASE_CHAINS.length;
-const REPEAT_MULTIPLIER = 5;
-const EXTENDED_CHAINS = Array.from({ length: REPEAT_MULTIPLIER }).flatMap(() => BASE_CHAINS);
-
-const MIDDLE_ARRAY_START = Math.floor(REPEAT_MULTIPLIER / 2) * CHAIN_COUNT;
-
-// Upgraded Sizes
-const ITEM_PX = 64; 
-const GAP_PX = 16;  
-const STRIDE = ITEM_PX + GAP_PX;
+import { SupportedNetworksCarousel } from "@/components/merchant/supported-networks-carousel";
 
 export type PaymentLinkQrDialogProps = {
   open: boolean;
@@ -102,14 +66,6 @@ export function PaymentLinkQrDialog({
   companyLogoUrl,
   headline,
 }: PaymentLinkQrDialogProps) {
-  
-  const [activeIndex, setActiveIndex] = useState(MIDDLE_ARRAY_START);
-  
-  // Refs ensure the auto-play timer never loses track of the current position
-  const currentIndexRef = useRef(MIDDLE_ARRAY_START);
-  const isAnimatingRef = useRef(false);
-  const controls = useAnimationControls();
-
   const checkoutUrl = row
     ? buildPaymentLinkPublicUrl(
         row.publicCode?.trim() || row.slug,
@@ -202,63 +158,6 @@ export function PaymentLinkQrDialog({
     }
   }, [checkoutUrl, headline, row?.slug]);
 
-  // Mathematical absolute centering (No viewport measuring needed)
-  const calculateX = useCallback((index: number) => {
-    return -(index * STRIDE + ITEM_PX / 2);
-  }, []);
-
-  // Snap to center immediately when dialog opens
-  useLayoutEffect(() => {
-    if (!open) return;
-    controls.set({ x: calculateX(MIDDLE_ARRAY_START) });
-    currentIndexRef.current = MIDDLE_ARRAY_START;
-    queueMicrotask(() => {
-      setActiveIndex(MIDDLE_ARRAY_START);
-    });
-  }, [open, controls, calculateX]);
-
-  // Core movement engine
-  const glideTo = useCallback(async (targetIndex: number) => {
-    if (isAnimatingRef.current) return;
-    isAnimatingRef.current = true;
-
-    setActiveIndex(targetIndex);
-    currentIndexRef.current = targetIndex;
-
-    // 1. Move to the next item
-    await controls.start({
-      x: calculateX(targetIndex),
-      transition: { type: "spring", stiffness: 220, damping: 28 } 
-    });
-
-    // 2. Invisible Loop Reset
-    let snapIndex = targetIndex;
-    if (targetIndex >= MIDDLE_ARRAY_START + CHAIN_COUNT) {
-      snapIndex = targetIndex - CHAIN_COUNT;
-    } else if (targetIndex < MIDDLE_ARRAY_START) {
-      snapIndex = targetIndex + CHAIN_COUNT;
-    }
-
-    if (snapIndex !== targetIndex) {
-      controls.set({ x: calculateX(snapIndex) });
-      setActiveIndex(snapIndex);
-      currentIndexRef.current = snapIndex;
-    }
-
-    isAnimatingRef.current = false;
-  }, [calculateX, controls]);
-
-  // The Auto-Play Timer
-  useEffect(() => {
-    if (!open) return;
-    
-    const timer = setInterval(() => {
-      void glideTo(currentIndexRef.current + 1);
-    }, 2500);
-
-    return () => clearInterval(timer);
-  }, [open, glideTo]);
-
   return (
     <Dialog
       open={open}
@@ -267,7 +166,7 @@ export function PaymentLinkQrDialog({
       }}
     >
       <DialogContent
-        className="border-none bg-transparent p-0 shadow-none max-w-sm sm:max-w-md"
+        className="border-none bg-transparent p-0 shadow-none max-w-md sm:max-w-md"
         aria-describedby={undefined}
       >
         <DialogTitle className="sr-only">
@@ -330,63 +229,14 @@ export function PaymentLinkQrDialog({
               Pay with tokens from supported networks
             </p>
 
-            <div
-              // Increased wrapper height to fit the larger 68px box
-              className="relative isolate h-[88px] w-full max-w-full overflow-hidden"
-              role="group"
-            >
-              {/* TRACK CONTAINER anchored exactly to 50% left */}
-              <motion.div
-                className="absolute left-[50%] top-1/2 flex w-max -translate-y-1/2 items-center"
-                style={{ gap: GAP_PX, willChange: "transform" }}
-                animate={controls}
-              >
-                {EXTENDED_CHAINS.map((chain, index) => {
-                  const isSelected = index === activeIndex;
-                  
-                  return (
-                    <button
-                      key={`${index}-${chain.id}`}
-                      type="button"
-                      // Icons explicitly set to 64px
-                      style={{ width: ITEM_PX, height: ITEM_PX }}
-                      className={cn(
-                        "relative flex shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                        isSelected ? "z-[1]" : "z-0"
-                      )}
-                      onClick={() => void glideTo(index)}
-                      aria-pressed={isSelected}
-                      aria-label={chain.label}
-                    >
-                      <motion.span
-                        className="flex items-center justify-center"
-                        animate={{
-                          scale: isSelected ? 1 : 0.75,
-                          opacity: isSelected ? 1 : 0.4,
-                        }}
-                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                      >
-                        <chain.Icon variant="background" size={48} aria-hidden />
-                      </motion.span>
-                    </button>
-                  );
-                })}
-              </motion.div>
-
-              <div
-                className="pointer-events-none absolute inset-0 z-2 bg-gradient-to-x from-white/20 via-transparent to-white/0 dark:from-black/20 dark:via-transparent dark:to-black/0"
-                aria-hidden
-              />
-
-              {/* THE FIXED AREA
-                 Size is 68px. Items are 64px. 
-                 Exactly 2px border + 2px empty space = perfectly framed.
-              */}
-              <div
-                className="pointer-events-none absolute left-1/2 top-1/2 z-[3] box-border size-[64px] -translate-x-1/2 -translate-y-1/2 border border-primary bg-primary/[0.04] shadow-[0_0_12px_rgba(0,0,0,0.12)] ring-1 ring-primary/20 dark:bg-primary/10 dark:shadow-[0_0_12px_rgba(0,0,0,0.35)]"
-                aria-hidden
-              />
-            </div>
+            <SupportedNetworksCarousel
+              enabled={open}
+              itemPx={64}
+              gapPx={16}
+              iconSize={48}
+              showCenterFrame
+              showEdgeGradient
+            />
           </div>
 
           <div className="flex w-full flex-col items-center gap-3 text-center">

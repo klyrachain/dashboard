@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getInvoiceList } from "@/lib/data-invoices";
 import {
   getAccessContext,
@@ -86,7 +87,11 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps) 
           <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
             <p className="text-sm font-medium text-slate-600">It&apos;s quiet here</p>
             <p className="text-xs text-slate-500">
-              No invoices yet. Create one to get started.
+              No invoices yet.{" "}
+              <Link href="/invoices/new" className="font-medium text-primary underline-offset-4 hover:underline">
+                Create an invoice
+              </Link>{" "}
+              to get started.
             </p>
           </div>
         ) : (

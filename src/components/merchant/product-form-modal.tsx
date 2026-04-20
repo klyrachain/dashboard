@@ -15,6 +15,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { PaymentLinkCurrencyPicker } from "@/components/merchant/payment-link-currency-picker";
 import { cn } from "@/lib/utils";
+import { PLATFORM_PRIMARY_HEX } from "@/lib/platform-theme";
 import type {
   MerchantProductCreateBody,
   MerchantProductPatchBody,
@@ -47,6 +48,8 @@ export type ProductFormModalProps = {
 
 const inputLike =
   "flex min-h-[4.5rem] w-full rounded-md border border-input bg-slate-50 px-3 py-2 text-base transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-ring focus-visible:bg-white disabled:cursor-not-allowed disabled:opacity-50 md:text-sm";
+
+const primaryPanelStyle = { backgroundColor: PLATFORM_PRIMARY_HEX } as const;
 
 export function ProductFormModal({
   open,
@@ -192,20 +195,137 @@ export function ProductFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* sm:max-w-[540px] */}
       <DialogContent
-        className="border-none max-w-xl
-        "
+        className="border-none max-w-xl"
         aria-describedby={undefined}
         aria-labelledby={titleId}
       >
         <DialogHeader>
           <DialogTitle id={titleId}>
-            {isEditing ? "Edit product" : "New product"}
+            {isEditing ? "Edit product" : "Enlist a new product"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-2">
+        <div className="grid gap-6 py-2">
+          <div className="overflow-hidden rounded-lg bg-PLATFORM_PRIMARY_HEX" 
+          style={{ backgroundColor: PLATFORM_PRIMARY_HEX }}
+          >
+            <div className="space-y-3 p-3">
+              {/* <span className="text-sm font-medium text-background">Product image</span> */}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                tabIndex={-1}
+                disabled={busy}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  void processFile(f);
+                  e.target.value = "";
+                }}
+              />
+
+              {imageTab === "file" ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOver(true);
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    "flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 text-center text-sm transition-colors",
+                    dragOver
+                      ? "border-white/60 bg-white/15"
+                      : "border-white/25 bg-white/5 hover:border-white/40 hover:bg-white/10",
+                    busy && "pointer-events-none opacity-60"
+                  )}
+                >
+                  {uploadingFile ? (
+                    <Loader2 className="size-8 animate-spin text-background" aria-hidden />
+                  ) : (
+                    <ImageIcon className="size-8 text-background/80" aria-hidden />
+                  )}
+                  <span className="font-medium text-background">
+                    {uploadingFile ? "Uploading" : "Drop an image here or click to browse"}
+                  </span>
+                  <span className="text-xs text-background/75">
+                    PNG or JPG recommended. Stored as a public URL on your catalog after upload.
+                  </span>
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  {/* <Label htmlFor={`${formId}-imgurl`} className="text-background">
+                    Image address
+                  </Label> */}
+                  <Input
+                    id={`${formId}-imgurl`}
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="Paste HTTPS image URL"
+                    disabled={busy}
+                    className="border-white/20 bg-white/95 text-foreground"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 rounded-lg border border-white/20 bg-black/20 p-1">
+                <Button
+                  type="button"
+                  variant={imageTab === "file" ? "default" : "ghost"}
+                  className={cn(
+                    "h-9 gap-2 text-background hover:bg-white/10 hover:text-background",
+                    imageTab === "file" &&
+                      "bg-black/40 text-background hover:bg-black/50 hover:text-background"
+                  )}
+                  disabled={busy}
+                  onClick={() => {
+                    setImageTab("file");
+                    setUploadError(null);
+                  }}
+                >
+                  <Upload className="size-4 shrink-0" aria-hidden />
+                  File
+                </Button>
+                <Button
+                  type="button"
+                  variant={imageTab === "link" ? "default" : "ghost"}
+                  className={cn(
+                    "h-9 gap-2 text-background hover:bg-white/10 hover:text-background",
+                    imageTab === "link" &&
+                      "bg-black/40 text-background hover:bg-black/50 hover:text-background"
+                  )}
+                  disabled={busy}
+                  onClick={() => {
+                    setImageTab("link");
+                    setUploadError(null);
+                  }}
+                >
+                  <Link2 className="size-4 shrink-0" aria-hidden />
+                  Link
+                </Button>
+              </div>
+
+              {uploadError ? (
+                <p className="text-xs text-red-200" role="alert">
+                  {uploadError}
+                </p>
+              ) : null}
+
+              {imageUrl.trim() && imageTab === "file" ? (
+                <p className="text-xs text-background/80">
+                  Preview uses your saved address after upload. Switch to Link to edit the URL.
+                </p>
+              ) : null}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor={`${formId}-name`}>Name</Label>
             <Input
@@ -230,10 +350,15 @@ export function ProductFormModal({
             />
           </div>
 
-          <div className="space-y-2">
-            <span className="text-sm font-medium">Product type</span>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="text-sm font-medium">Product type</span>
+              <p className="text-xs text-muted-foreground">
+                Physical, digital, or service affects how you describe fulfillment.
+              </p>
+            </div>
             <div
-              className="grid grid-cols-3 gap-2 rounded-lg border border-border p-1"
+              className="grid h-fit shrink-0 grid-cols-3 gap-2 rounded-lg border border-border p-1 sm:w-[min(100%,20rem)]"
               role="group"
               aria-label="Product type"
             >
@@ -276,122 +401,21 @@ export function ProductFormModal({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <span className="text-sm font-medium">Product image</span>
-            <div className="grid grid-cols-2 gap-2 rounded-lg border border-border p-1">
-              <Button
-                type="button"
-                variant={imageTab === "file" ? "default" : "ghost"}
-                className="h-9 gap-2"
-                disabled={busy}
-                onClick={() => {
-                  setImageTab("file");
-                  setUploadError(null);
-                }}
-              >
-                <Upload className="size-4 shrink-0" aria-hidden />
-                File
-              </Button>
-              <Button
-                type="button"
-                variant={imageTab === "link" ? "default" : "ghost"}
-                className="h-9 gap-2"
-                disabled={busy}
-                onClick={() => {
-                  setImageTab("link");
-                  setUploadError(null);
-                }}
-              >
-                <Link2 className="size-4 shrink-0" aria-hidden />
-                Link
-              </Button>
-            </div>
-
-            {imageTab === "file" ? (
-              <div className="space-y-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  tabIndex={-1}
-                  disabled={busy}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    void processFile(f);
-                    e.target.value = "";
-                  }}
-                />
-                <button
-                  type="button"
-                  disabled={busy}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragOver(true);
-                  }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={cn(
-                    "flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 text-center text-sm transition-colors",
-                    dragOver
-                      ? "border-primary bg-primary/5"
-                      : "border-muted-foreground/25 bg-muted/30 hover:border-muted-foreground/40",
-                    busy && "pointer-events-none opacity-60"
-                  )}
-                >
-                  {uploadingFile ? (
-                    <Loader2 className="size-8 animate-spin text-muted-foreground" aria-hidden />
-                  ) : (
-                    <ImageIcon className="size-8 text-muted-foreground" aria-hidden />
-                  )}
-                  <span className="font-medium text-foreground">
-                    {uploadingFile ? "Uploading" : "Drop an image here or click to browse"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    PNG or JPG recommended. Stored as a public URL on your catalog after upload.
-                  </span>
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor={`${formId}-imgurl`}>Image address</Label>
-                <Input
-                  id={`${formId}-imgurl`}
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="Paste HTTPS image URL"
-                  disabled={busy}
-                />
-              </div>
-            )}
-
-            {uploadError ? (
-              <p className="text-xs text-destructive" role="alert">
-                {uploadError}
-              </p>
-            ) : null}
-
-            {imageUrl.trim() && imageTab === "file" ? (
-              <p className="text-xs text-muted-foreground">
-                Preview uses your saved address after upload. Switch to Link to edit the URL.
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex items-center justify-between rounded-lg border border-border p-3">
-            <div className="space-y-0.5 pr-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex-1 space-y-1 pr-0 sm:pr-3">
               <Label className="text-sm font-medium">Listed for sale</Label>
               <p className="text-xs text-muted-foreground">
-                When off, the product is archived and hidden from new checkouts
+                When off, the product is archived and hidden from new checkouts.
               </p>
             </div>
-            <Switch
-              checked={isActive}
-              onCheckedChange={setIsActive}
-              disabled={busy}
-            />
+            <div className="flex shrink-0 items-center rounded-lg border border-border p-2 sm:p-3">
+              <Switch
+                checked={isActive}
+                onCheckedChange={setIsActive}
+                disabled={busy}
+                aria-label="Listed for sale"
+              />
+            </div>
           </div>
 
           {localError ? (
@@ -401,7 +425,7 @@ export function ProductFormModal({
           ) : null}
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
+        <DialogFooter className="flex justify-between gap-3 sm:flex-row sm:items-center">
           <Button
             type="button"
             variant="outline"
@@ -412,7 +436,8 @@ export function ProductFormModal({
           </Button>
           <Button
             type="button"
-            className="w-full sm:w-auto"
+            className="w-full text-white hover:opacity-90 sm:w-auto"
+            style={{ backgroundColor: PLATFORM_PRIMARY_HEX }}
             onClick={() => void handleSubmit()}
             disabled={busy || !name.trim() || !price}
           >

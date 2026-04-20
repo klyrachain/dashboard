@@ -935,7 +935,7 @@ export function MerchantPaymentLinksClient({
             <DialogHeader>
               <DialogTitle>Generate a payment link</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-2">
+            <div className="grid gap-6 py-2">
               {productId ? (
                 <p className="text-sm text-muted-foreground">
                   Prefilled product ID:{" "}
@@ -1197,12 +1197,7 @@ export function MerchantPaymentLinksClient({
               </div>
               {orderCartLines.length === 0 ? (
                 <div className="space-y-2">
-                  <div>
-                    <span className="text-sm font-medium">Crypto amount</span>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Payment links are settled in crypto. Choose the charge currency and amount.
-                    </p>
-                  </div>
+
                   <div className="grid gap-3 sm:grid-cols-[1fr_1.1fr] sm:items-end">
                     <div className="min-w-0">
                       <PaymentLinkCurrencyPicker
@@ -1245,6 +1240,7 @@ export function MerchantPaymentLinksClient({
                     type="button"
                     variant={linkUsage === "unlimited" ? "default" : "ghost"}
                     className="h-10 text-sm"
+                    style={{ backgroundColor: linkUsage === "unlimited" ? PLATFORM_PRIMARY_HEX : 'transparent' }}
                     onClick={() => setLinkUsage("unlimited")}
                   >
                     Unlimited use
@@ -1253,6 +1249,7 @@ export function MerchantPaymentLinksClient({
                     type="button"
                     variant={linkUsage === "onetime" ? "default" : "ghost"}
                     className="h-10 text-sm"
+                    style={{ backgroundColor: linkUsage === "onetime" ? PLATFORM_PRIMARY_HEX : 'transparent' }}
                     onClick={() => setLinkUsage("onetime")}
                   >
                     One-time
@@ -1392,6 +1389,7 @@ export function MerchantPaymentLinksClient({
               <Button
                 type="button"
                 className="w-full sm:w-auto"
+                style={{ backgroundColor: PLATFORM_PRIMARY_HEX }}
                 onClick={handleCreate}
                 disabled={createPaymentLinkDisabled}
               >
