@@ -21,6 +21,13 @@ export function parseAmountString(raw: string | undefined | null): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Summary `volumeUsdInPeriod` may be string or number from Core. */
+export function parseReportingUsd(value: unknown): number {
+  if (value == null || value === "") return 0;
+  const n = Number.parseFloat(String(value).replace(/,/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function formatMoneyAmount(
   amount: number,
   currency: string,
@@ -96,6 +103,22 @@ export function getSettlementStatusLabel(status: string): string {
   return status;
 }
 
+/**
+ * Core may send `balances.fiatAvailable` / `fiatPending` as `{}` or all zeros.
+ * In that case we must fall back to settlement aggregates instead of treating `{}` as authoritative.
+ */
+function nonZeroBalanceMapFromRecord(
+  rec: Record<string, string> | undefined
+): Record<string, number> | null {
+  if (!rec || typeof rec !== "object") return null;
+  const out: Record<string, number> = {};
+  for (const [currency, raw] of Object.entries(rec)) {
+    const n = parseAmountString(raw);
+    if (n !== 0) out[currency] = n;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 export function aggregateSettlementSums(
   rows: MerchantSummarySettlementAmountRow[] | undefined,
   statuses: Set<string>
@@ -131,23 +154,15 @@ export function buildPayoutOverviewFromSummary(
   const fiatAvail = summary.balances?.fiatAvailable;
   const fiatPending = summary.balances?.fiatPending;
 
-  let availableByCurrency: Record<string, number> = {};
-  if (fiatAvail && typeof fiatAvail === "object") {
-    for (const [c, v] of Object.entries(fiatAvail)) {
-      availableByCurrency[c] = parseAmountString(v);
-    }
-  } else {
-    availableByCurrency = aggregateSettlementSums(rows, STATUS_SCHEDULED);
-  }
+  const directAvail = nonZeroBalanceMapFromRecord(fiatAvail);
+  const availableByCurrency = directAvail
+    ? directAvail
+    : aggregateSettlementSums(rows, STATUS_SCHEDULED);
 
-  let pendingByCurrency: Record<string, number> = {};
-  if (fiatPending && typeof fiatPending === "object") {
-    for (const [c, v] of Object.entries(fiatPending)) {
-      pendingByCurrency[c] = parseAmountString(v);
-    }
-  } else {
-    pendingByCurrency = aggregateSettlementSums(rows, STATUS_PROCESSING);
-  }
+  const directPending = nonZeroBalanceMapFromRecord(fiatPending);
+  const pendingByCurrency = directPending
+    ? directPending
+    : aggregateSettlementSums(rows, STATUS_PROCESSING);
 
   const lifetimePaidOutByCurrency = aggregateSettlementSums(rows, STATUS_PAID);
 

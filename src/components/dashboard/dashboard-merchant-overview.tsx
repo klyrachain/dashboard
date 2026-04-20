@@ -336,23 +336,26 @@ export function DashboardMerchantOverview() {
               {formatUsd(t.volumeUsdInPeriod)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {formatNumber(t.completedCountInPeriod)} completed in period
+              From {formatNumber(t.completedCountInPeriod)} completed checkout
+              {(t.completedCountInPeriod ?? 0) === 1 ? "" : "s"} in this period
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Transactions
+              Completed checkouts
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold tabular-nums">
-              {formatNumber(t.inPeriod)}
+              {formatNumber(t.completedCountInPeriod ?? t.inPeriod)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              All time {formatNumber(t.totalAllTime)}, 24h{" "}
-              {formatNumber(t.last24hCount)}, 7d {formatNumber(t.last7dCount)}
+              All time {formatNumber(t.totalAllTime)} · 24h{" "}
+              {formatNumber(t.last24hCount)} · 7d {formatNumber(t.last7dCount)}
+              {" "}
+              <span className="text-muted-foreground/80">(completed only)</span>
             </p>
           </CardContent>
         </Card>
@@ -392,7 +395,7 @@ export function DashboardMerchantOverview() {
               Activity and volume
             </CardTitle>
             <p className="text-sm font-normal text-muted-foreground">
-              Daily sales count and completed volume in USD
+              Completed checkouts per day and completed volume (USD)
             </p>
           </CardHeader>
           <CardContent>
@@ -441,7 +444,7 @@ export function DashboardMerchantOverview() {
                     <Bar
                       yAxisId="left"
                       dataKey="transactionCount"
-                      name="Tx count"
+                      name="Completed count"
                       fill="var(--chart-1)"
                       radius={[4, 4, 0, 0]}
                     />
@@ -449,7 +452,7 @@ export function DashboardMerchantOverview() {
                       yAxisId="right"
                       type="monotone"
                       dataKey="volumeUsd"
-                      name="Volume USD"
+                      name="Completed volume (USD)"
                       stroke="var(--chart-2)"
                       strokeWidth={2}
                       dot={false}

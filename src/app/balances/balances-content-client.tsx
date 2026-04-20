@@ -224,14 +224,7 @@ export function BalancesContentClient({
           summaryLoading={summaryQ.isLoading || summaryQ.isFetching}
           transactions={merchantTxRows}
           transactionsLoading={merchantTxQ.isLoading || merchantTxQ.isFetching}
-          periodDays={summaryQ.data?.periodDays ?? merchantSummaryDays}
         />
-        <p className="text-sm text-muted-foreground max-w-prose">
-          Fiat “available / pending” matches Payouts. USD volume matches the dashboard for the same
-          reporting window. Token rows sum recorded on-chain legs from completed transactions (see
-          Transactions for detail); they do not subtract gas sponsorship—you can reconcile volume,
-          gas, and payouts separately.
-        </p>
       </div>
     );
   }

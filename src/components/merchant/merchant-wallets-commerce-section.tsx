@@ -1,14 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
 import type { MerchantSummary } from "@/types/merchant-api";
 import type { TransactionRow } from "@/lib/data-transactions";
 import {
   formatRollupTokenAmount,
   rollupRecordedNonFiatTokenTotals,
 } from "@/lib/merchant-balances-rollup";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -39,7 +38,6 @@ type MerchantWalletsCommerceSectionProps = {
   summaryLoading: boolean;
   transactions: TransactionRow[];
   transactionsLoading: boolean;
-  periodDays: number;
 };
 
 export function MerchantWalletsCommerceSection({
@@ -47,10 +45,8 @@ export function MerchantWalletsCommerceSection({
   summaryLoading,
   transactions,
   transactionsLoading,
-  periodDays,
 }: MerchantWalletsCommerceSectionProps) {
   const t = summary?.transactions;
-  const periodLabel = `${summary?.periodFrom?.slice(0, 10) ?? "…"} → ${summary?.periodTo?.slice(0, 10) ?? "…"}`;
 
   const rollup = useMemo(
     () => rollupRecordedNonFiatTokenTotals(transactions, summary?.periodFrom),
@@ -73,11 +69,6 @@ export function MerchantWalletsCommerceSection({
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Commerce volume (reporting window)
           </CardTitle>
-          <CardDescription>
-            Same completed-volume basis as your dashboard ({periodDays}-day window: {periodLabel}).
-            This is transaction activity, not a net-of-gas or net-of-payouts ledger—use Payouts for
-            withdrawals and Gas settings for sponsorship.
-          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -116,11 +107,6 @@ export function MerchantWalletsCommerceSection({
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Recorded crypto & on-chain token legs
           </CardTitle>
-          <CardDescription>
-            Totals from completed transactions in the same window, using the same fields as the
-            Transactions page (excluding Mobile Money and Bank legs). Swaps can appear on more than
-            one row.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {transactionsLoading ? (
@@ -166,13 +152,6 @@ export function MerchantWalletsCommerceSection({
               </Table>
             </div>
           )}
-          <p className="mt-3 text-xs text-muted-foreground">
-            For full history and filters, see{" "}
-            <Link href="/transactions" className="font-medium text-primary underline-offset-4 hover:underline">
-              Transactions
-            </Link>
-            .
-          </p>
         </CardContent>
       </Card>
     </div>

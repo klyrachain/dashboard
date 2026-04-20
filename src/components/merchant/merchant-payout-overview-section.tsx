@@ -11,6 +11,7 @@ import type { MerchantSummary } from "@/types/merchant-api";
 import {
   buildPayoutOverviewFromSummary,
   formatMoneyAmount,
+  parseReportingUsd,
 } from "./merchant-payout-utils";
 
 type MerchantPayoutOverviewSectionProps = {
@@ -86,18 +87,24 @@ export function MerchantPayoutOverviewSection({
     nextBatchLabel = String(schedule.cadence).toLowerCase();
   }
 
-  const fiatAvailableStr = formatCurrencyMap(
-    figures.availableByCurrency,
-    EMPTY_AMOUNT
-  );
-  const fiatPendingStr = formatCurrencyMap(
-    figures.pendingByCurrency,
-    EMPTY_AMOUNT
-  );
-  const lifetimeStr = formatCurrencyMap(
-    figures.lifetimePaidOutByCurrency,
-    EMPTY_AMOUNT
-  );
+  const bucketsHaveFunds =
+    Object.values(figures.availableByCurrency).some((n) => n > 0) ||
+    Object.values(figures.pendingByCurrency).some((n) => n > 0) ||
+    Object.values(figures.lifetimePaidOutByCurrency).some((n) => n > 0);
+
+  const commerceVolumeUsd = parseReportingUsd(summary?.transactions?.volumeUsdInPeriod);
+  /** When no payout queue rows yet, surface completed USD volume on Available and show zero for the other two. */
+  const useCommerceCardFallback = !bucketsHaveFunds && commerceVolumeUsd > 0;
+
+  const fiatAvailableStr = useCommerceCardFallback
+    ? formatMoneyAmount(commerceVolumeUsd, "USD")
+    : formatCurrencyMap(figures.availableByCurrency, EMPTY_AMOUNT);
+  const fiatPendingStr = useCommerceCardFallback
+    ? formatMoneyAmount(0, "USD")
+    : formatCurrencyMap(figures.pendingByCurrency, EMPTY_AMOUNT);
+  const lifetimeStr = useCommerceCardFallback
+    ? formatMoneyAmount(0, "USD")
+    : formatCurrencyMap(figures.lifetimePaidOutByCurrency, EMPTY_AMOUNT);
 
   return (
     <section aria-labelledby="payout-overview-heading" className="space-y-4">

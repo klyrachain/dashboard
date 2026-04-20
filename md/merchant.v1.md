@@ -186,7 +186,7 @@ Pre-aggregated tenant metrics (scoped to **`businessId` + resolved environment**
 
 - `periodDays`, `seriesDays`, `periodFrom`, `periodTo` (ISO)
 - `business`: `id`, `name`, `slug`, `kybStatus`
-- `transactions`: counts, `volumeUsdInPeriod`, fee totals, etc. — **only** rows matching the current environment
+- `transactions`: `volumeUsdInPeriod` / `completedCountInPeriod` / `inPeriod` / `totalAllTime` / rolling counts are **COMPLETED** checkouts only; `byStatus*` still lists every status for the funnel — **only** rows matching the current environment
 - `fees`, `settlements`, `series` — same environment scope
 
 ---

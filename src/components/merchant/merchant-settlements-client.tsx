@@ -10,7 +10,6 @@ import {
   useGetMerchantSummaryQuery,
 } from "@/store/merchant-api";
 import { useMerchantTenantScope } from "@/hooks/use-merchant-tenant-scope";
-import { Skeleton } from "@/components/ui/skeleton";
 import { MerchantPayoutDestinationsSection } from "./merchant-payout-destinations-section";
 import { MerchantPayoutHistorySection } from "./merchant-payout-history-section";
 import { MerchantPayoutOverviewSection } from "./merchant-payout-overview-section";
@@ -79,16 +78,6 @@ export function MerchantSettlementsClient() {
     );
   }
 
-  if (listQ.isLoading && !listQ.data) {
-    return (
-      <div className="space-y-6" role="status" aria-live="polite">
-        <Skeleton className="h-36 w-full rounded-lg" />
-        <Skeleton className="h-28 w-full rounded-lg" />
-        <Skeleton className="h-56 w-full rounded-lg" />
-      </div>
-    );
-  }
-
   if (listQ.isError) {
     const err = listQ.error;
     const msg =
@@ -140,7 +129,10 @@ export function MerchantSettlementsClient() {
         meta={meta}
         page={page}
         statusFilter={statusFilter}
-        isLoading={listQ.isFetching && items.length === 0}
+        isLoading={
+          (listQ.isLoading && !listQ.data) ||
+          (listQ.isFetching && items.length === 0)
+        }
         onStatusChange={(value) => {
           pushParams({
             status: value === "all" ? undefined : value,

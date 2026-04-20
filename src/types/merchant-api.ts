@@ -154,12 +154,17 @@ export interface MerchantSummary {
     kybStatus?: string;
   };
   transactions: {
+    /** Completed only (all time). */
     totalAllTime?: number;
+    /** Completed only (current reporting window). */
     inPeriod?: number;
     byStatusAllTime?: MerchantSummaryStatusCounts;
     byStatusInPeriod?: MerchantSummaryStatusCounts;
+    /** Completed only (rolling 24h). */
     last24hCount?: number;
+    /** Completed only (rolling 7d). */
     last7dCount?: number;
+    /** Completed checkout volume in USD for the reporting window. */
     volumeUsdInPeriod?: string;
     completedCountInPeriod?: number;
     platformFeesUsdInPeriod?: string;
