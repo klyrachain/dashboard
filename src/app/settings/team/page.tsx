@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default async function SettingsTeamPage() {
-  const { ok, data: admins, error, source } = await getSettingsTeamForPage();
+  const { ok, data: admins, invites, error, source } = await getSettingsTeamForPage();
 
   return (
     <div className="space-y-6 font-primary text-body">
@@ -30,6 +30,7 @@ export default async function SettingsTeamPage() {
       )}
       <TeamSettingsContent
         initialAdmins={ok ? admins : undefined}
+        initialInvites={ok && source === "merchant" ? invites : undefined}
         teamSource={source}
       />
     </div>

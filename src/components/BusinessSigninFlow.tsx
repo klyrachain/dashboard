@@ -29,20 +29,15 @@ import { runPasskeyAuthentication } from "@/lib/webauthn-client";
 import type { AppDispatch } from "@/store";
 import { hydrateMerchantSession } from "@/store/merchant-session-slice";
 import { cn } from "@/lib/utils";
+import {
+  isTeamInviteAcceptReturnPath,
+  safeBusinessPortalReturnPath,
+} from "@/lib/businessPortalReturnTo";
 
 const MAGIC_COOLDOWN_SECONDS = 30;
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
-function safeReturnPath(returnTo: string | null): string {
-  if (!returnTo?.trim()) return "/";
-  const t = returnTo.trim();
-  if (!t.startsWith("/") || t.startsWith("//") || t.startsWith("/api/")) {
-    return "/";
-  }
-  return t;
 }
 
 function formatApiError(error: unknown): string {
@@ -106,19 +101,33 @@ async function completeBusinessPortalSignIn(
     );
   }
 
+  const safeReturn = safeBusinessPortalReturnPath(returnTo);
+  const teamInviteReturn = isTeamInviteAcceptReturnPath(safeReturn);
+
   if (!session.profileComplete) {
+    if (teamInviteReturn) {
+      const join = `/business/signup/join?finishProfile=1&return_to=${encodeURIComponent(safeReturn)}`;
+      router.push(join);
+      router.refresh();
+      return;
+    }
     router.push("/business/signup?finishProfile=1");
     router.refresh();
     return;
   }
 
   if (businesses.length === 0) {
+    if (teamInviteReturn) {
+      router.push(safeReturn);
+      router.refresh();
+      return;
+    }
     router.push("/business/signup");
     router.refresh();
     return;
   }
 
-  router.push(safeReturnPath(returnTo));
+  router.push(safeReturn);
   router.refresh();
 }
 

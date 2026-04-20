@@ -124,13 +124,14 @@ async function fetchCoreGet<T>(
 async function fetchCorePost<T>(
   path: string,
   body: Record<string, unknown>,
-  bearerToken?: string | null
+  bearerToken?: string | null,
+  extraHeaders?: HeadersInit
 ): Promise<{ ok: boolean; status: number; data: T }> {
   const base = getCoreBaseUrl().replace(/\/$/, "");
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
   const res = await fetch(url, {
     method: "POST",
-    headers: coreHeaders(path, bearerToken),
+    headers: coreHeaders(path, bearerToken, extraHeaders),
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
@@ -1098,6 +1099,61 @@ export async function getCoreMerchantTeamMembers(
     bearerToken,
     extraHeaders
   );
+}
+
+/** GET /api/v1/merchant/team/invites — pending invites for the active business. */
+export async function getCoreMerchantTeamInvites(
+  bearerToken: string,
+  extraHeaders?: HeadersInit
+) {
+  return fetchCoreGet<unknown[]>(
+    "api/v1/merchant/team/invites",
+    undefined,
+    bearerToken,
+    extraHeaders
+  );
+}
+
+/** POST /api/v1/merchant/team/invites */
+export async function postCoreMerchantTeamInvite(
+  body: { email: string; role: string },
+  bearerToken: string,
+  extraHeaders?: HeadersInit
+) {
+  return fetchCorePost<unknown>(
+    "api/v1/merchant/team/invites",
+    { email: body.email, role: body.role },
+    bearerToken,
+    extraHeaders
+  );
+}
+
+/** POST /api/v1/merchant/team/invites/:id/resend */
+export async function postCoreMerchantTeamInviteResend(
+  inviteId: string,
+  bearerToken: string,
+  extraHeaders?: HeadersInit
+) {
+  const path = `api/v1/merchant/team/invites/${encodeURIComponent(inviteId)}/resend`;
+  return fetchCorePost<unknown>(path, {}, bearerToken, extraHeaders);
+}
+
+/** DELETE /api/v1/merchant/team/members/:id */
+export async function deleteCoreMerchantTeamMember(
+  memberId: string,
+  bearerToken: string,
+  extraHeaders?: HeadersInit
+) {
+  const base = getCoreBaseUrl().replace(/\/$/, "");
+  const path = `api/v1/merchant/team/members/${encodeURIComponent(memberId)}`;
+  const url = `${base}/${path}`;
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: coreHeaders(path, bearerToken, extraHeaders),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  const data = (await res.json().catch(() => ({}))) as unknown;
+  return { ok: res.ok, status: res.status, data };
 }
 
 /** GET /api/v1/merchant/business — same auth headers as other merchant v1 routes. */

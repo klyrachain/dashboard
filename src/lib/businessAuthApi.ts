@@ -774,3 +774,28 @@ export async function consumeBusinessLoginCode(
   return { accessToken };
 }
 
+/** Join a business from an email invite (Bearer = portal JWT; email must match invite). */
+export async function acceptBusinessTeamInvite(
+  accessToken: string,
+  inviteToken: string
+): Promise<{ businessId: string }> {
+  const body = await requestJson("/api/business-auth/team/accept-invite", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ token: inviteToken.trim() }),
+  });
+  const data = unwrapSuccessData(body);
+  const businessId =
+    data && typeof data.businessId === "string" ? data.businessId.trim() : "";
+  if (!businessId) {
+    throw new BusinessAuthApiError(
+      "Invalid response: missing businessId",
+      500,
+      body
+    );
+  }
+  return { businessId };
+}
+

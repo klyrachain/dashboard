@@ -19,10 +19,15 @@ import {
   patchSettingsRisk,
   getSettingsTeamAdmins,
   postAuthInvite,
+  postMerchantPortalTeamInvite,
+  postMerchantPortalTeamInviteResend,
+  deleteMerchantPortalTeamMember,
+  normalizeBusinessInviteRole,
   getSettingsApi,
   patchSettingsApi,
   postSettingsApiRotateWebhookSecret,
 } from "@/lib/data-settings";
+import { getPortalSsrAuthForCore } from "@/lib/portal-server-auth";
 
 const SETTINGS_PATHS = ["/settings/general", "/settings/financials", "/settings/providers", "/settings/risk", "/settings/team", "/settings/api"];
 
@@ -169,6 +174,23 @@ export async function inviteTeamAdminAction(body: {
   email: string;
   role?: string;
 }): Promise<InviteTeamResult> {
+  const portal = await getPortalSsrAuthForCore();
+  if (portal) {
+    const result = await postMerchantPortalTeamInvite({
+      email: body.email,
+      role: normalizeBusinessInviteRole(body.role ?? "ADMIN"),
+    });
+    if (result.ok) {
+      revalidatePath("/settings/team");
+      return {
+        success: true,
+        inviteLink: result.inviteLink,
+        expiresAt: result.expiresAt,
+        inviteId: result.inviteId,
+      };
+    }
+    return { success: false, error: result.error };
+  }
   const result = await postAuthInvite(body);
   if (result.ok) {
     revalidatePath("/settings/team");
@@ -178,6 +200,40 @@ export async function inviteTeamAdminAction(body: {
       expiresAt: result.expiresAt,
       inviteId: result.inviteId,
     };
+  }
+  return { success: false, error: result.error };
+}
+
+export async function resendMerchantTeamInviteAction(
+  inviteId: string
+): Promise<InviteTeamResult> {
+  const portal = await getPortalSsrAuthForCore();
+  if (!portal) {
+    return { success: false, error: "Sign in to your business account." };
+  }
+  const result = await postMerchantPortalTeamInviteResend(inviteId);
+  if (result.ok) {
+    revalidatePath("/settings/team");
+    return {
+      success: true,
+      inviteLink: result.inviteLink,
+      expiresAt: result.expiresAt,
+    };
+  }
+  return { success: false, error: result.error };
+}
+
+export async function removeMerchantTeamMemberAction(
+  memberId: string
+): Promise<SettingsActionResult> {
+  const portal = await getPortalSsrAuthForCore();
+  if (!portal) {
+    return { success: false, error: "Sign in to your business account." };
+  }
+  const result = await deleteMerchantPortalTeamMember(memberId);
+  if (result.ok) {
+    revalidatePath("/settings/team");
+    return { success: true };
   }
   return { success: false, error: result.error };
 }

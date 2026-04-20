@@ -19,7 +19,11 @@ import {
   patchCoreSettingsApi,
   postCoreSettingsApiRotateWebhookSecret,
   getCoreMerchantTeamMembers,
+  getCoreMerchantTeamInvites,
   getCoreMerchantBusiness,
+  postCoreMerchantTeamInvite,
+  postCoreMerchantTeamInviteResend,
+  deleteCoreMerchantTeamMember,
 } from "@/lib/core-api";
 import { getSessionToken } from "@/lib/auth";
 import { postCoreAuthInviteCreate } from "@/lib/auth-api-server";
@@ -349,6 +353,18 @@ export type SettingsAdmin = {
   email: string;
   role: string;
   twoFaEnabled: boolean;
+  /** Merchant portal: person KYC on the user record. */
+  portalKycStatus?: string;
+  portalKycVerifiedAt?: string;
+};
+
+/** Pending business invite (not yet accepted). */
+export type TeamPendingInvite = {
+  id: string;
+  email: string;
+  role: string;
+  expiresAt: string;
+  createdAt: string;
 };
 
 export async function getSettingsTeamAdmins(): Promise<{
@@ -409,7 +425,7 @@ export async function postSettingsTeamInvite(body: {
 
 /**
  * Create invite via Auth API (POST /api/auth/invite).
- * Returns invite link and expiresAt for the UI. Uses x-api-key server-side.
+ * Uses the signed-in **platform** admin session (Bearer); optional `CORE_API_KEY` only if no session.
  */
 export async function postAuthInvite(body: {
   email: string;
@@ -422,9 +438,10 @@ export async function postAuthInvite(body: {
   error?: string;
   code?: string;
 }> {
+  const token = await getSessionToken();
   const res = await postCoreAuthInviteCreate(
     { email: body.email.trim(), role: (body.role ?? "viewer").trim() },
-    undefined
+    { bearerToken: token ?? undefined }
   );
   if (!res.ok || !res.data || typeof res.data !== "object") {
     const err =
@@ -565,7 +582,112 @@ function parseMerchantTeamRowToAdmin(row: unknown): SettingsAdmin | null {
     email,
     role: String(o.role ?? "MEMBER"),
     twoFaEnabled: o.twoFaEnabled === true,
+    portalKycStatus:
+      typeof o.portalKycStatus === "string" && o.portalKycStatus.length > 0
+        ? o.portalKycStatus
+        : undefined,
+    portalKycVerifiedAt:
+      typeof o.portalKycVerifiedAt === "string" && o.portalKycVerifiedAt.length > 0
+        ? o.portalKycVerifiedAt
+        : undefined,
   };
+}
+
+function parseMerchantInviteRow(row: unknown): TeamPendingInvite | null {
+  if (!row || typeof row !== "object") return null;
+  const o = row as Record<string, unknown>;
+  const id = String(o.id ?? "");
+  if (!id) return null;
+  return {
+    id,
+    email: String(o.email ?? ""),
+    role: String(o.role ?? ""),
+    expiresAt: String(o.expiresAt ?? ""),
+    createdAt: String(o.createdAt ?? ""),
+  };
+}
+
+/** Map UI / legacy role strings to Core `BusinessRole` for POST /team/invites. */
+export function normalizeBusinessInviteRole(role: string): string {
+  const u = role.trim().toUpperCase();
+  if (["ADMIN", "DEVELOPER", "FINANCE", "SUPPORT"].includes(u)) return u;
+  if (u === "VIEWER") return "SUPPORT";
+  return "ADMIN";
+}
+
+export async function postMerchantPortalTeamInvite(body: {
+  email: string;
+  role: string;
+}): Promise<{
+  ok: boolean;
+  inviteLink?: string;
+  expiresAt?: string;
+  inviteId?: string;
+  error?: string;
+}> {
+  const portal = await getPortalSsrAuthForCore();
+  if (!portal) {
+    return { ok: false, error: "Sign in to your business account to send invites." };
+  }
+  const res = await postCoreMerchantTeamInvite(
+    { email: body.email.trim(), role: normalizeBusinessInviteRole(body.role) },
+    portal.bearerToken,
+    portal.extraHeaders
+  );
+  const out = extract<{ id: string; inviteUrl: string; expiresAt?: string }>(res);
+  if (!out.ok || !out.data) {
+    return { ok: false, error: out.error ?? "Invite failed" };
+  }
+  const d = out.data;
+  return {
+    ok: true,
+    inviteLink: d.inviteUrl,
+    expiresAt: d.expiresAt,
+    inviteId: d.id,
+  };
+}
+
+export async function postMerchantPortalTeamInviteResend(inviteId: string): Promise<{
+  ok: boolean;
+  inviteLink?: string;
+  expiresAt?: string;
+  error?: string;
+}> {
+  const portal = await getPortalSsrAuthForCore();
+  if (!portal) {
+    return { ok: false, error: "Not signed in." };
+  }
+  const res = await postCoreMerchantTeamInviteResend(
+    inviteId.trim(),
+    portal.bearerToken,
+    portal.extraHeaders
+  );
+  const out = extract<{ id: string; inviteUrl: string; expiresAt?: string }>(res);
+  if (!out.ok || !out.data) {
+    return { ok: false, error: out.error ?? "Resend failed" };
+  }
+  const d = out.data;
+  return { ok: true, inviteLink: d.inviteUrl, expiresAt: d.expiresAt };
+}
+
+export async function deleteMerchantPortalTeamMember(memberId: string): Promise<{
+  ok: boolean;
+  error?: string;
+}> {
+  const portal = await getPortalSsrAuthForCore();
+  if (!portal) {
+    return { ok: false, error: "Not signed in." };
+  }
+  const res = await deleteCoreMerchantTeamMember(
+    memberId.trim(),
+    portal.bearerToken,
+    portal.extraHeaders
+  );
+  const out = extract<{ removed?: boolean }>(res);
+  if (!out.ok) {
+    return { ok: false, error: out.error ?? "Remove failed" };
+  }
+  return { ok: true };
 }
 
 function parseMerchantBusinessSsr(raw: unknown): MerchantBusinessProfile | null {
@@ -607,13 +729,17 @@ export type TeamSettingsSource = "merchant" | "platform";
 export async function getSettingsTeamForPage(): Promise<{
   ok: boolean;
   data: SettingsAdmin[];
+  invites?: TeamPendingInvite[];
   error?: string;
   source: TeamSettingsSource;
 }> {
   const portal = await getPortalSsrAuthForCore();
   if (portal) {
-    const res = await getCoreMerchantTeamMembers(portal.bearerToken, portal.extraHeaders);
-    const out = extract<unknown[]>(res);
+    const [membersRes, invitesRes] = await Promise.all([
+      getCoreMerchantTeamMembers(portal.bearerToken, portal.extraHeaders),
+      getCoreMerchantTeamInvites(portal.bearerToken, portal.extraHeaders),
+    ]);
+    const out = extract<unknown[]>(membersRes);
     if (!out.ok || !Array.isArray(out.data)) {
       return {
         ok: false,
@@ -625,7 +751,14 @@ export async function getSettingsTeamForPage(): Promise<{
     const data = out.data
       .map(parseMerchantTeamRowToAdmin)
       .filter((r): r is SettingsAdmin => r != null);
-    return { ok: true, data, source: "merchant" };
+    const invitesOut = extract<unknown[]>(invitesRes);
+    const invites =
+      invitesOut.ok && Array.isArray(invitesOut.data)
+        ? invitesOut.data
+            .map(parseMerchantInviteRow)
+            .filter((r): r is TeamPendingInvite => r != null)
+        : [];
+    return { ok: true, data, invites, source: "merchant" };
   }
   const r = await getSettingsTeamAdmins();
   return {

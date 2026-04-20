@@ -38,6 +38,9 @@ export function TransactionsMerchantRtkPanel() {
       skip: skipMerchantApi,
     });
 
+  /** Skipped queries report `isLoading: false`; without this, SSR can render charts while the client shows the skeleton (hydration mismatch). */
+  const showChartsSkeleton = skipMerchantApi || isLoading;
+
   const rows: TransactionRow[] = useMemo(() => {
     const items = data?.items ?? [];
     return items
@@ -64,7 +67,7 @@ export function TransactionsMerchantRtkPanel() {
     );
   }
 
-  if (isLoading) {
+  if (showChartsSkeleton) {
     return (
       <div className="space-y-6">
         <MerchantChartsSkeleton />

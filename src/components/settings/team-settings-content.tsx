@@ -24,18 +24,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CopyButton } from "@/components/ui/copy-button";
-import type { SettingsAdmin, TeamSettingsSource } from "@/lib/data-settings";
-import { inviteTeamAdminAction } from "@/app/settings/actions";
+import type { SettingsAdmin, TeamPendingInvite, TeamSettingsSource } from "@/lib/data-settings";
+import {
+  inviteTeamAdminAction,
+  removeMerchantTeamMemberAction,
+  resendMerchantTeamInviteAction,
+} from "@/app/settings/actions";
 
-const ROLES = [
+const PLATFORM_ROLES = [
   { value: "super_admin", label: "Super Admin" },
   { value: "support", label: "Support Agent" },
   { value: "developer", label: "Developer" },
   { value: "viewer", label: "Viewer" },
 ] as const;
 
+const MERCHANT_ROLES = [
+  { value: "ADMIN", label: "Admin" },
+  { value: "DEVELOPER", label: "Developer" },
+  { value: "FINANCE", label: "Finance" },
+  { value: "SUPPORT", label: "Support" },
+] as const;
+
 type TeamSettingsContentProps = {
   initialAdmins?: SettingsAdmin[] | null;
+  initialInvites?: TeamPendingInvite[];
   teamSource?: TeamSettingsSource;
 };
 
@@ -47,19 +59,45 @@ function fullInviteUrl(inviteLink: string): string {
   return `${base}${path}`;
 }
 
+function roleLabel(
+  role: string,
+  teamSource: TeamSettingsSource
+): string {
+  const list = teamSource === "merchant" ? MERCHANT_ROLES : PLATFORM_ROLES;
+  const hit = list.find((r) => r.value === role);
+  return hit?.label ?? role;
+}
+
+function formatKyc(status: string | undefined): string {
+  if (!status || status.trim() === "") return "—";
+  return status.replace(/_/g, " ");
+}
+
+function inviteExpired(expiresAtIso: string): boolean {
+  const t = Date.parse(expiresAtIso);
+  if (!Number.isFinite(t)) return false;
+  return Date.now() > t;
+}
+
 export function TeamSettingsContent({
   initialAdmins,
+  initialInvites = [],
   teamSource = "platform",
 }: TeamSettingsContentProps) {
   const router = useRouter();
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<string>("viewer");
+  const defaultRole = teamSource === "merchant" ? "SUPPORT" : "viewer";
+  const [inviteRole, setInviteRole] = useState<string>(defaultRole);
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [lastInviteLink, setLastInviteLink] = useState<string | null>(null);
   const [lastInviteExpiresAt, setLastInviteExpiresAt] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const admins = initialAdmins ?? [];
+  const pendingInvites = initialInvites ?? [];
+  const roleOptions = teamSource === "merchant" ? MERCHANT_ROLES : PLATFORM_ROLES;
 
   return (
     <div className="space-y-6">
@@ -84,7 +122,7 @@ export function TeamSettingsContent({
           <CardTitle>{teamSource === "merchant" ? "Team members" : "Admin list"}</CardTitle>
           <CardDescription>
             {teamSource === "merchant"
-              ? "People who can sign in to this business in the portal. Roles are set in Core when you invite or update a member."
+              ? "People who can sign in to this business in the portal."
               : "Staff who can access this dashboard. Super Admin can change fees and payout keys; Support can view only; Developer can view Logs and API keys."}
           </CardDescription>
         </CardHeader>
@@ -95,15 +133,25 @@ export function TeamSettingsContent({
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>2FA</TableHead>
+                {teamSource === "merchant" ? (
+                  <>
+                    <TableHead>Person KYC</TableHead>
+                    <TableHead className="w-[100px]" />
+                  </>
+                ) : (
+                  <TableHead>2FA</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
               {admins.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  <TableCell
+                    colSpan={teamSource === "merchant" ? 5 : 4}
+                    className="text-center text-muted-foreground py-8"
+                  >
                     {teamSource === "merchant"
-                      ? "No team members yet. Send an invite below."
+                      ? "No active team members yet. Send an invite below."
                       : "No admins yet. Send an invite below."}
                   </TableCell>
                 </TableRow>
@@ -114,16 +162,49 @@ export function TeamSettingsContent({
                     <TableCell className="text-muted-foreground">{admin.email}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {ROLES.find((r) => r.value === admin.role)?.label ?? admin.role}
+                        {roleLabel(admin.role, teamSource)}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      {admin.twoFaEnabled ? (
-                        <Badge variant="default">Enabled</Badge>
-                      ) : (
-                        <Badge variant="outline">Off</Badge>
-                      )}
-                    </TableCell>
+                    {teamSource === "merchant" ? (
+                      <>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {formatKyc(admin.portalKycStatus)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {admin.role === "OWNER" ? (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              disabled={removingId === admin.id}
+                              onClick={async () => {
+                                if (!confirm(`Remove ${admin.email} from this business?`)) return;
+                                setRemovingId(admin.id);
+                                const r = await removeMerchantTeamMemberAction(admin.id);
+                                setRemovingId(null);
+                                if (r.success) router.refresh();
+                                else alert(r.error ?? "Could not remove member");
+                              }}
+                            >
+                              {removingId === admin.id ? "Removing…" : "Remove"}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </>
+                    ) : (
+                      <TableCell>
+                        {admin.twoFaEnabled ? (
+                          <Badge variant="default">Enabled</Badge>
+                        ) : (
+                          <Badge variant="outline">Off</Badge>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}
@@ -132,11 +213,80 @@ export function TeamSettingsContent({
         </CardContent>
       </Card>
 
+      {teamSource === "merchant" && pendingInvites.length > 0 ? (
+        <Card className="bg-white">
+          <CardHeader>
+            <CardTitle>Pending invites</CardTitle>
+            <CardDescription>
+              These people have been emailed a link. Invites expire after 48 hours; use Resend to issue a fresh link.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingInvites.map((inv) => {
+                  const expired = inviteExpired(inv.expiresAt);
+                  return (
+                    <TableRow key={inv.id}>
+                      <TableCell className="font-medium">{inv.email}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{roleLabel(inv.role, "merchant")}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {expired ? (
+                          <Badge variant="destructive">Expired</Badge>
+                        ) : (
+                          <Badge variant="secondary">Pending</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={resendingId === inv.id}
+                          onClick={async () => {
+                            setResendingId(inv.id);
+                            const r = await resendMerchantTeamInviteAction(inv.id);
+                            setResendingId(null);
+                            if (r.success) {
+                              if (r.inviteLink) setLastInviteLink(r.inviteLink);
+                              if (r.expiresAt) setLastInviteExpiresAt(r.expiresAt);
+                              router.refresh();
+                            } else {
+                              alert(r.error ?? "Resend failed");
+                            }
+                          }}
+                        >
+                          {resendingId === inv.id ? "Sending…" : "Resend link"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card className="bg-white">
         <CardHeader>
-          <CardTitle>Invite new admin</CardTitle>
+          <CardTitle>
+            {teamSource === "merchant" ? "Invite team member" : "Invite new admin"}
+          </CardTitle>
           <CardDescription>
-            Create an invite and send the link to the user. Role determines what they can do.
+            {teamSource === "merchant"
+              ? "They will join this business with the role you choose. Their Morapay account must use the same email to accept."
+              : "Create an invite and send the link to the user. Role determines what they can do on the platform dashboard."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -159,7 +309,7 @@ export function TeamSettingsContent({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ROLES.map((r) => (
+                  {roleOptions.map((r) => (
                     <SelectItem key={r.value} value={r.value}>
                       {r.label}
                     </SelectItem>
@@ -168,7 +318,9 @@ export function TeamSettingsContent({
               </Select>
             </div>
             {inviteError && (
-              <p className="text-sm text-destructive w-full" role="alert">{inviteError}</p>
+              <p className="text-sm text-destructive w-full" role="alert">
+                {inviteError}
+              </p>
             )}
             <Button
               disabled={inviting || !inviteEmail.trim()}
