@@ -676,6 +676,7 @@ export async function updateCoreInvoice(
     billedTo?: string;
     billingDetails?: string;
     termsAndConditions?: string;
+    discountPercent?: number;
     lineItems?: Array<{
       id?: string;
       productName: string;

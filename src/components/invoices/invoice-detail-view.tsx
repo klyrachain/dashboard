@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { ChevronRight, Download, Send, Pencil, MoreHorizontal, FileText } from "lucide-react";
@@ -25,6 +26,10 @@ import {
 import type { SerializedInvoice } from "@/lib/data-invoices";
 import { formatInvoiceCurrency } from "@/lib/data-invoices";
 import { exportInvoiceToCsv } from "@/lib/export-invoice-csv";
+import { exportInvoiceToPdf } from "@/lib/export-invoice-pdf";
+import type { RootState } from "@/store";
+import { useGetCheckoutBaseUrlQuery, useGetMerchantBusinessQuery } from "@/store/merchant-api";
+import type { MerchantBusiness } from "@/store/merchant-session-slice";
 import { markInvoicePaidAction, cancelInvoiceAction, duplicateInvoiceAction } from "@/app/invoices/actions";
 import {
   cancelInvoiceViaMerchantProxy,
@@ -33,7 +38,6 @@ import {
   markInvoicePaidViaMerchantProxy,
 } from "@/lib/merchant-invoices-proxy-client";
 import { SendInvoiceModal } from "./send-invoice-modal";
-import { EditInvoiceModal } from "./edit-invoice-modal";
 import { EditNotesModal } from "./edit-notes-modal";
 
 type InvoiceDetailViewProps = {
@@ -70,8 +74,17 @@ export function InvoiceDetailView({
   const dueDate = new Date(invoice.dueDate);
   const paidAt = invoice.paidAt ? new Date(invoice.paidAt) : null;
 
+  const businesses = useSelector((s: RootState) => s.merchantSession.businesses);
+  const activeBusinessId = useSelector((s: RootState) => s.merchantSession.activeBusinessId);
+  const activeBusiness =
+    businesses.find((b: MerchantBusiness) => b.id === activeBusinessId) ?? businesses[0];
+
+  const { data: businessProfile } = useGetMerchantBusinessQuery(undefined, {
+    skip: !hasMerchantInvoicesAuth(),
+  });
+  const { data: checkoutMeta } = useGetCheckoutBaseUrlQuery();
+
   const [sendModalOpen, setSendModalOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
   const [editNotesOpen, setEditNotesOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -83,7 +96,32 @@ export function InvoiceDetailView({
     })();
   };
 
-  const handleExport = () => exportInvoiceToCsv(invoice);
+  const handleExportPdf = async () => {
+    setActionError(null);
+    setPendingAction("export");
+    try {
+      const fromBusinessPortal = hasMerchantInvoicesAuth() && activeBusiness;
+      const businessName = fromBusinessPortal
+        ? activeBusiness.name
+        : invoice.batchTitle?.trim() || "Morapay";
+      const logoUrl = fromBusinessPortal ? (businessProfile?.logoUrl ?? null) : null;
+      const checkoutBase =
+        checkoutMeta?.checkoutBaseUrl?.trim().replace(/\/$/, "") ||
+        (typeof process !== "undefined"
+          ? process.env.NEXT_PUBLIC_CHECKOUT_BASE_URL?.trim().replace(/\/$/, "")
+          : "") ||
+        "";
+      await exportInvoiceToPdf(
+        invoice,
+        { businessName, logoUrl },
+        { checkoutBaseUrl: checkoutBase || undefined }
+      );
+    } catch {
+      setActionError("Could not generate PDF export.");
+    } finally {
+      setPendingAction(null);
+    }
+  };
 
   const handleMarkAsPaid = async () => {
     setActionError(null);
@@ -185,9 +223,14 @@ export function InvoiceDetailView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExport}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleExportPdf()}
+            disabled={!!pendingAction}
+          >
             <Download className="size-4" aria-hidden />
-            Export
+            Export PDF
           </Button>
           <Button
             variant="outline"
@@ -198,15 +241,19 @@ export function InvoiceDetailView({
             <Send className="size-4" aria-hidden />
             Send Invoice
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setEditModalOpen(true)}
-            disabled={!canEdit}
-          >
-            <Pencil className="size-4" aria-hidden />
-            Edit Invoice
-          </Button>
+          {canEdit ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/invoices/${invoice.id}/edit`}>
+                <Pencil className="size-4" aria-hidden />
+                Edit Invoice
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled>
+              <Pencil className="size-4" aria-hidden />
+              Edit Invoice
+            </Button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" disabled={!!pendingAction}>
@@ -215,6 +262,12 @@ export function InvoiceDetailView({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => exportInvoiceToCsv(invoice)}
+                disabled={!!pendingAction}
+              >
+                Download CSV
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleDuplicate}
                 disabled={!!pendingAction}
@@ -444,12 +497,6 @@ export function InvoiceDetailView({
         onOpenChange={setSendModalOpen}
         invoiceId={invoice.id}
         initialEmail={invoice.billedTo}
-        onSuccess={refresh}
-      />
-      <EditInvoiceModal
-        invoice={invoice}
-        open={editModalOpen}
-        onOpenChange={setEditModalOpen}
         onSuccess={refresh}
       />
       <EditNotesModal

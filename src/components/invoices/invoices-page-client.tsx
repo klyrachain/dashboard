@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +11,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { SendInvoiceModal } from "./send-invoice-modal";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All" },
@@ -27,7 +26,6 @@ type InvoicesPageClientProps = {
 };
 
 export function InvoicesPageClient({ statusFilter }: InvoicesPageClientProps) {
-  const [sendModalOpen, setSendModalOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -56,14 +54,12 @@ export function InvoicesPageClient({ statusFilter }: InvoicesPageClientProps) {
           ))}
         </SelectContent>
       </Select>
-      <Button onClick={() => setSendModalOpen(true)}>
-        <Plus className="size-4" aria-hidden />
-        Create invoice
+      <Button asChild>
+        <Link href="/invoices/new">
+          <Plus className="size-4" aria-hidden />
+          Create invoice
+        </Link>
       </Button>
-      <SendInvoiceModal
-        open={sendModalOpen}
-        onOpenChange={setSendModalOpen}
-      />
     </div>
   );
 }

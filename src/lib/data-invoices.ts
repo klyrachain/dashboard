@@ -26,6 +26,16 @@ export type InvoiceLogEntry = {
   date: Date;
 };
 
+/** Checkout link generated for a merchant-scoped invoice (Core `paymentLink` on invoice payload). */
+export type InvoicePaymentLinkSummary = {
+  id: string;
+  slug: string;
+  publicCode: string;
+  title: string;
+  amount: number | null;
+  currency: string;
+};
+
 export type Invoice = {
   id: string;
   invoiceNumber: string;
@@ -50,6 +60,7 @@ export type Invoice = {
   termsAndConditions: string;
   notesContent: string;
   log: InvoiceLogEntry[];
+  paymentLink?: InvoicePaymentLinkSummary | null;
 };
 
 export type InvoiceListItem = {
@@ -108,6 +119,14 @@ type CoreInvoiceRaw = {
   termsAndConditions: string;
   notesContent: string;
   log: Array<{ id: string; description: string; date: string }>;
+  paymentLink?: {
+    id: string;
+    slug: string;
+    publicCode: string;
+    title: string;
+    amount: number | null;
+    currency: string;
+  } | null;
 };
 
 function parseDate(s: string | null | undefined): Date | null {
@@ -165,6 +184,23 @@ function mapInvoice(raw: CoreInvoiceRaw): Invoice {
       description: e.description,
       date: parseDate(e.date) ?? new Date(0),
     })),
+    paymentLink: (() => {
+      if (raw.paymentLink === null) return null;
+      if (!raw.paymentLink || typeof raw.paymentLink !== "object") return undefined;
+      const o = raw.paymentLink as Record<string, unknown>;
+      const id = String(o.id ?? "");
+      if (!id) return null;
+      const amt = o.amount;
+      const numAmt = amt == null || amt === "" ? NaN : Number(amt);
+      return {
+        id,
+        slug: String(o.slug ?? ""),
+        publicCode: String(o.publicCode ?? ""),
+        title: String(o.title ?? ""),
+        amount: Number.isFinite(numAmt) ? numAmt : null,
+        currency: String(o.currency ?? "USD"),
+      };
+    })(),
   };
 }
 
@@ -289,6 +325,8 @@ export type InvoiceUpdatePayload = {
   billingDetails?: string;
   lineItems?: InvoiceLineItem[];
   termsAndConditions?: string;
+  /** Clamped 0–100; PATCH recomputes totals with current or patched line items. */
+  discountPercent?: number;
 };
 
 /** JSON body for PATCH /api/invoices/:id (Core + `/api/invoices` proxy). */
@@ -303,6 +341,9 @@ export function buildInvoiceUpdatePatchBody(
   if (payload.billedTo != null) body.billedTo = payload.billedTo;
   if (payload.billingDetails != null) body.billingDetails = payload.billingDetails;
   if (payload.termsAndConditions != null) body.termsAndConditions = payload.termsAndConditions;
+  if (payload.discountPercent !== undefined) {
+    body.discountPercent = Math.min(100, Math.max(0, payload.discountPercent));
+  }
   if (payload.lineItems != null) {
     body.lineItems = payload.lineItems.map((li) => ({
       id: li.id,

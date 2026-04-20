@@ -46,11 +46,6 @@ export function InvoicesTable({ data, meta, statusFilter }: InvoicesTableProps) 
 
   return (
     <div className="space-y-2">
-      {(totalLabel || filterLabel) ? (
-        <p className="text-xs text-muted-foreground" aria-live="polite">
-          {[filterLabel, totalLabel].filter(Boolean).join(" · ")}
-        </p>
-      ) : null}
     <Table>
       <TableHeader>
         <TableRow>
