@@ -66,14 +66,14 @@ export function MerchantWalletsCommerceSection({
     <div className="space-y-6">
       <Card className="bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Commerce volume (reporting window)
-          </CardTitle>
+          {/* <CardTitle className="text-sm font-medium text-muted-foreground">
+            Commerce volume
+          </CardTitle> */}
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div>
             <p className="text-xs font-medium uppercase text-muted-foreground">
-              Completed volume (USD)
+              Completed volume
             </p>
             <p className="text-2xl font-semibold tabular-nums">
               {formatUsdVolume(t?.volumeUsdInPeriod)}
@@ -86,7 +86,7 @@ export function MerchantWalletsCommerceSection({
           </div>
           <div>
             <p className="text-xs font-medium uppercase text-muted-foreground">
-              Payment links (USD, completed)
+              Payment links
             </p>
             <p className="text-2xl font-semibold tabular-nums">
               {summary?.paymentLinks?.volumeUsdInPeriod != null
@@ -105,7 +105,7 @@ export function MerchantWalletsCommerceSection({
       <Card className="bg-card">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Recorded crypto & on-chain token legs
+            Recorded tokens
           </CardTitle>
         </CardHeader>
         <CardContent>

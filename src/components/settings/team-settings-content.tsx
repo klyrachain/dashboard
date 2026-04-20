@@ -348,10 +348,10 @@ export function TeamSettingsContent({
             </Button>
           </div>
           {lastInviteLink && (
-            <div className="rounded-md border border-slate-200 bg-slate-50 p-4 space-y-2">
-              <p className="text-sm font-medium text-slate-700">Invite created. Share this link:</p>
-              <div className="flex items-center gap-2 flex-wrap">
-                <code className="flex-1 min-w-0 text-xs font-mono break-all bg-white px-2 py-1.5 rounded border border-slate-200">
+            <div className="rounded-md border border-slate-200 bg-muted p-4 space-y-2">
+              <p className="text-sm font-medium text-slate-700">Share this invite link:</p>
+              <div className="flex items-center gap-1 flex-wrap">
+                <code className="flex-1 min-w-0 text-xs font-mono break-all py-1.5 rounded font-medium">
                   {fullInviteUrl(lastInviteLink)}
                 </code>
                 <CopyButton
