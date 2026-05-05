@@ -15,8 +15,7 @@ export default async function MerchantCustomersPage() {
       <header className="space-y-1">
         <h1 className="text-display font-semibold tracking-tight">Customers</h1>
         <p className="font-secondary text-caption text-muted-foreground max-w-prose">
-          Payers from checkout, payment links, and invoices (identifiers match your transactions),
-          plus contacts you add in CRM.
+          Payers from checkout, payment links, and invoices
         </p>
       </header>
       <Suspense

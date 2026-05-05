@@ -327,7 +327,7 @@ export function MerchantCustomersClient() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Avg. spend (estimate)
+                  Avg. spent
                 </CardTitle>
               </CardHeader>
               <CardContent>

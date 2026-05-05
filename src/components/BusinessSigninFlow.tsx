@@ -324,8 +324,8 @@ export function BusinessSigninFlow() {
 
             {magicSent ? (
               <p className="text-sm text-zinc-600" role="status" aria-live="polite">
-                Check your inbox. The link opens on Morapay to finish sign-in;
-                then return to the dashboard if needed.
+                A link has been sent to your email.
+                It expires in about 15 minutes.
               </p>
             ) : null}
 
