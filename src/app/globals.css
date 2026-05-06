@@ -346,6 +346,26 @@ aside[data-dashboard-sidebar] {
   fieldset:disabled :where(button, input, select, textarea) {
     cursor: not-allowed;
   }
+
+  /*
+   * Buttons: cursor must not rely only on :where() above — :where() has zero specificity, so
+   * other rules beat pointer. These selectors keep the hand cursor on real button controls.
+   */
+  button:not(:disabled):not([data-clickable-cursor="default"]),
+  input:not(:disabled):not([data-clickable-cursor="default"]):where(
+    [type="button"],
+    [type="submit"],
+    [type="reset"]
+  ),
+  [role="button"]:not([aria-disabled="true"], [data-clickable-cursor="default"]) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  button[aria-disabled="true"],
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
 }
 
 /*

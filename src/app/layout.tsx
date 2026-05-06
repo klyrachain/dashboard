@@ -33,8 +33,8 @@ const cerebriSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Morapay Backoffice | Payment Control Center",
-  description: "Morapay control center for payments and operations",
+  title: "Morapay Business",
+  description: "Morapay Business Dashboard",
 };
 
 /** Safari / mobile browser toolbar and tab tint (`<meta name="theme-color">`). */
