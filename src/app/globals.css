@@ -8,7 +8,7 @@
 @source "../../**/*.{tsx,ts,jsx,js}";
 
 :root {
-  /* Font roles: change these to swap fonts app-wide (e.g. set --font-primary-stack to --font-ranade for Ranade everywhere). */
+  /* Font roles: Cerebri is loaded via next/font in layout.tsx (`--font-cerebri-sans` on <html>); files in src/app/fonts. */
   --font-primary-stack:
     var(--font-cerebri-sans), ui-sans-serif, system-ui, sans-serif;
   --font-secondary-stack:
@@ -157,13 +157,12 @@ body {
 }
 
 /*
- * Marketing / auth headings (Inter Tight from next/font in layout.tsx).
- * Do not use Tailwind arbitrary `[font-family:var(--font-inter-tight),...]`:
- * the generated selector/value can be mangled (CSS \\f / hex escape edge cases),
- * which breaks Lightning CSS parsing until .next is deleted.
+ * Marketing / auth headings — same family as the app (Cerebri via --font-cerebri-sans on <html>).
+ * Avoids next/font/google (build-time fetch to fonts.gstatic.com breaks offline / bad DNS).
  */
 .font-inter-tight-stack {
-  font-family: var(--font-inter-tight), ui-sans-serif, sans-serif;
+  font-family: var(--font-cerebri-sans), ui-sans-serif, sans-serif;
+  letter-spacing: -0.02em;
 }
 
 /* Themed scrollbars (Firefox + WebKit) — skip dashboard regions; they use dedicated classes below */
