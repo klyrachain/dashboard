@@ -398,7 +398,6 @@ export async function submitOnboardingEntity(
   };
   const w = input.website?.trim();
   if (w) payload.website = w;
-
   await requestJson("/api/business-auth/onboarding/entity", {
     method: "POST",
     headers: {
@@ -415,7 +414,7 @@ export interface OnboardingCompleteResult {
 
 export async function completeBusinessOnboarding(
   accessToken: string,
-  input: { signupRole: string; primaryGoal: string }
+  input: { signupRole: string; primaryGoal: string; country?: string }
 ): Promise<OnboardingCompleteResult> {
   const body = await requestJson("/api/business-auth/onboarding/complete", {
     method: "POST",
@@ -423,6 +422,7 @@ export async function completeBusinessOnboarding(
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
+      ...(input.country?.trim() ? { country: input.country.trim().toUpperCase().slice(0, 2) } : {}),
       signupRole: input.signupRole,
       primaryGoal: input.primaryGoal,
     }),
@@ -460,6 +460,7 @@ export async function createPortalBusiness(
   input: {
     companyName: string;
     website?: string;
+    country?: string;
     signupRole: string;
     primaryGoal: string;
   }
@@ -471,6 +472,8 @@ export async function createPortalBusiness(
   };
   const w = input.website?.trim();
   if (w) payload.website = w;
+  const country = input.country?.trim().toUpperCase().slice(0, 2);
+  if (country) payload.country = country;
 
   const body = await requestJson("/api/business-auth/businesses", {
     method: "POST",

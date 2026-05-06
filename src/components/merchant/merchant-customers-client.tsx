@@ -334,7 +334,7 @@ export function MerchantCustomersClient() {
                 <p className="text-3xl font-semibold tabular-nums">
                   {avgLtv != null && Number.isFinite(avgLtv)
                     ? `$${avgLtv.toLocaleString("en-US", { maximumFractionDigits: 0 })}`
-                    : "None"}
+                    : "$0"}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Period volume split across payers. Refines as we add per customer revenue.
