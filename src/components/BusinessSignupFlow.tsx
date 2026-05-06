@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   BUSINESS_ROLES,
   PRIMARY_GOALS,
@@ -45,6 +46,7 @@ import {
   setStoredActiveBusinessId,
 } from "@/lib/businessAuthStorage";
 import { establishMerchantPortalSession } from "@/lib/establish-merchant-portal-session";
+import { PAYMENT_LINK_COUNTRY_FIAT_OPTIONS } from "@/lib/payment-link-fiat-countries";
 import { runPasskeyRegistration } from "@/lib/webauthn-client";
 import type { AppDispatch } from "@/store";
 import { hydrateMerchantSession } from "@/store/merchant-session-slice";
@@ -141,6 +143,7 @@ export function BusinessSignupFlow() {
   const [passkeyName, setPasskeyName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [companyWebsite, setCompanyWebsite] = useState("");
+  const [businessCountry, setBusinessCountry] = useState("GH");
   const [role, setRole] = useState<BusinessRole | "">("");
   const [primaryGoal, setPrimaryGoal] = useState<PrimaryGoal | "">("");
 
@@ -581,6 +584,7 @@ export function BusinessSignupFlow() {
       const { accessToken, landingHint } = await completeBusinessOnboarding(
         token,
         {
+          country: businessCountry,
           signupRole: toApiSignupRole(role),
           primaryGoal: toApiPrimaryGoal(primaryGoal),
         }
@@ -668,6 +672,7 @@ export function BusinessSignupFlow() {
         email: email.trim().toLowerCase() || undefined,
         companyName: companyName.trim(),
         companyWebsite: companyWebsite.trim(),
+        country: businessCountry,
         role: role as BusinessRole,
         primaryGoal: primaryGoal as PrimaryGoal,
         displayName: name,
@@ -1100,6 +1105,29 @@ export function BusinessSignupFlow() {
                     disabled={isSubmitting}
                     aria-invalid={!!stepError && step === 2}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`${formId}-country`}>Operating country</Label>
+                  <Select
+                    value={businessCountry}
+                    onValueChange={(value) => {
+                      setBusinessCountry(value);
+                      clearError();
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger id={`${formId}-country`} className="h-11 text-base md:text-sm">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_LINK_COUNTRY_FIAT_OPTIONS.map((option) => (
+                        <SelectItem key={option.code} value={option.code}>
+                          {option.name} ({option.currency})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">

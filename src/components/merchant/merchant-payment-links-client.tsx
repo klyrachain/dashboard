@@ -53,6 +53,7 @@ import {
   parsePrice,
 } from "@/lib/merchant-commerce-helpers";
 import { PaymentLinkQrDialog } from "@/components/merchant/payment-link-qr-dialog";
+import { CreatePaymentLinkModalFiatOnly } from "@/components/merchant/create-payment-link-modal-fiat-only";
 import { PaymentLinkCurrencyPicker } from "@/components/merchant/payment-link-currency-picker";
 import {
   ActionTooltip,
@@ -151,6 +152,7 @@ export function MerchantPaymentLinksClient({
   const [linkUsage, setLinkUsage] = useState<"unlimited" | "onetime">("unlimited");
 
   const [open, setOpen] = useState(false);
+  const [fiatOnlyOpen, setFiatOnlyOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [productId, setProductId] = useState<string | undefined>(undefined);
@@ -275,7 +277,7 @@ export function MerchantPaymentLinksClient({
       const pname = searchParams.get("productName")?.trim();
       if (pid) {
         setProductId(pid);
-        setOpen(true);
+        setFiatOnlyOpen(true);
         if (pname) setTitle(pname);
       }
     });
@@ -882,7 +884,7 @@ export function MerchantPaymentLinksClient({
           <Button
             type="button"
             className="shrink-0 gap-2"
-            onClick={() => setOpen(true)}
+            onClick={() => setFiatOnlyOpen(true)}
           >
             <Plus className="size-4" aria-hidden />
             New link
@@ -931,6 +933,19 @@ export function MerchantPaymentLinksClient({
             New link
           </Button>
         </div> */}
+        <CreatePaymentLinkModalFiatOnly
+          open={fiatOnlyOpen}
+          onOpenChange={setFiatOnlyOpen}
+          business={merchantBusiness}
+          globalGasToggleOn={globalGasToggleOn}
+          initialProductId={productId}
+          initialTitle={title}
+          onCreated={() => {
+            setTitle("");
+            setAmount("");
+            setProductId(undefined);
+          }}
+        />
         <Dialog open={open} onOpenChange={handlePaymentLinkDialogOpenChange}>
           <DialogContent
             className="border-none sm:max-w-xl"

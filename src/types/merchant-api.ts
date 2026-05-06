@@ -26,6 +26,7 @@ export type MerchantBusinessPatchBody = {
   website?: string | null;
   webhookUrl?: string | null;
   supportEmail?: string | null;
+  country?: string;
 };
 
 /** `GET /api/v1/merchant/api-keys` row (no raw secret). */

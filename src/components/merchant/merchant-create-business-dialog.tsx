@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PAYMENT_LINK_COUNTRY_FIAT_OPTIONS } from "@/lib/payment-link-fiat-countries";
 
 type MerchantCreateBusinessDialogProps = {
   open: boolean;
@@ -49,12 +51,14 @@ export function MerchantCreateBusinessDialog({
   const portalJwt = useSelector((s: RootState) => s.merchantSession.portalJwt);
   const [companyName, setCompanyName] = useState("");
   const [website, setWebsite] = useState("");
+  const [country, setCountry] = useState("GH");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const reset = () => {
     setCompanyName("");
     setWebsite("");
+    setCountry("GH");
     setError(null);
   };
 
@@ -81,6 +85,7 @@ export function MerchantCreateBusinessDialog({
       const created = await createPortalBusiness(token, {
         companyName: name,
         website: website.trim() || undefined,
+        country,
         signupRole: "FOUNDER_EXECUTIVE",
         primaryGoal: "ACCEPT_PAYMENTS",
       });
@@ -149,6 +154,22 @@ export function MerchantCreateBusinessDialog({
               disabled={submitting}
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="create-biz-country">Operating country</Label>
+            <Select value={country} onValueChange={setCountry} disabled={submitting}>
+              <SelectTrigger id="create-biz-country">
+                <SelectValue placeholder="Select country" />
+              </SelectTrigger>
+              <SelectContent>
+                {PAYMENT_LINK_COUNTRY_FIAT_OPTIONS.map((option) => (
+                  <SelectItem key={option.code} value={option.code}>
+                    {option.name} ({option.currency})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="create-biz-site">Website (optional)</Label>
             <Input
