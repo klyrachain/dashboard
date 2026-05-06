@@ -17,30 +17,17 @@ import { merchantSessionFromAccess } from "@/lib/merchant-session-initial";
 import { PortalRoleCookieSync } from "@/components/providers/portal-role-cookie-sync";
 import { PlatformChromeMeta } from "@/components/layout/platform-chrome-meta";
 
-/** Primary: headings and main UI (Alpino). */
-const alpino = localFont({
+/** Primary UI font family (Cerebri Sans). */
+const cerebriSans = localFont({
   src: [
-    {
-      path: "../../public/font/Alpino_Complete/Fonts/WEB/fonts/Alpino-Variable.woff2",
-      style: "normal",
-    },
+    { path: "../../public/font/CerebriSans-Light.woff", weight: "300", style: "normal" },
+    { path: "../../public/font/CerebriSans-Regular.woff", weight: "400", style: "normal" },
+    { path: "../../public/font/CerebriSans-Medium.woff", weight: "500", style: "normal" },
+    { path: "../../public/font/CerebriSans-SemiBold.woff", weight: "600", style: "normal" },
+    { path: "../../public/font/CerebriSans-Bold.woff", weight: "700", style: "normal" },
   ],
-  variable: "--font-alpino",
+  variable: "--font-cerebri-sans",
   display: "swap",
-  weight: "100 900",
-});
-
-/** Secondary: body and reading (Ranade). */
-const ranade = localFont({
-  src: [
-    {
-      path: "../../public/font/Ranade_Complete/Fonts/WEB/fonts/Ranade-Variable.woff2",
-      style: "normal",
-    },
-  ],
-  variable: "--font-ranade",
-  display: "swap",
-  weight: "100 700",
 });
 
 /** Tight tracking for marketing / business auth headings (see `.font-inter-tight-stack`). */
@@ -76,7 +63,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${alpino.variable} ${ranade.variable} ${interTight.variable} font-primary antialiased`}
+        className={`${cerebriSans.variable} ${interTight.variable} font-primary antialiased`}
         style={{ backgroundColor: PLATFORM_PRIMARY_HEX }}
       >
         <PlatformChromeMeta />

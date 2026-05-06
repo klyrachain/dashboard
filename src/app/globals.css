@@ -10,11 +10,11 @@
 :root {
   /* Font roles: change these to swap fonts app-wide (e.g. set --font-primary-stack to --font-ranade for Ranade everywhere). */
   --font-primary-stack:
-    var(--font-alpino), ui-sans-serif, system-ui, sans-serif;
+    var(--font-cerebri-sans), ui-sans-serif, system-ui, sans-serif;
   --font-secondary-stack:
-    var(--font-ranade), ui-sans-serif, system-ui, sans-serif;
+    var(--font-cerebri-sans), ui-sans-serif, system-ui, sans-serif;
   --font-tertiary-stack:
-    var(--font-ranade), ui-sans-serif, system-ui, sans-serif; /* tables & data */
+    var(--font-cerebri-sans), ui-sans-serif, system-ui, sans-serif; /* tables & data */
 
   /* Text size categories: change these to resize by category app-wide. */
   --text-size-display: 1.875rem; /* hero / page titles */
@@ -152,6 +152,8 @@ body {
   color: oklch(var(--foreground));
   font-family: var(--font-primary-stack), system-ui, sans-serif;
   font-size: var(--text-size-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /*
